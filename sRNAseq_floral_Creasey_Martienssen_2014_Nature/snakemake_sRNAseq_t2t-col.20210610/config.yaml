@@ -1,0 +1,38 @@
+SAMPLES: [
+          "Col_0_sRNA_SRR1042171",
+          "ddm1_2_sRNA_SRR1042172",
+          "rdr6_15_sRNA_SRR1042173",
+          "ddm1_2_rdr6_15_sRNA_SRR1042174"
+         ]
+THREADS: 32
+MEMORY: "120g"
+FILTER:
+  bbduk:
+      kmerSize: 18
+      rRNAfasta: "contaminants/ribokmers.fa.gz"
+  cutadapt:
+      # Creasey et al. (2014) Nature: "Col-0, ddm1-2, rdr6-15 and ddm1-2 rdr6-15 TruSeq small RNA sequencing libraries, sequenced on Illumina HiSeq.
+      # "For the Col-0, ddm1-2 replicates, and ddm1-2 dcl1-11 small RNA sequencing libraries were prepared by NEBNext multiplex small RNA libraries, sequenced on Illumina MiSeq."
+      adapter: TGGAATTCTCGGGTGCCAAGG # -a (TruSeq small RNA adapter)
+#      adapter: AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC # -a (adapter from NEBNext Multiplex Small RNA Library Prep Kit for Illumina)
+      quality-filter: 20 # -q
+      minimum-overlap: 3 # -O (default: 3)
+      minimum-length: 15 # -m
+      maximum-length: 43 # -M
+      extra-params:
+# NOTE: reference genome-specific mapping parameters
+MAPPING:
+      # -k 1 (default): Report up to <int> valid alignments per read
+      mode: "both" # (both unique and multiple alignments: --best) (unique: -m 1)
+      mismatches: 0 # -v <int>
+      reference: "data/index/t2t-col.20210610"
+      sortMemory: "3G"
+# Specify small RNA sizes based on trimmed FastQC "Sequence Length Distribution"
+sRNA_SIZE: 18 # [18, 19, 20, 21, 22, 23, 24, 25, 26]
+sRNA_SIZES: [18, 19, 20, 21, 22, 23, 24, 25, 26]
+COVERAGE:
+      normalizeUsing: "BPM"
+      ignoreForNormalization: "ChrM ChrC" # Reference genome-specific parameter
+      binSize: 1
+      genomeBinSize: 10000
+      genomeBinName: "10kb"
