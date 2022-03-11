@@ -1,0 +1,32 @@
+SAMPLES: [
+          "Col_0_VLPDNAseq_Rep1_SRR8792541",
+          "Col_0_VLPDNAseq_Rep2_SRR8792542",
+          "Col_0_VLPDNAseq_Rep3_SRR8792543",
+          "ddm1_2_VLPDNAseq_Rep1_SRR8792544",
+          "ddm1_2_VLPDNAseq_Rep2_SRR8792545",
+          "ddm1_2_rdr6_15_VLPDNAseq_Rep1_SRR8792546",
+          "ddm1_2_rdr6_15_VLPDNAseq_Rep2_SRR8792547",
+          "ddm1_2_rdr6_15_VLPDNAseq_Rep3_SRR8792548"
+         ]
+THREADS: 32
+FILTER:
+  fastqc:
+      contaminants: "adapters/contaminants_list_fastqc.txt"
+  trimmomatic:
+      ILLUMINACLIP: "ILLUMINACLIP:adapters/cat_all_and_TruSeq_Single_Indexes.fa:2:30:10:1:true"
+      SLIDINGWINDOW: "SLIDINGWINDOW:4:15"
+      MINLEN: "MINLEN:36"
+MAPPING:
+      reference: "data/index/t2t-col.20210610"
+      alignments: 100 # STAR option --outFilterMultimapNmax
+      anchor: 100 # STAR option --winAnchorMultimapNmax
+      mismatches: 2  # STAR option --outFilterMismatchNmax
+      MAPQboth: 3
+      MAPQunique: 255
+      sortMemory: "3G"
+COVERAGE:
+      normalizeUsing: "BPM"
+      ignoreForNormalization: "ChrM ChrC" # Reference genome-specific parameter
+      binSize: 1
+      genomeBinSize: 10000
+      genomeBinName: "10kb"

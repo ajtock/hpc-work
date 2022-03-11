@@ -1,0 +1,490 @@
+# Snakemake workflow for mapping paired-end RNA-seq libraries to a reference genome
+
+# Chromosome sizes file below ("data/index/genome.fa.sizes") must exist
+# before running snakefile
+# e.g., in "data/index/" run:
+# samtools faidx genome.fa; cut -f1,2 genome.fa.fai > genome.fa.sizes
+
+# Usage (snakemake --cores should reflect available cores):
+# conda env create --file environment.yaml --name RNAseq_mapping
+# conda activate RNAseq_mapping
+# snakemake -p --cores 48
+# conda deactivate
+
+import pandas as pd
+import os
+
+# To make the per_base_coverage rule work with a shell script invoked using the "shell" directive,
+# we need to determine the base path of Snakefile since we expect the scripts directory to be there as well
+SRCDIR = srcdir("")
+
+# Specify config file parameters
+configfile: "config.yaml"
+sample        = config["SAMPLES"]
+reference     = config["MAPPING"]["reference"]
+refbase       = os.path.basename(reference)
+genomeBinName = config["COVERAGE"]["genomeBinName"]
+
+# Determine bam index format (bai or csi) based on chromosome sizes
+# Genomes with chromosomes longer than ~500 Mb (e.g., in wheat) require a csi index
+# E.g., in axolotl: https://sourceforge.net/p/samtools/mailman/message/36249039/
+chrSizes = pd.read_csv("data/index/" + refbase + ".fa.sizes",
+                       header = None,
+                       sep = "\t")
+
+smallChrs = 0
+for x in chrSizes[1]:
+    if x < 5e+08:
+        smallChrs = smallChrs + 1
+
+if smallChrs < len(chrSizes[1]):
+    bamidx = "csi"
+else:
+    bamidx = "bai"
+
+# Specify the desired end target file(s)
+rule all:
+    input:
+        expand("logs/fastqc/raw/{sample}_R1_fastqc.html",
+               sample = sample),
+        expand("logs/fastqc/raw/{sample}_R2_fastqc.html",
+               sample = sample),
+        expand("data/trimmed/{sample}_R1_trimmed.fastq.gz",
+               sample = sample),
+        expand("data/trimmed/{sample}_R2_trimmed.fastq.gz",
+               sample = sample),
+        expand("logs/fastqc/trimmed/{sample}_R1_trimmed_fastqc.html",
+               sample = sample),
+        expand("logs/fastqc/trimmed/{sample}_R2_trimmed_fastqc.html",
+               sample = sample),
+        expand("mapped/{sample}_Aligned.out.bam",
+               sample = sample),
+        expand("mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam",
+               sample = sample,
+               refbase = refbase),
+        expand("mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam",
+               sample = sample,
+               refbase = refbase),
+        expand("mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam.{bamidx}",
+               sample = sample,
+               refbase = refbase,
+               bamidx = bamidx),
+        expand("mapped/unique/bw/{sample}_MappedOn_{refbase}_unique_sort_norm.bw",
+               sample = sample,
+               refbase = refbase),
+        expand("mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm.bedgraph",
+               sample = sample,
+               refbase = refbase),
+        expand("mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.bedgraph",
+               sample = sample,
+               refbase = refbase,
+               genomeBinName = genomeBinName),
+        expand("mapped/unique/tsv/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.tsv",
+               sample = sample,
+               refbase = refbase,
+               genomeBinName = genomeBinName),
+#        expand("mapped/unique/pb/{sample}_MappedOn_{refbase}_unique_sort_norm.perbase",
+#               sample = sample,
+#               refbase = refbase),
+        expand("mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam.{bamidx}",
+               sample = sample,
+               refbase = refbase,
+               bamidx = bamidx),
+        expand("mapped/both/bw/{sample}_MappedOn_{refbase}_both_sort_norm.bw",
+               sample = sample,
+               refbase = refbase),
+        expand("mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm.bedgraph",
+               sample = sample,
+               refbase = refbase),
+        expand("mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.bedgraph",
+               sample = sample,
+               refbase = refbase,
+               genomeBinName = genomeBinName),
+        expand("mapped/both/tsv/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.tsv",
+               sample = sample,
+               refbase = refbase,
+               genomeBinName = genomeBinName),
+#        expand("mapped/both/pb/{sample}_MappedOn_{refbase}_both_sort_norm.perbase",
+#               sample = sample,
+#               refbase = refbase)
+
+# Run fastqc on R1 raw data
+rule fastqc_R1_raw:
+    """Create fastqc report"""
+    input:
+        "data/{sample}_R1.fastq.gz"
+    output:
+        html = "logs/fastqc/raw/{sample}_R1_fastqc.html",
+        zip  = "logs/fastqc/raw/{sample}_R1_fastqc.zip"
+    params:
+        " --extract" +
+        " --adapters " + str(config["FILTER"]["fastqc"]["contaminants"])
+    log:
+        "logs/fastqc/raw/{sample}_R1.log"
+    wrapper:
+        "0.31.1/bio/fastqc"
+# Run fastqc on R2 raw data
+rule fastqc_R2_raw:
+    """Create fastqc report"""
+    input:
+        "data/{sample}_R2.fastq.gz"
+    output:
+        html = "logs/fastqc/raw/{sample}_R2_fastqc.html",
+        zip  = "logs/fastqc/raw/{sample}_R2_fastqc.zip"
+    params:
+        " --extract" +
+        " --adapters " + str(config["FILTER"]["fastqc"]["contaminants"])
+    log:
+        "logs/fastqc/raw/{sample}_R2.log"
+    wrapper:
+        "0.31.1/bio/fastqc"
+
+# Trim off adapters and low-quality bases
+rule trimmomatic:
+    """Remove adapters and low-quality bases"""
+    input:
+        r1 = "data/{sample}_R1.fastq.gz",
+        r2 = "data/{sample}_R2.fastq.gz"
+    output:
+        r1 = "data/trimmed/{sample}_R1_trimmed.fastq.gz",
+        r2 = "data/trimmed/{sample}_R2_trimmed.fastq.gz",
+        # Reads where trimming entirely removed the mate
+        r1_unpaired = "data/trimmed/{sample}_R1_trimmed_unpaired.fastq.gz",
+        r2_unpaired = "data/trimmed/{sample}_R2_trimmed_unpaired.fastq.gz"
+    threads: config["THREADS"]
+    params:
+        # List of trimming paramters (see Trimmomatic manual)
+        trimmer = [str(config["FILTER"]["trimmomatic"]["ILLUMINACLIP"]),
+                   str(config["FILTER"]["trimmomatic"]["SLIDINGWINDOW"]),
+                   str(config["FILTER"]["trimmomatic"]["MINLEN"])]
+    log:
+        "logs/trimmomatic/{sample}_trimmed.log"
+    shell:
+        "(trimmomatic PE -threads {threads}"
+        "             {input.r1} {input.r2}"
+        "             {output.r1} {output.r1_unpaired}"
+        "             {output.r2} {output.r2_unpaired}"
+        "             {params.trimmer}) &> {log}"
+
+# Run fastqc on R1 trimmed data
+rule fastqc_R1_trimmed:
+    """Create fastqc report"""
+    input:
+        "data/trimmed/{sample}_R1_trimmed.fastq.gz"
+    output:
+        html = "logs/fastqc/trimmed/{sample}_R1_trimmed_fastqc.html",
+        zip  = "logs/fastqc/trimmed/{sample}_R1_trimmed_fastqc.zip"
+    params:
+        " --extract" +
+        " --adapters " + str(config["FILTER"]["fastqc"]["contaminants"])
+    log:
+        "logs/fastqc/trimmed/{sample}_R1_trimmed.log"
+    wrapper:
+        "0.31.1/bio/fastqc"
+# Run fastqc on R2 trimmed data
+rule fastqc_R2_trimmed:
+    """Create fastqc report"""
+    input:
+        "data/trimmed/{sample}_R2_trimmed.fastq.gz"
+    output:
+        html = "logs/fastqc/trimmed/{sample}_R2_trimmed_fastqc.html",
+        zip  = "logs/fastqc/trimmed/{sample}_R2_trimmed_fastqc.zip"
+    params:
+        " --extract" +
+        " --adapters " + str(config["FILTER"]["fastqc"]["contaminants"])
+    log:
+        "logs/fastqc/trimmed/{sample}_R2_trimmed.log"
+    wrapper:
+        "0.31.1/bio/fastqc"
+
+# Align to the reference genome
+rule STAR:
+    """Obtain unique and multiple alignments using STAR"""
+    input:
+        fastq1 = "data/trimmed/{sample}_R1_trimmed.fastq.gz",
+        fastq2 = "data/trimmed/{sample}_R2_trimmed.fastq.gz"
+    output:
+        protected("mapped/{sample}_Aligned.out.bam")
+    params:
+        alignments = config["MAPPING"]["alignments"],
+        anchor     = config["MAPPING"]["anchor"],
+        mismatches = config["MAPPING"]["mismatches"],
+        outprefix  = "mapped/{sample}_"
+    threads: config["THREADS"]
+    log:
+        "logs/STAR/{sample}.log"
+    shell:
+        "(STAR --runThreadN {threads}"
+        "      --genomeDir data/index/"
+        "      --readFilesIn {input.fastq1} {input.fastq2}"
+        "      --readFilesCommand zcat"
+        "      --outSAMtype BAM Unsorted"
+        "      --outFileNamePrefix {params.outprefix}"
+        "      --outFilterMultimapNmax {params.alignments}"
+        "      --winAnchorMultimapNmax {params.anchor}"
+        "      --outMultimapperOrder Random"
+        "      --outFilterMismatchNmax {params.mismatches}"
+        "      --outSAMattributes All"
+        "      --twopassMode Basic"
+        "      --twopass1readsN -1"
+        "      --quantMode TranscriptomeSAM GeneCounts) &> {log}"
+
+# Extract unique and multiple  alignments
+rule samtools:
+    """ Extract unique and multiple alignments using samtools"""
+    input:
+        "mapped/{sample}_Aligned.out.bam"
+    output:
+        both   = protected("mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam"),
+        unique = protected("mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam")
+    params:
+        sortMemory = config["MAPPING"]["sortMemory"],
+        MAPQboth  = config["MAPPING"]["MAPQboth"],
+        MAPQunique = config["MAPPING"]["MAPQunique"]
+    threads: config["THREADS"]
+    log:
+        both   = "logs/samtools/{sample}_mappedon_{refbase}_both_sort.log",
+        unique = "logs/samtools/{sample}_mappedon_{refbase}_unique_sort.log"
+    shell:
+       # -f 3 includes only concordantly aligned read pairs, and not unpaired reads
+       # -F 2316 excludes unmapped reads and their mates,
+       # as well as secondary and supplementary alignments
+       "(samtools view -uh -@ {threads} -f 3 -F 2316 {input} -q {params.MAPQboth} "
+       "| samtools sort -@ {threads} -m {params.sortMemory} -o {output.both}) &> {log.both}; "
+       "(samtools view -uh -@ {threads} -f 3 -F 2316 {input} -q {params.MAPQunique} "
+       "| samtools sort -@ {threads} -m {params.sortMemory} -o {output.unique}) &> {log.unique}"
+
+# Postmapping steps:
+# Index BAM files (index format [bai or csi] depends on chromosome sizes)
+# Generate samtools flagstat and idxstats
+# Calculate library-size-normalised coverage
+if bamidx == "bai":
+    rule postmapping:
+        """bam.bai samtools flagstat idxstats"""
+        input:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam"
+        output:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam.bai",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam.bai"
+        log:
+            uniqueflagstat = "logs/samtools/stats/{sample}_MappedOn_{refbase}_unique_sort_flagstat.log",
+            bothflagstat   = "logs/samtools/stats/{sample}_MappedOn_{refbase}_both_sort_flagstat.log",
+            uniqueidxstats = "logs/samtools/stats/{sample}_MappedOn_{refbase}_unique_sort_idxstats.log",
+            bothidxstats   = "logs/samtools/stats/{sample}_MappedOn_{refbase}_both_sort_idxstats.log"
+        shell:
+            """
+            samtools index    {input.uniqueBAM}
+            samtools flagstat {input.uniqueBAM} > {log.uniqueflagstat}
+            samtools idxstats {input.uniqueBAM} > {log.uniqueidxstats}
+            samtools index    {input.bothBAM}
+            samtools flagstat {input.bothBAM} > {log.bothflagstat}
+            samtools idxstats {input.bothBAM} > {log.bothidxstats}
+            """
+    rule calc_coverage:
+        """Calculate library-size-normalized coverage"""
+        input:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam",
+            uniqueBAMidx = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam.bai",
+            bothBAMidx   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam.bai"
+        output:
+            uniqueBW = "mapped/unique/bw/{sample}_MappedOn_{refbase}_unique_sort_norm.bw",
+            bothBW   = "mapped/both/bw/{sample}_MappedOn_{refbase}_both_sort_norm.bw",
+            uniqueBG = "mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm.bedgraph",
+            bothBG   = "mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm.bedgraph"
+        params:
+            normalizeUsing         = config["COVERAGE"]["normalizeUsing"],
+            ignoreForNormalization = config["COVERAGE"]["ignoreForNormalization"],
+            binSize                = config["COVERAGE"]["binSize"]
+        log:
+            unique = "logs/bamCoverage/{sample}_MappedOn_{refbase}_unique_sort_norm.log",
+            both   = "logs/bamCoverage/{sample}_MappedOn_{refbase}_both_sort_norm.log"
+        threads: config["THREADS"]  
+        shell:
+            "(bamCoverage -b {input.uniqueBAM} -o {output.uniqueBW}"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}; "
+            "bamCoverage -b {input.uniqueBAM} -o {output.uniqueBG} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}) &> {log.unique}; "
+            "(bamCoverage -b {input.bothBAM} -o {output.bothBW}"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}; "
+            "bamCoverage -b {input.bothBAM} -o {output.bothBG} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}) &> {log.both}"
+    rule calc_coverage_genome:
+        """Calculate library-size-normalized coverage in adjacent windows"""
+        input:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam",
+            uniqueBAMidx = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam.bai",
+            bothBAMidx   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam.bai"
+        output:
+            uniqueBGgenome = "mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.bedgraph",
+            bothBGgenome   = "mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.bedgraph"
+        params:
+            normalizeUsing         = config["COVERAGE"]["normalizeUsing"],
+            ignoreForNormalization = config["COVERAGE"]["ignoreForNormalization"],
+            genomeBinSize          = config["COVERAGE"]["genomeBinSize"]
+        log:
+            unique = "logs/bamCoverage/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.log",
+            both   = "logs/bamCoverage/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.log"
+        threads: config["THREADS"]  
+        shell:
+            "(bamCoverage -b {input.uniqueBAM} -o {output.uniqueBGgenome} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.genomeBinSize} -p {threads}) &> {log.unique}; "
+            "(bamCoverage -b {input.bothBAM} -o {output.bothBGgenome} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.genomeBinSize} -p {threads}) &> {log.both}"
+else:
+    rule postmapping:
+        """bam.csi samtools flagstat idxstats"""
+        input:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam"
+        output:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam.csi",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam.csi"
+        log:
+            uniqueflagstat = "logs/samtools/stats/{sample}_MappedOn_{refbase}_unique_sort_flagstat.log",
+            bothflagstat   = "logs/samtools/stats/{sample}_MappedOn_{refbase}_both_sort_flagstat.log",
+            uniqueidxstats = "logs/samtools/stats/{sample}_MappedOn_{refbase}_unique_sort_idxstats.log",
+            bothidxstats   = "logs/samtools/stats/{sample}_MappedOn_{refbase}_both_sort_idxstats.log"
+        shell:
+            """
+            samtools index -c -m 14 {input.uniqueBAM}
+            samtools flagstat       {input.uniqueBAM} > {log.uniqueflagstat}
+            samtools idxstats       {input.uniqueBAM} > {log.uniqueidxstats}
+            samtools index -c -m 14 {input.bothBAM}
+            samtools flagstat       {input.bothBAM} > {log.bothflagstat}
+            samtools idxstats       {input.bothBAM} > {log.bothidxstats}
+            """
+    rule calc_coverage:
+        """Calculate library-size-normalized coverage"""
+        input:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam",
+            uniqueBAMidx = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam.csi",
+            bothBAMidx   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam.csi"
+        output:
+            uniqueBW = "mapped/unique/bw/{sample}_MappedOn_{refbase}_unique_sort_norm.bw",
+            bothBW   = "mapped/both/bw/{sample}_MappedOn_{refbase}_both_sort_norm.bw",
+            uniqueBG = "mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm.bedgraph",
+            bothBG   = "mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm.bedgraph"
+        params:
+            normalizeUsing         = config["COVERAGE"]["normalizeUsing"],
+            ignoreForNormalization = config["COVERAGE"]["ignoreForNormalization"],
+            binSize                = config["COVERAGE"]["binSize"]
+        log:
+            unique = "logs/bamCoverage/{sample}_MappedOn_{refbase}_unique_sort_norm.log",
+            both   = "logs/bamCoverage/{sample}_MappedOn_{refbase}_both_sort_norm.log"
+        threads: config["THREADS"]  
+        shell:
+            "(bamCoverage -b {input.uniqueBAM} -o {output.uniqueBW}"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}; "
+            "bamCoverage -b {input.uniqueBAM} -o {output.uniqueBG} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}) &> {log.unique}; "
+            "(bamCoverage -b {input.bothBAM} -o {output.bothBW}"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}; "
+            "bamCoverage -b {input.bothBAM} -o {output.bothBG} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.binSize} -p {threads}) &> {log.both}"
+    rule calc_coverage_genome:
+        """Calculate library-size-normalized coverage in adjacent windows"""
+        input:
+            uniqueBAM = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam",
+            bothBAM   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam",
+            uniqueBAMidx = "mapped/unique/{sample}_MappedOn_{refbase}_unique_sort.bam.csi",
+            bothBAMidx   = "mapped/both/{sample}_MappedOn_{refbase}_both_sort.bam.csi"
+        output:
+            uniqueBGgenome = "mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.bedgraph",
+            bothBGgenome   = "mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.bedgraph"
+        params:
+            normalizeUsing         = config["COVERAGE"]["normalizeUsing"],
+            ignoreForNormalization = config["COVERAGE"]["ignoreForNormalization"],
+            genomeBinSize          = config["COVERAGE"]["genomeBinSize"]
+        log:
+            unique = "logs/bamCoverage/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.log",
+            both   = "logs/bamCoverage/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.log"
+        threads: config["THREADS"]  
+        shell:
+            "(bamCoverage -b {input.uniqueBAM} -o {output.uniqueBGgenome} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.genomeBinSize} -p {threads}) &> {log.unique}; "
+            "(bamCoverage -b {input.bothBAM} -o {output.bothBGgenome} -of bedgraph"
+            " --normalizeUsing {params.normalizeUsing}"
+            " --ignoreForNormalization {params.ignoreForNormalization}"
+            " --exactScaling"
+            " --binSize {params.genomeBinSize} -p {threads}) &> {log.both}"
+
+# Use R script genomeBin_bedgraphToTSV.R to convert *{genomeBinName}.bedgraph files into TSV files
+# These TSV files can be imported into R for calculating and plotting log2(ChIP/control) chromosome-scale profiles
+rule bedgraphToTSV:
+    """Convert *{genomeBinName}.bedgraph files into TSV files"""
+    input:
+        uniqueBGgenome = "mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.bedgraph",
+        bothBGgenome   = "mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.bedgraph"
+    output:
+        uniqueTSVgenome = "mapped/unique/tsv/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.tsv",
+        bothTSVgenome   = "mapped/both/tsv/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.tsv"
+    params:
+        genomeBinSize = config["COVERAGE"]["genomeBinSize"]
+    log:
+        unique = "logs/genomeBin_bedgraphToTSV/{sample}_MappedOn_{refbase}_unique_sort_norm_binSize{genomeBinName}.log",
+        both   = "logs/genomeBin_bedgraphToTSV/{sample}_MappedOn_{refbase}_both_sort_norm_binSize{genomeBinName}.log"
+    threads: config["THREADS"]
+    shell:
+        "(scripts/genomeBin_bedgraphToTSV.R"
+        " {wildcards.sample}"
+        " {refbase}"
+        " unique"
+        " {params.genomeBinSize}) 2> {log.unique}; "
+        "(scripts/genomeBin_bedgraphToTSV.R"
+        " {wildcards.sample}"
+        " {refbase}"
+        " both"
+        " {params.genomeBinSize}) 2> {log.both}"
+
+## Convert bedgraph to per-base 1-based coverage file
+#rule per_base_coverage:
+#    """Convert bedgraph to per-base 1-based coverage file"""
+#    input:
+#        uniqueBG = "mapped/unique/bg/{sample}_MappedOn_{refbase}_unique_sort_norm.bedgraph",                          
+#        bothBG   = "mapped/both/bg/{sample}_MappedOn_{refbase}_both_sort_norm.bedgraph"   
+#    output:
+#        uniquePB = "mapped/unique/pb/{sample}_MappedOn_{refbase}_unique_sort_norm.perbase",                           
+#        bothPB   = "mapped/both/pb/{sample}_MappedOn_{refbase}_both_sort_norm.perbase"    
+#    log:
+#        unique = "logs/perBaseCoverage/{sample}_MappedOn_{refbase}_unique_sort_norm_pb.log",                          
+#        both = "logs/perBaseCoverage/{sample}_MappedOn_{refbase}_both_sort_norm_pb.log"   
+#    shell:
+#        "(bash scripts/perbase_1based_coverage.sh {input.bothBG} {output.bothPB} ) 2> {log.both}; "                         
+#        "(bash scripts/perbase_1based_coverage.sh {input.uniqueBG} {output.uniquePB} ) 2> {log.unique}"
