@@ -123,25 +123,25 @@ rule all:
                sample = sample,
                refbase = refbase,
                context = context),
-#        # bedGraphToBigWig
-#        expand("coverage/bw/{sample}_MappedOn_{refbase}_dedup_{context}.bw",
-#               sample = sample,
-#               refbase = refbase,
-#               context = context),
+        # bedGraphToBigWig
+        expand("coverage/bw/{sample}_MappedOn_{refbase}_dedup_{context}.bw",
+               sample = sample,
+               refbase = refbase,
+               context = context),
         # coverage2cytosine
         expand("coverage/report/{sample}_MappedOn_{refbase}_dedup_{context}.CX_report.txt.gz",
                sample = sample,
                refbase = refbase,
                context = context),
-##        # covgzToTSV
-##        expand("coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_unsmoothed.tsv",
-##               sample = sample,
-##               refbase = refbase,
-##               genomeBinName = genomeBinName),
-##        expand("coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_smoothed.tsv",
-##               sample = sample,
-##               refbase = refbase,
-##               genomeBinName = genomeBinName)
+        # covgzToTSV
+        expand("coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_unsmoothed.tsv",
+               sample = sample,
+               refbase = refbase,
+               genomeBinName = genomeBinName),
+        expand("coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_smoothed.tsv",
+               sample = sample,
+               refbase = refbase,
+               genomeBinName = genomeBinName)
 
 # Run fastqc on raw data
 rule fastqc_raw:
