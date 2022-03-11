@@ -1,0 +1,507 @@
+# Snakemake workflow for automated processing of DNA methylation data
+# derived from **single-end** whole-genome bisulfite sequencing (WGBS or BS-seq)
+# Adapted from https://github.com/seb-mueller/snakemake-bisulfite
+
+## ***IMPORTANT***: This Snakemake pipeline should not be run with
+## Bismark version 0.21.0 or later due to the addition of HISAT2 support,
+## which requires Python 2, which conflicts with the Python 3 requirements
+## of other parts of this pipeline (e.g., pigz part of trim_galore rule)
+
+# Chromosome sizes file below ("data/index/wheat_v1.0_incl_organelles_controls.fa.sizes") must exist
+# before running snakemake
+# e.g., in "data/index/" run:
+# samtools faidx wheat_v1.0_incl_organelles_controls.fa; 
+# cut -f1,2 wheat_v1.0_incl_organelles_controls.fa.fai > wheat_v1.0_incl_organelles_controls.fa.sizes
+
+# Usage (snakemake --cores should reflect available cores):
+# conda env create --file environment.yaml --name BSseq_mapping
+# source activate BSseq_mapping
+# snakemake -p --cores 48
+# conda deactivate
+
+import pandas as pd
+import os
+
+# To make rules work with a shell script invoked using the "shell" directive,
+# we need to determine the base path of Snakefile since we expect the scripts directory to be there as well
+SRCDIR = srcdir("")
+
+# Specify config file parameters
+configfile: "config.yaml"
+# Define wildcards and variables
+sample        = config["SAMPLES"]
+# An alternative approach would be globbing for filenames:
+#sample = glob_wildcards("data/{S}_R1.fastq.gz").S
+reference     = config["MAPPING"]["reference"]
+refbase       = config["MAPPING"]["reference_prefix"]
+genomeBinName = config["GENOMEPROFILES"]["genomeBinName"]
+
+context = ['CpG','CHG','CHH']
+cwd     = os.getcwd() + "/"
+
+print(sample)
+print(reference)
+print(refbase)
+print(context)
+
+# Determine bam index format (bai or csi) based on chromosome sizes
+# Genomes with chromosomes longer than ~500 Mb (e.g., in wheat) require a csi index
+# E.g., in axolotl: https://sourceforge.net/p/samtools/mailman/message/36249039/
+chrSizes = pd.read_csv(reference + refbase + ".fa.sizes",
+                       header = None, sep = "\t")
+smallChrs = 0
+for x in chrSizes[1]:
+    if x < 5e+08:
+        smallChrs = smallChrs + 1
+
+if smallChrs < len(chrSizes[1]):
+    bamidx = "csi"
+else:
+    bamidx = "bai"
+
+# bash safe mode
+shell.executable("/bin/bash")
+shell.prefix("set -euo pipefail; ")
+
+#ruleorder: fastqc_raw > trim_galore > fastqc_trimmed > bismark > deduplicate_bismark > samtools > bamCoverage > methylation_extractor > bismark2bedGraph > bedGraphToBigWig > coverage2cytosine > covgzToTSV
+
+rule all:
+    input:
+        # fastqc_raw
+        expand("logs/fastqc_raw/{sample}_fastqc.html",
+               sample = sample),
+        # trim_galore
+        expand("trimmed/{sample}_trimmed.fastq.gz",
+               sample = sample),
+        # fastqc_trimmed
+        expand("logs/fastqc_trimmed/{sample}_trimmed_fastqc.html",
+               sample = sample),
+        # bismark
+        expand("mapped/{sample}_MappedOn_{refbase}.bam",
+               sample = sample,
+               refbase = refbase),
+        # deduplicate_bismark
+        expand("mapped/dedup/{sample}_MappedOn_{refbase}_dedup.bam",
+               sample = sample,
+               refbase = refbase),
+        expand("mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam",
+               sample = sample,
+               refbase = refbase),
+#        # samtools
+#        expand("mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam.{bamidx}",
+#               sample = sample,
+#               refbase = refbase,
+#               bamidx = bamidx),
+#        # bamCoverage
+#        expand("mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bw",
+#               sample = sample,
+#               refbase = refbase),
+        # methylation_extractor
+        expand("methylation_extracted/CpG_context_{sample}_MappedOn_{refbase}_dedup.txt.gz",
+               sample = sample,
+               refbase = refbase),
+        expand("methylation_extracted/CHG_context_{sample}_MappedOn_{refbase}_dedup.txt.gz",
+               sample = sample,
+               refbase = refbase),
+        expand("methylation_extracted/CHH_context_{sample}_MappedOn_{refbase}_dedup.txt.gz",
+               sample = sample,
+               refbase = refbase),
+        # bismark2bedGraph
+        expand("coverage/{sample}_MappedOn_{refbase}_dedup_{context}",
+               sample = sample,
+               refbase = refbase,
+               context = context),
+        expand("coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz",
+               sample = sample,
+               refbase = refbase,
+               context = context),
+        expand("coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz.bismark.cov",
+               sample = sample,
+               refbase = refbase,
+               context = context),
+        expand("coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz.bismark.cov.gz",
+               sample = sample,
+               refbase = refbase,
+               context = context),
+#        # bedGraphToBigWig
+#        expand("coverage/bw/{sample}_MappedOn_{refbase}_dedup_{context}.bw",
+#               sample = sample,
+#               refbase = refbase,
+#               context = context),
+        # coverage2cytosine
+        expand("coverage/report/{sample}_MappedOn_{refbase}_dedup_{context}.CX_report.txt.gz",
+               sample = sample,
+               refbase = refbase,
+               context = context),
+##        # covgzToTSV
+##        expand("coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_unsmoothed.tsv",
+##               sample = sample,
+##               refbase = refbase,
+##               genomeBinName = genomeBinName),
+##        expand("coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_smoothed.tsv",
+##               sample = sample,
+##               refbase = refbase,
+##               genomeBinName = genomeBinName)
+
+# Run fastqc on raw data
+rule fastqc_raw:
+    """Create fastqc report for raw reads"""
+    resources:
+        partition = "icelake", 
+        mem_mb    = 3380,
+        time      = "12:00:00"
+    input:
+        "data/{sample}.fastq.gz"
+    output:
+        html = "logs/fastqc_raw/{sample}_fastqc.html",
+        # The suffix _fastqc.zip is required for multiqc to find the file
+        zip  = "logs/fastqc_raw/{sample}_fastqc.zip"
+    params:
+        " --extract"
+    log:
+        "logs/fastqc_raw/{sample}.log"
+    wrapper:
+        "0.38.0/bio/fastqc"
+
+# Trim off adapters and low-quality bases
+rule trim_galore:
+    """Remove adapters and low-quality bases"""
+    resources:
+        partition = "icelake", 
+        mem_mb    = 13520,
+        time      = "12:00:00"
+    input:    
+        r1 = "data/{sample}.fastq.gz"
+    output:
+        r1 = "trimmed/{sample}_trimmed.fastq.gz"
+    threads: 4
+    log:
+        std = "logs/trim_galore/{sample}_trimmed.log",
+        r1  = "{sample}.fastq.gz_trimming_report.txt"
+    shell:
+        "(trim_galore"
+        " --cores {threads}"
+        " --output_dir trimmed"
+        " {input.r1} ) &> {log.std}; "
+        "rename 's/fq.gz/fastq.gz/g' trimmed/{wildcards.sample}* ; "
+        "mv trimmed/{log.r1} logs/trim_galore/"
+
+# Run fastqc on trimmed data
+rule fastqc_trimmed:
+    """Create fastqc report for trimmed reads"""
+    resources:
+        partition = "icelake", 
+        mem_mb    = 3380,
+        time      = "12:00:00"
+    input:
+        "trimmed/{sample}_trimmed.fastq.gz"
+    output:
+        html = "logs/fastqc_trimmed/{sample}_trimmed_fastqc.html",
+        # The suffix _fastqc.zip is required for multiqc to find the file
+        zip  = "logs/fastqc_trimmed/{sample}_trimmed_fastqc.zip"
+    params:
+        " --extract"
+    log:
+        "logs/fastqc_trimmed/{sample}_trimmed.log"
+    wrapper:
+        "0.38.0/bio/fastqc"
+
+# Align to reference genome and call methylated cytosines
+rule bismark:
+    """Map reads using bismark and call methylated cytosines"""
+    resources:
+        partition = "skylake", 
+        mem_mb    = 47840,
+        time      = "12:00:00"
+    input:
+        r1 = "trimmed/{sample}_trimmed.fastq.gz"
+    output:
+        protected("mapped/{sample}_MappedOn_{refbase}.bam")
+    threads: 8
+    params:
+        extra = config["MAPPING"]["extra_params_bismark"]
+    log:
+        std = "logs/bismark/{sample}_MappedOn_{refbase}.log",   
+        rep = "logs/bismark/{sample}_MappedOn_{refbase}_report.txt",
+        nuc = "logs/bismark/{sample}_MappedOn_{refbase}.nucleotide_stats.txt"
+    shell:
+        # USAGE: bismark [options] <genome_folder> {-1 <mates1> -2 <mates2> | <singles>}
+        "(bismark"
+        " --bowtie2" 
+        " --multicore {threads}"
+        " --nucleotide_coverage"
+        # Please note that the option -B/--basename in conjunction with --multicore is
+        # currently not supported (as in: disabled), but we are aiming to address this soon
+        # https://www.bioinformatics.babraham.ac.uk/projects/bismark/
+#        " --basename {wildcards.sample}_MappedOn_{refbase}"
+#        " --prefix {wildcards.sample}_MappedOn_{refbase}"
+        " --output_dir mapped"
+        " {params.extra}"
+        " {reference}"
+        " {input.r1} ) &> {log.std}; "
+        "mv mapped/{wildcards.sample}_trimmed_bismark_bt2.bam {output} ; "
+        "mv mapped/{wildcards.sample}_trimmed_bismark_bt2_SE_report.txt {log.rep} ; "
+        "mv mapped/{wildcards.sample}_trimmed_bismark_bt2.nucleotide_stats.txt {log.nuc}"
+
+# Remove duplicate alignments
+## CHANGE NOTE: moved samtools sort to this 
+rule deduplicate_bismark:
+    """Remove duplicate single-end read alignments from the Bismark mapping output"""
+    # "*** Please note that for paired-end BAM files the deduplication script expects Read1 and Read2 to
+    # follow each other in consecutive lines! If the file has been sorted by position make sure that you resort it
+    # by read name first (e.g. using samtools sort -n) ***"
+    resources:
+        partition = "skylake", 
+        mem_mb    = 47840,
+        time      = "12:00:00"
+    input:
+        "mapped/{sample}_MappedOn_{refbase}.bam"
+    output:
+        dedup = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup.bam",
+        sort  = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam"
+    params:
+        sortMemory = config["MAPPING"]["sortMemory"]
+    threads: config["THREADS"]
+    log:
+        std = "logs/deduplicate_bismark/{sample}_MappedOn_{refbase}_dedup.log",   
+        rep = "logs/deduplicate_bismark/{sample}_MappedOn_{refbase}_dedup_report.txt"
+    shell:
+        # USAGE: deduplicate_bismark [options] <filename(s)>
+        "(deduplicate_bismark"
+        " --single"
+        " --output_dir mapped/dedup"
+        " --bam"
+        " {input} ) &> {log.std}; "
+        "mv mapped/dedup/{wildcards.sample}_MappedOn_{refbase}.deduplicated.bam {output.dedup} ; "
+        "mv mapped/dedup/{wildcards.sample}_MappedOn_{refbase}.deduplication_report.txt {log.rep} ; "
+        "samtools sort -@ {threads} -m {params.sortMemory} -o {output.sort} {output.dedup}"
+
+# Index deduplicated Bismark mapping output and generate coverage bigWig
+# Index format (bai or csi) depends on chromosome sizes
+## CHANGE NOTE: bai or csi BAM indexing
+if bamidx == "bai":
+    rule samtools:
+        """bai-index deduplicated Bismark mapping output"""
+        resources:
+            partition = "icelake", 
+            mem_mb    = 3380,
+            time      = "12:00:00"
+        input:
+            "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam"
+        output:
+            "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam.bai"
+        shell:
+            "samtools index {input}"
+    rule bamCoverage:
+        """Calculate coverage in bigWig (bw) format"""
+        resources:
+            partition = "icelake", 
+            mem_mb    = 27040,
+            time      = "12:00:00"
+        input:
+            BAM    = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam",
+            BAMidx = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam.bai"
+        output:
+            BW = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bw"
+        params:
+            binSize = config["COVERAGE"]["binSize"]
+        threads: config["THREADS"]
+        log:
+            "logs/bamCoverage/{sample}_MappedOn_{refbase}_dedup_sort_bw.log"
+        shell:
+            "(bamCoverage -b {input.BAM} -o {output.BW}"
+            " --binSize {params.binSize} -p {threads} ) &> {log}"
+else:
+    rule samtools:
+        """csi-index deduplicated Bismark mapping output"""
+        resources:
+            partition = "icelake", 
+            mem_mb    = 3380,
+            time      = "12:00:00"
+        input:
+            "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam"
+        output:
+            "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam.csi"
+        shell:
+            "samtools index -c -m 14 {input}"
+    rule bamCoverage:
+        """Calculate coverage in bigWig (bw) format"""
+        resources:
+            partition = "icelake", 
+            mem_mb    = 27040,
+            time      = "12:00:00"
+        input:
+            BAM    = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam",
+            BAMidx = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bam.csi"
+        output:
+            BW = "mapped/dedup/{sample}_MappedOn_{refbase}_dedup_sort.bw"
+        params:
+            binSize = config["COVERAGE"]["binSize"]
+        threads: config["THREADS"]
+        log:
+            "logs/bamCoverage/{sample}_MappedOn_{refbase}_dedup_sort_bw.log"
+        shell:
+            "(bamCoverage -b {input.BAM} -o {output.BW}"
+            " --binSize {params.binSize} -p {threads} ) &> {log}"
+
+# Extract the methylation call for each cytosine analysed
+# and output in context-specific files
+## CHANGE NOTE: BAM must be unsorted, with the second read in a pair following the first
+rule methylation_extractor:
+    """Extract the methylation call for each cytosine analysed in context-specific manner"""
+    resources:
+        partition = "skylake", 
+        mem_mb    = 47840,
+        time      = "12:00:00"
+    input:
+        "mapped/dedup/{sample}_MappedOn_{refbase}_dedup.bam"
+    output:
+        CpG = "methylation_extracted/CpG_context_{sample}_MappedOn_{refbase}_dedup.txt.gz",
+        CHG = "methylation_extracted/CHG_context_{sample}_MappedOn_{refbase}_dedup.txt.gz",
+        CHH = "methylation_extracted/CHH_context_{sample}_MappedOn_{refbase}_dedup.txt.gz"
+    # "Please note that a typical process of extracting a BAM file and writing out '.gz'
+    # output streams will in fact use ~3 cores per value of --parallel <int> specified
+    # (1 for the methylation extractor itself, 1 for a Samtools stream, 1 for GZIP stream),
+    # so --parallel 10 is likely to use around 30 cores of system resources."
+    threads: 3
+    log:
+        "logs/methylation_extractor/{sample}_MappedOn_{refbase}_dedup_methylation_extractor.log"
+    shell:
+        # USAGE: bismark_methylation_extractor [options] <filenames>
+        # NOTE: Not including --bedgraph option as the file naming conventions are not ideal;
+        # bedGraphs will be generated by the stand-alone Bismark script bismark2bedGraph
+        # in subsequent rule
+        "(bismark_methylation_extractor"
+        " --single-end"
+        " --comprehensive"
+        " --output methylation_extracted"
+        " --gzip"
+        " --parallel {threads}"
+        " {input} ) &> {log}"
+
+# Generate bedGraph and coverage files sorted by chromosomal coordinate
+# NOTE: gzipped outfiles must be gunzipped for downstream use
+## CHANGE NOTE: added "--stdout" option to gunzip commands so that gzipped files will be kept
+### Considered redirecting stdout of gunzip to {output.bedGraph}.bedGraph,
+### but this would prevent use of temp() to remove uncompressed output files after use
+rule bismark2bedGraph:
+    """Generate bedGraph and coverage files sorted by chromosomal coordinate"""
+    resources:
+        partition = "skylake", 
+        mem_mb    = 95680,
+        time      = "12:00:00"
+    input:
+        "methylation_extracted/{context}_context_{sample}_MappedOn_{refbase}_dedup.txt.gz"
+    output:
+        bedGraph    = "coverage/{sample}_MappedOn_{refbase}_dedup_{context}",
+        cov         = "coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz.bismark.cov",
+        bedGraphgz  = "coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz",
+        covgz       = "coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz.bismark.cov.gz" 
+    params:
+        # config.yaml specifies --ample_memory OR --buffer_size 50%
+        # See config.yaml for best option to use for given samples
+        sortMemory = config["BEDGRAPH"]["sortMemory"]
+    log:
+        "logs/bismark2bedGraph/{sample}_MappedOn_{refbase}_dedup_{context}_bismark2bedGraph.log"
+    shell:
+        # USAGE: bismark2bedGraph [options] -o <output> [methylation extractor input files]
+        "(bismark2bedGraph"
+        " --dir coverage"
+        " --cutoff 4"
+        " --CX_context"
+        " {params.sortMemory}"
+        " -o {wildcards.sample}_MappedOn_{refbase}_dedup_{wildcards.context} "
+        " {input} ) &> {log} ; "
+        "gunzip --stdout {output.bedGraph}.gz > {output.bedGraph}; "
+        "gunzip --stdout {output.cov}.gz > {output.cov}"
+
+# Convert bedGraph into bigWig format for IGV and for use with
+# deepTools computeMatrix function (in a separate Snakemake workflow),
+# to create a matrix of DNA methylation proportion profiles around features
+# NOTE: chromosome sizes file ("data/index/wheat_v1.0_incl_organelles_controls.fa.sizes") must exist
+# before running snakemake; e.g., in "data/index/" run:
+# samtools faidx wheat_v1.0_incl_organelles_controls.fa; 
+# cut -f1,2 wheat_v1.0_incl_organelles_controls.fa.fai > wheat_v1.0_incl_organelles_controls.fa.sizes
+## CHANGE NOTE: changed {reference}/{refbase}.fa.fai to {reference}/{refbase}.fa.sizes
+rule bedGraphToBigWig:
+    """Convert bedGraph into bigWig format"""
+    resources:
+        partition = "icelake", 
+        mem_mb    = 27040,
+        time      = "12:00:00"
+    input:
+        "coverage/{sample}_MappedOn_{refbase}_dedup_{context}"
+    output:
+        "coverage/bw/{sample}_MappedOn_{refbase}_dedup_{context}.bw"
+    log:
+        "logs/bedGraphToBigWig/{sample}_MappedOn_{refbase}_dedup_{context}_bedGraphToBigWig.log"
+    shell:
+        # USAGE: bedGraphToBigWig in.bedGraph chrom.sizes out.bw
+        # where in.bedGraph is a four-column file in the format:
+        #       <chrom> <start> <end> <value>
+        # and chrom.sizes is a two-column file/URL: <chromosome name> <size in bases>
+        # and out.bw is the output indexed big wig file.
+        # The input bedGraph file must be sorted, use the unix sort command:
+        "(sed '1d' {input} | LC_COLLATE=C sort -k1,1 -k2,2n > {input}_sorted ; "
+        "bedGraphToBigWig {input}_sorted {reference}/{refbase}.fa.sizes {output} ; "
+        "rm {input}_sorted ) &> {log}"
+
+# Generate a cytosine methylation report for a genome of interest
+## CHANGE NOTE: wrong input file specified; this should be
+## coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz.bismark.cov or
+## coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz.bismark.cov.gz
+rule coverage2cytosine:
+    """Generate a cytosine methylation report for a genome of interest"""
+    resources:
+        partition = "skylake", 
+        mem_mb    = 47840,
+        time      = "12:00:00"
+    input:
+        "coverage/{sample}_MappedOn_{refbase}_dedup_{context}.gz.bismark.cov"
+    output:
+        "coverage/report/{sample}_MappedOn_{refbase}_dedup_{context}.CX_report.txt.gz"
+    log:
+        "logs/coverage2cytosine/{sample}_MappedOn_{refbase}_dedup_{context}_coverage2cytosine.log"
+    shell:
+        # USAGE: coverage2cytosine [options] --genome_folder <path> -o <output> [input]
+        # "The input file needs to have been generated with the script bismark2bedGraph (the file is called *.cov, or .cov.gz) or
+        # otherwise be sorted by position and exactly in the following format:
+        # <chromosome>  <start position>  <end position>  <methylation percentage>  <count methylated>  <count unmethylated>
+        # The coordinates of the input file are expected to be 1-based throughout (do not use files ending in .zero.cov!)."
+        "(coverage2cytosine"
+        " --dir coverage/report"
+        " --CX_context"
+        " --gzip"
+        " --genome_folder {cwd}{reference}"
+        " -o {wildcards.sample}_MappedOn_{refbase}_dedup_{wildcards.context}"
+        " {input} ) &> {log}"
+
+# Use R script DNAmeth_proportion_perbin.R to calculate
+# mean DNA methylation proportions in adjacent windows
+# for generating chromosome-scale plots
+# These TSV files can be imported into R for plotting DNA methylation chromosome-scale profiles
+rule covgzToTSV:
+    """Calculate mean DNA methylation proportions in adjacent genomic windows"""
+    resources:
+        partition = "icelake", 
+        mem_mb    = 27040,
+        time      = "12:00:00"
+    input:
+        ["".join (map (str, x)) for x in zip (
+         ["coverage/{sample}_MappedOn_{refbase}_dedup_"]*len(context),
+         context,
+         [".gz.bismark.cov.gz"]*len(context))
+        ]
+    output:
+        unsmoothed = "coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_unsmoothed.tsv",
+        smoothed   = "coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_smoothed.tsv"
+    params:
+        genomeBinSize = config["GENOMEPROFILES"]["genomeBinSize"]
+    log:
+        "logs/covgzToTSV/{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_covgzToTSV.log"
+    shell:
+        "(scripts/DNAmeth_proportion_perbin.R"
+        " {wildcards.sample}"
+        " {refbase}"
+        " {params.genomeBinSize}"
+        " 101) 2> {log}"
