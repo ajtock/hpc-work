@@ -21,6 +21,9 @@ context <- args[3]
 
 options(stringsAsFactors = F)
 library(methimpute)
+library(dplyr)
+library(data.table)
+library(stringr)
 library(yaml)
 config <- read_yaml("config.yaml")
 
@@ -60,6 +63,8 @@ cytosinePos <- extractCytosinesFromFASTA(fastaPath,
                                          contexts = c("CG", "CHG", "CHH"))
 methylome <- inflateMethylome(bm, cytosinePos)
 print(methylome)
+methylome <- methylome[seqnames(methylome) %in% chrs]
+print(methylome)
 
 
 #### Step 2: Obtain correlation parameters
@@ -75,6 +80,7 @@ print(methylome)
 
 # "The correlation of methylation levels between neighboring cytosines is an important
 # parameter for the methylation status calling, so we need to get it first"
+## NOTE "separate":
 distCor <- distanceCorrelation(methylome,
                                separate.contexts = FALSE)
 fit <- estimateTransDist(distCor)
@@ -88,8 +94,8 @@ ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context
 
 #### Step 3: Call and impute methylation status 
 
+## NOTE "separate":
 model <- callMethylation(data = methylome,
-                         fit.on.chrom = chrs,
                          transDist = fit$transDist,
                          include.intermediate = TRUE,
                          update = "constrained",
@@ -101,6 +107,10 @@ print(model)
 
 # "Bisulfite conversion rates can be obtained with"
 1 - model$params$emissionParams$Unmethylated
+
+# Retain cytosines with a maximum posterior probability of >= 0.99
+# to avoid low-quality methylation status calls
+model$data <- model$data[model$data$posteriorMax >= 0.99]
 
 # "You can also check several properties of the fitted Hidden Markov Model, such as convergence
 # or transition probabilities, and check how well the fitted distributions describe the data."
@@ -121,4 +131,39 @@ ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context
        height = 2.5, width = 3.5*3, limitsize = FALSE)
 
 
+# Adapt model data for use by alphabeta (Bioconductor package for epimutation rate calculation)
+model_data <- model$data
+model_df <- methods::as(model_data, "data.frame")
+model_df <- model_df[,c("seqnames", "start", "strand", "context", "counts.methylated", "counts.total",
+                        "posteriorMax", "posteriorMeth", "posteriorUnmeth", "status", "rc.meth.lvl")]
+model_df <- model_df %>%
+  dplyr::mutate_if(is.factor, as.character)
+#final_dataset <- model_df
 
+cx <- fread(filePath, skip = 0, sep = "\t",
+            select = c(1, 2, 7),
+            col.names = c("seqnames", "start", "context.trinucleotide"),
+            stringsAsFactors = F)
+# Append cx colmns
+final_dataset <- model_df %>%
+  dplyr::left_join(cx, by = c("seqnames", "start"))
+
+# Drop columns not needed by alphabeta
+dropCols <- c("posteriorMeth", "posteriorUnmeth")
+final_dataset <- final_dataset[ , !(names(final_dataset) %in% dropCols)]
+
+# Abbreviate methylation status names for use with alphabeta
+final_dataset$status <- stringr::str_replace_all(final_dataset$status, pattern = "Unmethylated", replacement = "U")
+final_dataset$status <- stringr::str_replace_all(final_dataset$status, pattern = "Intermediate", replacement = "I")
+final_dataset$status <- stringr::str_replace_all(final_dataset$status, pattern = "Methylated", replacement = "M")
+ 
+# Take 4 digits of decimal values in "posteriorMax" and "rc.meth.lvl" 
+floor_dec <- function(x, level = 1) round(x - 5*10^(-level-1), level)
+final_dataset$posteriorMax <- floor_dec(as.numeric(as.character(final_dataset$posteriorMax)), 4)
+final_dataset$rc.meth.lvl <- floor_dec(as.numeric(as.character(final_dataset$rc.meth.lvl)), 4)
+final_dataset <- final_dataset[final_dataset$context == gsub("p", "", context),]
+print(paste0("Writing to file: ", outDir, "methylome_", libName, "_MappedOn_", refbase, "_dedup_", context, ".txt"))
+fwrite(final_dataset,
+       file = paste0(outDir, "methylome_", libName, "_MappedOn_", refbase, "_dedup_", context, ".txt"),
+       quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+rm(bm, cytosinePos, methylome, distCor, model, model_data, model_df, cx, final_dataset); gc()
