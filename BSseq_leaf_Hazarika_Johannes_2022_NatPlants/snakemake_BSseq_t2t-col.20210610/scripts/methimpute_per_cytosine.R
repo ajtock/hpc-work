@@ -24,24 +24,24 @@ library(methimpute)
 library(yaml)
 config <- read_yaml("config.yaml")
 
-outDir <- "coverage/report/methimpute/"
-plotDir <- paste0(outDir, "plots/")
+outDir <- paste0("coverage/report/methimpute/")
+#plotDir <- paste0(outDir, "plots/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
-system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
+#system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
 # Genomic definitions
 fai <- read.table(paste0("data/index/", refbase, ".fa.fai"), header = F)
-#ignoreChrs <- unlist(strsplit(config$GENOMEPROFILES$ignoreChrs,
-#                              split = " "))
-#fai <- fai[!(fai$V1 %in% ignoreChrs),]
-#if(!grepl("Chr", fai[,1][1])) {
-#  chrs <- paste0("Chr", fai[,1])
-#} else {
-#  chrs <- fai[,1]
-#}
-#chrLens <- fai[,2]
 chromosomes <- fai[,1:2]
 colnames(chromosomes) <- c("chromosome", "length")
+ignoreChrs <- unlist(strsplit(config$GENOMEPROFILES$ignoreChrs,
+                              split = " "))
+fai <- fai[!(fai$V1 %in% ignoreChrs),]
+if(!grepl("Chr", fai[,1][1])) {
+  chrs <- paste0("Chr", fai[,1])
+} else {
+  chrs <- fai[,1]
+}
+chrLens <- fai[,2]
 
 
 #### Step 1: Import the data
@@ -64,11 +64,23 @@ print(methylome)
 
 #### Step 2: Obtain correlation parameters
 
+## Interacting-context model
+
+# "The interacting-context model runs a single HMM for all contexts. This takes into account
+# the within-context and between-context correlations and should be more accurate than the
+# separate-context model if sufficient data is available. However, we have observed that in low
+# coverage settings too much information from well covered contexts is diffusing into the low
+#covered contexts (e.g. CHH and CHG will look like CG with very low coverage). In this case,
+# please use the separate-context model"
+
 # "The correlation of methylation levels between neighboring cytosines is an important
 # parameter for the methylation status calling, so we need to get it first"
-distcor <- distanceCorrelation(methylome, separate.contexts = TRUE)
-fit <- estimateTransDist(distcor)
+distCor <- distanceCorrelation(methylome,
+                               separate.contexts = FALSE)
+fit <- estimateTransDist(distCor)
 print(fit$transDist)
+plotDir <- paste0(outDir, "distanceCorrelation/")
+system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_distanceCorrelation.pdf"),
        plot = fit$plot,
        height = 2.5*3, width = 3.5*3, limitsize = FALSE)
@@ -76,13 +88,37 @@ ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context
 
 #### Step 3: Call and impute methylation status 
 
-model <- callMethylationSeparate(data = methylome, transDist = fit$transDist,
-                                 verbosity = 0)
+model <- callMethylation(data = methylome,
+                         fit.on.chrom = chrs,
+                         transDist = fit$transDist,
+                         include.intermediate = TRUE,
+                         update = "constrained",
+                         verbosity = 1)
 # "The confidence in the methylation status call is given in the column "posteriorMax".
 # For further analysis one could split the results into high-confidence
 # (posteriorMax >= 0.98) and low-confidence calls (posteriorMax < 0.98) for instance."
 print(model)
 
+# "Bisulfite conversion rates can be obtained with"
+1 - model$params$emissionParams$Unmethylated
+
+# "You can also check several properties of the fitted Hidden Markov Model, such as convergence
+# or transition probabilities, and check how well the fitted distributions describe the data."
+plotDir <- paste0(outDir, "convergence/")
+system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
+ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_convergence.pdf"),
+       plot = plotConvergence(model),
+       height = 2.5, width = 3.5*3, limitsize = FALSE)
+plotDir <- paste0(outDir, "transitionProbs/")
+system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
+ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_transitionProbs.pdf"),
+       plot = plotTransitionProbs(model),
+       height = 2.5, width = 3.5*3, limitsize = FALSE)
+plotDir <- paste0(outDir, "fittedDists/")
+system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
+ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_fittedDists.pdf"),
+       plot = plotHistogram(model, total.counts = 10),
+       height = 2.5, width = 3.5*3, limitsize = FALSE)
 
 
 
