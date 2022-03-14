@@ -141,7 +141,7 @@ rule all:
         expand("coverage/tsv/DNAmeth_{sample}_MappedOn_{refbase}_dedup_binSize{genomeBinName}_smoothed.tsv",
                sample = sample,
                refbase = refbase,
-               genomeBinName = genomeBinName)
+               genomeBinName = genomeBinName),
         # methimputePerCytosine
         expand("coverage/report/methimpute/{sample}_MappedOn_{refbase}_dedup_{context}_methylome.txt",
                sample = sample,
@@ -516,10 +516,10 @@ rule covgzToTSV:
 # The output TXT file can be used as input to alphabeta
 #(Bioconductor package for epimutation rate calculation)
 rule methimputePerCytosine:
-    """Calculate mean DNA methylation proportions in adjacent genomic windows"""
+    """Call and impute DNA methylation status at each cytosine"""
     resources:
-        partition = "icelake", 
-        mem_mb    = 27040,
+        partition = "skylake", 
+        mem_mb    = 47840,
         time      = "12:00:00"
     input:
         "coverage/report/{sample}_MappedOn_{refbase}_dedup_{context}.CX_report.txt.gz"
