@@ -10,7 +10,7 @@
 # Usage:
 # ./methimpute_per_cytosine.R MA1_2_G3_L1_BSseq_Rep1_SRR342347 t2t-col.20210610 CpG
 
-args <- commandsArgs(trailingOnly = T)
+args <- commandArgs(trailingOnly = T)
 libName <- args[1]
 refbase <- args[2]
 context <- args[3]
