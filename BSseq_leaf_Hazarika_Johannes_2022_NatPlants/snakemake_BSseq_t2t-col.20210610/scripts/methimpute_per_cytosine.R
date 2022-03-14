@@ -164,6 +164,6 @@ final_dataset$rc.meth.lvl <- floor_dec(as.numeric(as.character(final_dataset$rc.
 final_dataset <- final_dataset[final_dataset$context == gsub("p", "", context),]
 print(paste0("Writing to file: ", outDir, "methylome_", libName, "_MappedOn_", refbase, "_dedup_", context, ".txt"))
 fwrite(final_dataset,
-       file = paste0(outDir, "methylome_", libName, "_MappedOn_", refbase, "_dedup_", context, ".txt"),
+       file = paste0(outDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt"),
        quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
 rm(bm, cytosinePos, methylome, distCor, model, model_data, model_df, cx, final_dataset); gc()
