@@ -63,7 +63,7 @@ else:
 shell.executable("/bin/bash")
 shell.prefix("set -euo pipefail; ")
 
-#ruleorder: fastqc_raw > trim_galore > fastqc_trimmed > bismark > deduplicate_bismark > samtools > bamCoverage > methylation_extractor > bismark2bedGraph > bedGraphToBigWig > coverage2cytosine > covgzToTSV
+#ruleorder: fastqc_raw > trim_galore > fastqc_trimmed > bismark > deduplicate_bismark > samtools > bamCoverage > methylation_extractor > bismark2bedGraph > bedGraphToBigWig > coverage2cytosine > covgzToTSV > methimputePerCytosine
 
 rule all:
     input:
@@ -142,6 +142,11 @@ rule all:
                sample = sample,
                refbase = refbase,
                genomeBinName = genomeBinName)
+        # methimputePerCytosine
+        expand("coverage/report/methimpute/{sample}_MappedOn_{refbase}_dedup_{context}_methylome.txt",
+               sample = sample,
+               refbase = refbase,
+               context = context)
 
 # Run fastqc on raw data
 rule fastqc_raw:
@@ -505,3 +510,25 @@ rule covgzToTSV:
         " {refbase}"
         " {params.genomeBinSize}"
         " 101) 2> {log}"
+
+# Use R script methimpute_per_cytosine.R to call and impute
+# DNA methylation status at each cytosine
+# The output TXT file can be used as input to alphabeta
+#(Bioconductor package for epimutation rate calculation)
+rule methimputePerCytosine:
+    """Calculate mean DNA methylation proportions in adjacent genomic windows"""
+    resources:
+        partition = "icelake", 
+        mem_mb    = 27040,
+        time      = "12:00:00"
+    input:
+        "coverage/report/{sample}_MappedOn_{refbase}_dedup_{context}.CX_report.txt.gz"
+    output:
+        "coverage/report/methimpute/{sample}_MappedOn_{refbase}_dedup_{context}_methylome.txt"
+    log:
+        "logs/methimputePerCytosine/{sample}_MappedOn_{refbase}_dedup_{context}_methylome.log"
+    shell:
+        "(scripts/methimpute_per_cytosine.R"
+        " {wildcards.sample}"
+        " {refbase}"
+        " {wildcards.context} ) &> {log}"
