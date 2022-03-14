@@ -24,6 +24,11 @@ library(methimpute)
 library(yaml)
 config <- read_yaml("config.yaml")
 
+outDir <- "coverage/report/methimpute/"
+plotDir <- paste0(outDir, "plots/")
+system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
+system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
+
 # Genomic definitions
 fai <- read.table(paste0("data/index/", refbase, ".fa.fai"), header = F)
 #ignoreChrs <- unlist(strsplit(config$GENOMEPROFILES$ignoreChrs,
@@ -39,7 +44,6 @@ chromosomes <- fai[,1:2]
 colnames(chromosomes) <- c("chromosome", "length")
 
 
-
 #### Step 1: Import the data
 
 # Define path to input file for methimpute
@@ -49,8 +53,8 @@ filePath <- paste0("coverage/report/",
 bm <- importBismark(filePath, chrom.lengths = chromosomes)
 print(bm)
 
-# Because most methylation extractor programs report only covered cytosines,
-# we need to inflate the data to include all cytosines (including non-covered sites)
+# "Because most methylation extractor programs report only covered cytosines,
+# we need to inflate the data to include all cytosines (including non-covered sites)"
 fastaPath <- paste0("data/index/", refbase, ".fa")
 cytosinePos <- extractCytosinesFromFASTA(fastaPath,
                                          contexts = c("CG", "CHG", "CHH"))
@@ -58,8 +62,26 @@ methylome <- inflateMethylome(bm, cytosinePos)
 print(methylome)
 
 
-
 #### Step 2: Obtain correlation parameters
+
+# "The correlation of methylation levels between neighboring cytosines is an important
+# parameter for the methylation status calling, so we need to get it first"
+distcor <- distanceCorrelation(methylome, separate.contexts = TRUE)
+fit <- estimateTransDist(distcor)
+print(fit$transDist)
+ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_distanceCorrelation.pdf"),
+       plot = fit$plot,
+       height = 2.5*3, width = 3.5*3, limitsize = FALSE)
+
+
+#### Step 3: Call and impute methylation status 
+
+model <- callMethylationSeparate(data = methylome, transDist = fit$transDist,
+                                 verbosity = 0)
+# "The confidence in the methylation status call is given in the column "posteriorMax".
+# For further analysis one could split the results into high-confidence
+# (posteriorMax >= 0.98) and low-confidence calls (posteriorMax < 0.98) for instance."
+print(model)
 
 
 
