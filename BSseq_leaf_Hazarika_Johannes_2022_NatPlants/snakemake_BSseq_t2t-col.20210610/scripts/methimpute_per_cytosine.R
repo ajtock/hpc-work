@@ -85,7 +85,7 @@ distCor <- distanceCorrelation(methylome,
                                separate.contexts = FALSE)
 fit <- estimateTransDist(distCor)
 print(fit$transDist)
-plotDir <- paste0(outDir, "distanceCorrelation/")
+plotDir <- paste0(outDir, "plots/distanceCorrelation/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_distanceCorrelation.pdf"),
        plot = fit$plot,
@@ -114,17 +114,17 @@ model$data <- model$data[model$data$posteriorMax >= 0.99]
 
 # "You can also check several properties of the fitted Hidden Markov Model, such as convergence
 # or transition probabilities, and check how well the fitted distributions describe the data."
-plotDir <- paste0(outDir, "convergence/")
+plotDir <- paste0(outDir, "plots/convergence/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_convergence.pdf"),
        plot = plotConvergence(model),
        height = 2.5, width = 3.5*3, limitsize = FALSE)
-plotDir <- paste0(outDir, "transitionProbs/")
+plotDir <- paste0(outDir, "plots/transitionProbs/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_transitionProbs.pdf"),
        plot = plotTransitionProbs(model),
        height = 2.5, width = 3.5*3, limitsize = FALSE)
-plotDir <- paste0(outDir, "fittedDists/")
+plotDir <- paste0(outDir, "plots/fittedDists/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_fittedDists.pdf"),
        plot = plotHistogram(model, total.counts = 10),
