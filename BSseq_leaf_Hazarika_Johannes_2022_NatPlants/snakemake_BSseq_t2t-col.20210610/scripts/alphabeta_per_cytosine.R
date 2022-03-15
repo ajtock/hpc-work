@@ -1,33 +1,29 @@
 #!/usr/bin/env Rscript
 
-# Use METHimpute to call context-specific methylation status at each cytosine using a HMM-based binomial test.
-# "Besides improved accuracy over the classical binomial test, the HMM allows imputation of the methylation
-# status of all cytosines in the genome. It achieves this by borrowing information from neighboring covered
-# cytosines. The confidence in the methylation status call is reported as well."
-
-# The output TXT file from METHimpute can be used as an input file for AlphaBeta to calculate epimutation rates
+# Estimate epimutation rates and spectra with AlphaBeta,
+# using output TXT files from METHimpute run on
+# Bismark-processed BS-seq data from MA lines
 
 # Usage:
-# ./methimpute_per_cytosine.R MA1_2_G3_L1_BSseq_Rep1_SRR342347 t2t-col.20210610 CpG
+# ./alphabeta_per_cytosine.R t2t-col.20210610 CpG
 
 args <- commandArgs(trailingOnly = T)
-libName <- args[1]
-refbase <- args[2]
-context <- args[3]
+refbase <- args[1]
+context <- args[2]
 
-#libName <- "MA1_2_G3_L1_BSseq_Rep1_SRR342347"
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
 
 options(stringsAsFactors = F)
-library(methimpute)
-library(dplyr)
-library(data.table)
-library(stringr)
+library(AlphaBeta)
+#library(dplyr)
+#library(data.table)
+#library(stringr)
 library(yaml)
 config <- read_yaml("config.yaml")
 
-outDir <- paste0("coverage/report/methimpute/")
+inDir <- paste0("coverage/report/methimpute/")
+outDir <- paste0("coverage/report/alphabeta/")
 #plotDir <- paste0(outDir, "plots/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 #system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
@@ -45,6 +41,12 @@ if(!grepl("Chr", fai[,1][1])) {
   chrs <- fai[,1]
 }
 chrLens <- fai[,2]
+
+
+#### Load output TXT files from methimpute
+
+filePaths <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
+
 
 
 #### Step 1: Import the data
@@ -123,7 +125,7 @@ plotDir <- paste0(outDir, "plots/transitionProbs/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_transitionProbs.pdf"),
        plot = plotTransitionProbs(model),
-       height = 2.5*3, width = 3.5*3, limitsize = FALSE)
+       height = 2.5, width = 3.5*3, limitsize = FALSE)
 plotDir <- paste0(outDir, "plots/fittedDists/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 ggsave(file = paste0(plotDir, libName, "_MappedOn_", refbase, "_dedup_", context, "_fittedDists.pdf"),
