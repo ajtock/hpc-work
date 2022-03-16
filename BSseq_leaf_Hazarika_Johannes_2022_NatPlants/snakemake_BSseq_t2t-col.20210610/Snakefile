@@ -63,7 +63,7 @@ else:
 shell.executable("/bin/bash")
 shell.prefix("set -euo pipefail; ")
 
-#ruleorder: fastqc_raw > trim_galore > fastqc_trimmed > bismark > deduplicate_bismark > samtools > bamCoverage > methylation_extractor > bismark2bedGraph > bedGraphToBigWig > coverage2cytosine > covgzToTSV > methimputePerCytosine
+#ruleorder: fastqc_raw > trim_galore > fastqc_trimmed > bismark > deduplicate_bismark > samtools > bamCoverage > methylation_extractor > bismark2bedGraph > bedGraphToBigWig > coverage2cytosine > covgzToTSV > methimputePerCytosine > alphabetaPerCytosine
 
 rule all:
     input:
@@ -145,6 +145,13 @@ rule all:
         # methimputePerCytosine
         expand("coverage/report/methimpute/{sample}_MappedOn_{refbase}_dedup_{context}_methylome.txt",
                sample = sample,
+               refbase = refbase,
+               context = context),
+        # alphabetaPerCytosine
+        expand("coverage/report/alphabeta/10kb/samples_MappedOn_{refbase}_dedup_{context}_alphabeta_binSize10kb.txt",
+               refbase = refbase,
+               context = context),
+        expand("coverage/report/alphabeta/2Mb/samples_MappedOn_{refbase}_dedup_{context}_alphabeta_binSize2Mb.txt",
                refbase = refbase,
                context = context)
 
@@ -530,5 +537,31 @@ rule methimputePerCytosine:
     shell:
         "(scripts/methimpute_per_cytosine.R"
         " {wildcards.sample}"
+        " {refbase}"
+        " {wildcards.context} ) &> {log}"
+
+# Use R script alphabeta_per_cytosine_MA1_2.R to
+# estimate epimutation rates and spectra with AlphaBeta,
+# using output TXT files from METHimpute run on Bismark-processed
+# BS-seq data from mutation accumulation (MA) lines
+rule alphabetaPerCytosine:
+    """Estimate epimutation rates and spectra with AlphaBeta"""
+    resources:
+        partition = "icelake", 
+        mem_mb    = 27040,
+        time      = "12:00:00"
+    input:
+        ["".join (map (str, x)) for x in zip (
+         ["coverage/report/methimpute/"]*len(sample),
+         sample,
+         ["_MappedOn_{refbase}_dedup_{context}_methylome.txt"]*len(sample))
+        ]
+    output:
+        10kb = "coverage/report/alphabeta/10kb/samples_MappedOn_{refbase}_dedup_{context}_alphabeta_binSize10kb.txt",
+        2Mb  = "coverage/report/alphabeta/2Mb/samples_MappedOn_{refbase}_dedup_{context}_alphabeta_binSize2Mb.txt"
+    log:
+        "logs/alphabetaPerCytosine/samples_MappedOn_{refbase}_dedup_{context}_alphabetaPerCytosine.log"
+    shell:
+        "(~/miniconda3/envs/R-4.0.0/bin/Rscript scripts/alphabeta_per_cytosine_MA1_2.R"
         " {refbase}"
         " {wildcards.context} ) &> {log}"
