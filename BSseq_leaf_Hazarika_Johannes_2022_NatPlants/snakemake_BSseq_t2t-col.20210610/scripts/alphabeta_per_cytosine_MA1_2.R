@@ -1,4 +1,4 @@
-#!/home/ajt200/miniconda3/envs/R-4.0.5/bin/Rscript
+#!/home/ajt200/miniconda3/envs/R-4.1.2/bin/Rscript
 
 # Estimate epimutation rates and spectra with AlphaBeta,
 # using output TXT files from METHimpute run on Bismark-processed
@@ -16,8 +16,10 @@ context <- args[2]
 
 options(stringsAsFactors = F)
 library(AlphaBeta)
-library(dplyr)
-library(data.table)
+#library(dplyr)
+#library(tidyr)
+#library(tibble)
+#library(data.table)
 #library(stringr)
 library(yaml)
 config <- read_yaml("../config.yaml")
@@ -180,15 +182,31 @@ rm(outputTmp); gc()
 
 # Plot the pedigree of the MA lines
 
-sampleFile <- system.file("extdata/vg", "nodelist.fn", package = "AlphaBeta")
-edgesFile <- system.file("extdata/vg", "edgelist.fn", package = "AlphaBeta")
-plotPedigree(nodelist = sampleFile, edgelist = edgesFile, sampling.design = "progenitor.endpoint", output.dir = plotDir, plot.width = 5, plot.height = 5, aspect.ratio = 1, vertex.size = 6, vertex.label = FALSE, out.pdf = "MA1_1")
+#sampleFile <- "../nodelist_MA1_1.fn"
+#edgesFile <- "../edgelist_MA1_1.fn"
+##sampleFile <- system.file("extdata/vg", "nodelist.fn", package = "AlphaBeta")
+##edgesFile <- system.file("extdata/vg", "edgelist.fn", package = "AlphaBeta")
+#plotPedigree(nodelist = sampleFile, edgelist = edgesFile, sampling.design = "progenitor.endpoint", output.dir = plotDir, plot.width = 5, plot.height = 5, aspect.ratio = 1, vertex.size = 6, vertex.label = FALSE, out.pdf = "MA1_1")
 
-plotPedigree(nodelist = node_file,
-             edgelist = edge_file,
-             sampling.design = "progenitor.endpoint",
-             output.dir = plotDir,
-             plot.width = 5, plot.height = 5, aspect.ratio = 1,
-             vertex.size = 6, vertex.label = FALSE,
-             out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context))
+# plotPedigree doesn't work with sampling.design set to "progenitor.endpoint":
+#plotPedigree(nodelist = node_file,
+#             edgelist = edge_file,
+#             sampling.design = "progenitor.endpoint",
+#             output.dir = plotDir,
+#             plot.width = 5, plot.height = 5, aspect.ratio = 1,
+#             vertex.size = 6, vertex.label = FALSE,
+#             out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context))
+## Error: Can't convert from <tbl_df<
+##   V1          : character
+##   V2          : character
+##   weight.scale: character
+##   grp         : character
+##   relevel     : double
+## >> to <tbl_df<
+##   V1          : character
+##   V2          : character
+##   weight.scale: character
+##   grp         : character
+## >> due to loss of precision.
+## Dropped variables: `relevel`
 
