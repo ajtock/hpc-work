@@ -24,9 +24,9 @@ config <- read_yaml("../config.yaml")
 
 inDir <- paste0("../coverage/report/methimpute/")
 outDir <- paste0("../coverage/report/alphabeta/")
-#plotDir <- paste0(outDir, "plots/")
+plotDir <- paste0(outDir, "plots/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
-#system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
+system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
 # Genomic definitions
 fai <- read.table(paste0("../data/index/", refbase, ".fa.fai"), header = F)
@@ -175,8 +175,15 @@ save(output,
      file = output_file)
 rm(output)
 load(output_file)
+stopifnot(identical(output, outputTmp))
+rm(outputTmp); gc()
 
 # Plot the pedigree of the MA lines
 
-pedigree_plot <- plotPedigree(
-
+plotPedigree(nodelist = node_file,
+             edgelist = edge_file,
+             sampling.design = "progenitor.endpoint",
+             output.dir = plotDir,
+             plot.width = 5, plot.height = 5, aspect.ratio = 1,
+             vertex.size = 6, vertex.label = FALSE,
+             out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context))
