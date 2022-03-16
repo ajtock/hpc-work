@@ -53,6 +53,7 @@ node <- gsub("_L", "_", node)
 generation <- as.integer(gsub("_.+", "", node))
 methylome <- rep("Y", length(node))
 
+
 # Make pedigree files for the MA lineage, to enable alphabeta to
 # reconstruct the topology of the underlying pedigree
 
@@ -65,6 +66,7 @@ methylome <- rep("Y", length(node))
 # common ancestors of these individuals, whose methylomes have
 # typically not been sampled (i.e. type S nodes)"
 # e.g., "nodelist_MA1_2_MappedOn_t2t-col.20210610_dedup_CpG.fn"
+
 node_df_GM <- data.frame(filename = filePaths,
                          node = node,
                          gen = generation,
@@ -91,16 +93,18 @@ rm(node_df_GM)
 # Combine node generations into one data.frame
 node_df <- dplyr::bind_rows(mget(sort(ls(pattern = "node_df"))))
 print(node_df)
+node_file <- paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, ".fn")
 fwrite(node_df,
-       file = paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, ".fn"),
-       quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
-node_df <- fread(paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, ".fn"))
+       file = node_file,
+       quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+node_df <- fread(node_file)
 print(node_df)
 
 
 # Create edges file, corresponding to a sparse directed acyclic graph (DAG)
 # of connections between individuals (nodes) from different generations
 # e.g., "edgelist_MA1_2_MappedOn_t2t-col.20210610_dedup_CpG.fn"
+
 # "from and to: Specifies the network edges, which are any direct connections
 # between type S and type S* nodes in the pedigree. Only unique pairs of nodes
 # need to be supplied. These 2 columns are mandatory."
@@ -151,11 +155,19 @@ dropCols <- c("gento")
 edge_df <- edge_df[ , !(names(edge_df) %in% dropCols)]
 print(edge_df)
 
+edge_file <- paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, ".fn")
 fwrite(edge_df,
-       file = paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, ".fn"),
+       file = edge_file,
        quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
-edge_df <- fread(paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, ".fn"))
+edge_df <- fread(edge_file)
 print(edge_df)
 
+
+# Build the pedigree of the MA lines
+
+output <- buildPedigree(nodelist = node_file,
+                        edgelist = edge_file,
+                        cytosine = sub("p", "", context),
+                        posteriorMaxFilter = 0.99)
 
 
