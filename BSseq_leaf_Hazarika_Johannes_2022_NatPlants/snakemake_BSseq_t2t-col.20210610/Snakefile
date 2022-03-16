@@ -562,6 +562,6 @@ rule alphabetaPerCytosine:
     log:
         "logs/alphabetaPerCytosine/samples_MappedOn_{refbase}_dedup_{context}_alphabetaPerCytosine.log"
     shell:
-        "(~/miniconda3/envs/R-4.0.0/bin/Rscript scripts/alphabeta_per_cytosine_MA1_2.R"
+        "(scripts/alphabeta_per_cytosine_MA1_2.R"
         " {refbase}"
         " {wildcards.context} ) &> {log}"
