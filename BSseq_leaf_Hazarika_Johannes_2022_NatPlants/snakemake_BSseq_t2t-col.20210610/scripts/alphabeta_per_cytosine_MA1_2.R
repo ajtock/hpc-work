@@ -16,11 +16,8 @@ context <- args[2]
 
 options(stringsAsFactors = F)
 library(AlphaBeta)
-#library(dplyr)
-#library(tidyr)
-#library(tibble)
+library(dplyr)
 #library(data.table)
-#library(stringr)
 library(yaml)
 config <- read_yaml("../config.yaml")
 
@@ -96,10 +93,13 @@ rm(node_df_GM)
 node_df <- dplyr::bind_rows(mget(sort(ls(pattern = "node_df"))))
 print(node_df)
 node_file <- paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, ".fn")
-fwrite(node_df,
-       file = node_file,
-       quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
-node_df <- fread(node_file)
+write.table(node_df,
+            file = node_file,
+            quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
+#fwrite(node_df,
+#       file = node_file,
+#       quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
+#node_df <- fread(node_file)
 print(node_df)
 
 
@@ -158,11 +158,14 @@ edge_df <- edge_df[ , !(names(edge_df) %in% dropCols)]
 print(edge_df)
 
 edge_file <- paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, ".fn")
-fwrite(edge_df,
-       file = edge_file,
-       quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
-edge_df <- fread(edge_file)
-print(edge_df)
+write.table(edge_df,
+            file = edge_file,
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+#fwrite(edge_df,
+#       file = edge_file,
+#       quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+#edge_df <- fread(edge_file)
+#print(edge_df)
 
 
 # Build the pedigree of the MA lines
@@ -182,12 +185,6 @@ rm(outputTmp); gc()
 
 # Plot the pedigree of the MA lines
 
-#sampleFile <- "../nodelist_MA1_1.fn"
-#edgesFile <- "../edgelist_MA1_1.fn"
-##sampleFile <- system.file("extdata/vg", "nodelist.fn", package = "AlphaBeta")
-##edgesFile <- system.file("extdata/vg", "edgelist.fn", package = "AlphaBeta")
-#plotPedigree(nodelist = sampleFile, edgelist = edgesFile, sampling.design = "progenitor.endpoint", output.dir = plotDir, plot.width = 5, plot.height = 5, aspect.ratio = 1, vertex.size = 6, vertex.label = FALSE, out.pdf = "MA1_1")
-
 # plotPedigree doesn't work with sampling.design set to "progenitor.endpoint":
 #plotPedigree(nodelist = node_file,
 #             edgelist = edge_file,
@@ -196,6 +193,11 @@ rm(outputTmp); gc()
 #             plot.width = 5, plot.height = 5, aspect.ratio = 1,
 #             vertex.size = 6, vertex.label = FALSE,
 #             out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context))
+#sampleFile <- "../nodelist_MA1_1.fn"
+#edgesFile <- "../edgelist_MA1_1.fn"
+#sampleFile <- system.file("extdata/vg", "nodelist.fn", package = "AlphaBeta")
+#edgesFile <- system.file("extdata/vg", "edgelist.fn", package = "AlphaBeta")
+#plotPedigree(nodelist = sampleFile, edgelist = edgesFile, sampling.design = "progenitor.endpoint", output.dir = plotDir, plot.width = 5, plot.height = 5, aspect.ratio = 1, vertex.size = 6, vertex.label = FALSE, out.pdf = "MA1_1")
 ## Error: Can't convert from <tbl_df<
 ##   V1          : character
 ##   V2          : character
@@ -209,4 +211,52 @@ rm(outputTmp); gc()
 ##   grp         : character
 ## >> due to loss of precision.
 ## Dropped variables: `relevel`
+
+
+# Plot divergence time (delta.t) versus methylome divergence (D.value)
+# Interactive plot for inspecting the divergence data and removing outlier samples (if any)
+
+pedigree <- output$Pdata
+dt <- pedigree[, 2] + pedigree[, 3] - 2 * pedigree[, 1]
+dt_max <- max(dt, na.rm = T)
+
+pdf(paste0(plotDir, "divergence_time_vs_methylome_divergence_MA1_2_MappedOn_", refbase, "_", context, ".pdf"))
+plot(x = dt,
+     y = pedigree[, "D.value"],
+     ylab = "Methylome divergence value",
+     xlab = expression(paste(Delta, italic("t"), sep = "")))
+dev.off()
+
+
+# Epimutation rate estimation in selfing systems
+
+# "Models ABneutral, ABselectMM, ABselectUU and ABnull can be used to estimate
+# the rate of spontaneous epimutations in selfing-derived MA lines.
+# The models are currently restricted to diploids."
+
+# Run model with no selection (ABneutral)
+# "ABneutral fits a neutral epimutation model. The model assumes that epimutation
+# accumulation is under no selective constraint. Returned are estimates of the
+# methylation gain and loss rates and the proportion of epi-heterozygote loci
+# in the pedigree founder genome.
+
+print("Initial proportions of unmethylated cytosines:")
+p0uu_in <- output$tmpp0
+print(p0uu_in)
+
+ABneutral_out <- ABneutral(pedigree.data = pedigree,
+                           p0uu = p0uu_in, eqp = p0uu_in, eqp.weight = 1,
+                           Nstarts = 50, out.dir = outDir,
+                           out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context))
+print(summary(ABneutral_out))
+head(ABneutral_out$pedigree)
+
+# Plot estimates of ABneutral model
+# "In 'ABplot' function you can set parameters to customize the pdf output."
+ABfile <- paste0(outDir, "ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
+ABplot(pedigree.names = ABfile,
+       output.dir = plotDir,
+       out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context),
+       plot.height = 8, plot.width = 11)
+
 
