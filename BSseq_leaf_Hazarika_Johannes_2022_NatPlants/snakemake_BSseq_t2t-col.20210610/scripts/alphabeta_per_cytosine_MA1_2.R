@@ -169,5 +169,14 @@ output <- buildPedigree(nodelist = node_file,
                         edgelist = edge_file,
                         cytosine = sub("p", "", context),
                         posteriorMaxFilter = 0.99)
+outputTmp <- output
+output_file <- paste0(outDir, "pedigree_output_MA1_2_MappedOn_", refbase, "_", context, ".RData")
+save(output,
+     file = output_file)
+rm(output)
+load(output_file)
 
+# Plot the pedigree of the MA lines
+
+pedigree_plot <- plotPedigree(
 
