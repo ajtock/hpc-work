@@ -20,16 +20,16 @@ library(dplyr)
 library(data.table)
 #library(stringr)
 library(yaml)
-config <- read_yaml("config.yaml")
+config <- read_yaml("../config.yaml")
 
-inDir <- paste0("coverage/report/methimpute/")
-outDir <- paste0("coverage/report/alphabeta/")
+inDir <- paste0("../coverage/report/methimpute/")
+outDir <- paste0("../coverage/report/alphabeta/")
 #plotDir <- paste0(outDir, "plots/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 #system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
 # Genomic definitions
-fai <- read.table(paste0("data/index/", refbase, ".fa.fai"), header = F)
+fai <- read.table(paste0("../data/index/", refbase, ".fa.fai"), header = F)
 chromosomes <- fai[,1:2]
 colnames(chromosomes) <- c("chromosome", "length")
 ignoreChrs <- unlist(strsplit(config$GENOMEPROFILES$ignoreChrs,
@@ -46,7 +46,7 @@ chrLens <- fai[,2]
 # Define paths to methylome TXT files generated with methimpute
 filePaths <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
 # Extract node, generation and methylome info from filePaths
-node <- gsub("coverage/report/methimpute/MA\\d+_\\d+_G", "", filePaths)
+node <- gsub("../coverage/report/methimpute/MA\\d+_\\d+_G", "", filePaths)
 node <- gsub("_SRR.+", "", node)
 node <- gsub("_BSseq", "", node)
 node <- gsub("_L", "_", node)
@@ -100,7 +100,18 @@ print(node_df)
 
 # Create edges file, corresponding to a sparse directed acyclic graph (DAG)
 # of connections between individuals (nodes) from different generations
-# e.g., "nodelist_MA1_2_MappedOn_t2t-col.20210610_dedup_CpG.fn"
+# e.g., "edgelist_MA1_2_MappedOn_t2t-col.20210610_dedup_CpG.fn"
+# "from and to: Specifies the network edges, which are any direct connections
+# between type S and type S* nodes in the pedigree. Only unique pairs of nodes
+# need to be supplied. These 2 columns are mandatory."
+# "gendiff (optional): Specifies the number of generations that separate the
+# two nodes. This column is useful only for plotting purposes and it can be
+# omitted for epimutation rate estimation. However, we recommened that this
+# column be supplied because it is useful for accurately scaling the edge lengths
+# when plotting certain pedigrees with progenitor.endpoint and sibling design"
+# "group (optional): Along with "gendiff" column, groupings supplied in this column
+# will help in scaling the edge lengths when plotting the pedigree."
+
 edge_df_G0 <- data.frame(from = node_df$node[which(node_df$meth == "N")][1],
                          to = node_df$node[which(node_df$meth == "N")][-1])
 
@@ -142,7 +153,9 @@ print(edge_df)
 
 fwrite(edge_df,
        file = paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, ".fn"),
-       quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
+       quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
 edge_df <- fread(paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, ".fn"))
 print(edge_df)
+
+
 
