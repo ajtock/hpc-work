@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+#!/home/ajt200/miniconda3/envs/R-4.0.5/bin/Rscript
 
 # Estimate epimutation rates and spectra with AlphaBeta,
 # using output TXT files from METHimpute run on Bismark-processed
@@ -96,7 +96,7 @@ print(node_df)
 node_file <- paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, ".fn")
 fwrite(node_df,
        file = node_file,
-       quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+       quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
 node_df <- fread(node_file)
 print(node_df)
 
@@ -165,12 +165,12 @@ print(edge_df)
 
 # Build the pedigree of the MA lines
 
+output_file <- paste0(outDir, "pedigree_output_MA1_2_MappedOn_", refbase, "_", context, ".RData")
 output <- buildPedigree(nodelist = node_file,
                         edgelist = edge_file,
                         cytosine = sub("p", "", context),
                         posteriorMaxFilter = 0.99)
 outputTmp <- output
-output_file <- paste0(outDir, "pedigree_output_MA1_2_MappedOn_", refbase, "_", context, ".RData")
 save(output,
      file = output_file)
 rm(output)
@@ -180,6 +180,10 @@ rm(outputTmp); gc()
 
 # Plot the pedigree of the MA lines
 
+sampleFile <- system.file("extdata/vg", "nodelist.fn", package = "AlphaBeta")
+edgesFile <- system.file("extdata/vg", "edgelist.fn", package = "AlphaBeta")
+plotPedigree(nodelist = sampleFile, edgelist = edgesFile, sampling.design = "progenitor.endpoint", output.dir = plotDir, plot.width = 5, plot.height = 5, aspect.ratio = 1, vertex.size = 6, vertex.label = FALSE, out.pdf = "MA1_1")
+
 plotPedigree(nodelist = node_file,
              edgelist = edge_file,
              sampling.design = "progenitor.endpoint",
@@ -187,3 +191,4 @@ plotPedigree(nodelist = node_file,
              plot.width = 5, plot.height = 5, aspect.ratio = 1,
              vertex.size = 6, vertex.label = FALSE,
              out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context))
+
