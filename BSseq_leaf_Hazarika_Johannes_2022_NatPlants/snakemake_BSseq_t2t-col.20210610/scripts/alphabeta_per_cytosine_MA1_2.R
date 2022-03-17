@@ -238,7 +238,9 @@ dev.off()
 # "ABneutral fits a neutral epimutation model. The model assumes that epimutation
 # accumulation is under no selective constraint. Returned are estimates of the
 # methylation gain and loss rates and the proportion of epi-heterozygote loci
-# in the pedigree founder genome.
+# in the pedigree founder genome."
+
+# "NOTE: it is recommended to use at least 50 Nstarts to achieve best solutions"
 
 print("Initial proportions of unmethylated cytosines:")
 p0uu_in <- output$tmpp0
@@ -250,15 +252,30 @@ ABneutral_out <- ABneutral(pedigree.data = pedigree,
                            out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context))
 print(summary(ABneutral_out))
 head(ABneutral_out$pedigree)
-ABneutral_outTmp <- ABneutral_out
-ABfile <- paste0(outDir, "ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
-ABneutral_out <- eval(parse(file = ABfile))
-stopifnot(identical(ABneutral_out, ABneutral_outTmp))
-rm(ABneutral_outTmp); gc()
+ABneutral_file <- paste0(outDir, "ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
+ABneutral_outTest <- dget(ABneutral_file)
+#stopifnot(identical(ABneutral_out, ABneutral_outTest))
+rm(ABneutral_outTest); gc()
 
 # Plot estimates of ABneutral model
 # "In 'ABplot' function you can set parameters to customize the pdf output."
-ABplot(pedigree.names = ABfile,
+ABplot(pedigree.names = ABneutral_file,
        output.dir = plotDir,
        out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context),
        plot.height = 8, plot.width = 11)
+
+
+# Boostrap analysis
+
+# "NOTE: it is recommended to use at least 50 Nboot to achieve best solutions" 
+
+ABneutral_BOOTout <- BOOTmodel(pedigree.data = ABneutral_file,
+                               Nboot = 50,
+                               out.dir = outDir,
+                               out.name = paste0("ABneutral_BOOT_global_estimates_MA1_2_MappedOn_", refbase, "_", context))
+print(summary(ABneutral_BOOTout))
+ABneutralBOOT_file <- paste0(outDir, "ABneutral_BOOT_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
+ABneutral_BOOToutTest <- dget(ABneutralBOOT_file)
+#stopifnot(identical(ABneutral_BOOTout, ABneutral_BOOToutTest))
+rm(ABneutral_BOOToutTest); gc()
+
