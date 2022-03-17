@@ -250,13 +250,15 @@ ABneutral_out <- ABneutral(pedigree.data = pedigree,
                            out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context))
 print(summary(ABneutral_out))
 head(ABneutral_out$pedigree)
+ABneutral_outTmp <- ABneutral_out
+ABfile <- paste0(outDir, "ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
+ABneutral_out <- eval(parse(file = ABfile))
+stopifnot(identical(ABneutral_out, ABneutral_outTmp))
+rm(ABneutral_outTmp); gc()
 
 # Plot estimates of ABneutral model
 # "In 'ABplot' function you can set parameters to customize the pdf output."
-ABfile <- paste0(outDir, "ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
 ABplot(pedigree.names = ABfile,
        output.dir = plotDir,
        out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context),
        plot.height = 8, plot.width = 11)
-
-
