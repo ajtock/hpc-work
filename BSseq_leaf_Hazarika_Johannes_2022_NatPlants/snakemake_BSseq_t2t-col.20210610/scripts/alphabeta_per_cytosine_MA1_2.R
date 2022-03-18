@@ -31,7 +31,7 @@ library(dplyr)
 library(data.table)
 library(parallel)
 library(yaml)
-config <- read_yaml("../config.yaml")
+config <- read_yaml("config.yaml")
 
 if(floor(log10(genomeBinSize)) + 1 < 4) {
   genomeBinName <- paste0(genomeBinSize, "bp")
@@ -57,16 +57,16 @@ if(floor(log10(genomeStepSize)) + 1 < 4) {
   genomeStepNamePlot <- paste0(genomeStepSize/1e6, "-Mb")
 }
 
-inDir <- paste0("../coverage/report/methimpute/")
+inDir <- paste0("coverage/report/methimpute/")
 inDirBin <- paste0(inDir, "genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName, "/")
-outDir <- paste0("../coverage/report/alphabeta/genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName, "/")
+outDir <- paste0("coverage/report/alphabeta/")
 plotDir <- paste0(outDir, "plots/")
 system(paste0("[ -d ", inDirBin, " ] || mkdir -p ", inDirBin))
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
 # Genomic definitions
-fai <- read.table(paste0("../data/index/", refbase, ".fa.fai"), header = F)
+fai <- read.table(paste0("data/index/", refbase, ".fa.fai"), header = F)
 chromosomes <- fai[,1:2]
 colnames(chromosomes) <- c("chromosome", "length")
 ignoreChrs <- unlist(strsplit(config$GENOMEPROFILES$ignoreChrs,
@@ -125,7 +125,7 @@ targetDF_list <- mclapply(1:nrow(binDF), function(i) {
 
   bin_i <- binDF[i,]
   filePaths_bin_i_trunc <- gsub(pattern = "methylome.txt", replacement = paste0("methylome_", paste0(bin_i, collapse = "_"), ".txt"),
-                                x = gsub(pattern = "../coverage/report/methimpute/", replacement = "",
+                                x = gsub(pattern = "coverage/report/methimpute/", replacement = "",
                                          x = filePathsGlobal))
   filePaths_bin_i <- paste0(inDirBin, filePaths_bin_i_trunc)
 
