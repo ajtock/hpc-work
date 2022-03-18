@@ -82,6 +82,12 @@ chrLens <- fai[,2]
 # Define paths to methylome TXT files generated with methimpute
 filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
 
+# Load methylome TXT files for subsetting cytosines (rows) by genomic bin
+# NOTE: might be worth changing methimpute script to filter out cytosines
+# that are below a given coverage threshold;
+# e.g., >= 4; see https://www.pnas.org/doi/10.1073/pnas.1424254112
+# However, coverage threshold in https://www.nature.com/articles/s41477-021-01086-7
+# seems to be >= 1 (as implemented by default in MethylStar) and with a maximum posterior probability >= 0.99 
 methylomesGlobalList <- mclapply(1:length(filePathsGlobal), function(x) {
 #methylomesGlobalList <- mclapply(1, function(x) {
   fread(filePathsGlobal[x])
