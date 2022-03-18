@@ -89,14 +89,10 @@ filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_
 # However, coverage threshold in https://www.nature.com/articles/s41477-021-01086-7
 # seems to be >= 1 (as implemented by default in MethylStar) and with a maximum posterior probability >= 0.99 
 methylomesGlobalList <- mclapply(1:length(filePathsGlobal), function(x) {
-#methylomesGlobalList <- mclapply(1, function(x) {
   fread(filePathsGlobal[x])
-#}, mc.cores = length(filePathsGlobal[[1]]), mc.preschedule = F)
 }, mc.cores = length(filePathsGlobal), mc.preschedule = F)
 
 # Define genomic windows
-print(genomeBinName)
-print(genomeStepName)
 binDF <- data.frame()
 for(i in seq_along(chrs)) {
   # Define sliding windows of width genomeBinSize bp,
@@ -124,17 +120,17 @@ for(i in seq_along(chrs)) {
   binDF <- rbind(binDF, chr_binDF)
 }
 
-#targetDF <- data.frame()
 
-targetList <-
-mclapply(1:1000, function(i) {
-#for(i in 1:100) {
-  print(i)
+targetDF_list <- mclapply(1:nrow(binDF), function(i) {
+
   bin_i <- binDF[i,]
   filePaths_bin_i_trunc <- gsub(pattern = "methylome.txt", replacement = paste0("methylome_", paste0(bin_i, collapse = "_"), ".txt"),
                                 x = gsub(pattern = "../coverage/report/methimpute/", replacement = "",
                                          x = filePathsGlobal))
   filePaths_bin_i <- paste0(inDirBin, filePaths_bin_i_trunc)
+
+  # Write filePaths_bin_i
+  # NOTE: remove these files after use by buildPedigree() due to large file numbers (> 1M)
 #  mclapply(1:length(methylomesGlobalList), function(x) {
   lapply(1:length(methylomesGlobalList), function(x) {
 
@@ -145,245 +141,241 @@ mclapply(1:1000, function(i) {
     fwrite(methylome_bin_i,
            file = filePaths_bin_i[x],
            quote = F, sep = "\t", row.names = F, col.names = T)
-   })
+  })
 #  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
 
-#}
+
+  # Extract node, generation and methylome info from filePaths_bin_i
+  node <- gsub(paste0(inDirBin, "MA\\d+_\\d+_G"), "", filePaths_bin_i)
+  node <- gsub("_SRR.+", "", node)
+  node <- gsub("_BSseq", "", node)
+  node <- gsub("_L", "_", node)
+  generation <- as.integer(gsub("_.+", "", node))
+  methylome <- rep("Y", length(node))
+
+
+  # Make pedigree files for the MA lineage, to enable alphabeta to
+  # reconstruct the topology of the underlying pedigree
+  
+  # "AlphaBeta requires two types of input files: 'nodeslist.fn'
+  # and 'edgelist.fn'. The structure of these files follows the
+  # standard file format required by the R network package igraph."
+  
+  # "The nodes of the network correspond to 'individuals' whose
+  # methylomes have been sampled (i.e. type S* nodes), or of the
+  # common ancestors of these individuals, whose methylomes have
+  # typically not been sampled (i.e. type S nodes)"
+  # e.g., "nodelist_MA1_2_MappedOn_t2t-col.20210610_CpG_Chr1_1_10000.fn"
+  
+  node_df_GM <- data.frame(filename = filePaths_bin_i,
+                           node = node,
+                           gen = generation,
+                           meth = methylome)
+  node_df_G0 <- data.frame(filename = "-",
+                           node = "0_0",
+                           gen  = as.integer(0),
+                           meth = "N")
+  node_df_G2 <- data.frame(filename = "-",
+                           node = gsub("^3_", "2_",
+                                       node[ grep( "Rep1", node ) ] [ grep( "^3_", node[ grep( "Rep1", node ) ] ) ] ),
+                           gen = as.integer(2),
+                           meth = "N") 
+  node_df_G3 <- node_df_GM[node_df_GM$gen == 3,]
+  node_df_G30 <- data.frame(filename = "-",
+                            node = gsub("^31_", "30_",
+                                        node[ grep( "Rep1", node ) ] [ grep( "^31_", node[ grep( "Rep1", node ) ] ) ] ),
+                            gen = as.integer(30),
+                            meth = "N") 
+  node_df_G31 <- node_df_GM[node_df_GM$gen == 31,]
+  
+  rm(node_df_GM)
+  
+  # Combine node generations into one data.frame
+  node_df <- dplyr::bind_rows(mget(sort(ls(pattern = "node_df"))))
+  node_file <- paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, "_",
+                      paste0(bin_i, collapse = "_"), ".fn")
+  # NOTE: remove this file after use by buildPedigree() due to large file numbers (> 100k)
+  fwrite(node_df,
+         file = node_file,
+         quote = F, sep = ",", row.names = F, col.names = T)
+
+
+  # Create edges file, corresponding to a sparse directed acyclic graph (DAG)
+  # of connections between individuals (nodes) from different generations
+  # e.g., "edgelist_MA1_2_MappedOn_t2t-col.20210610_dedup_CpG.fn"
+  
+  # "from and to: Specifies the network edges, which are any direct connections
+  # between type S and type S* nodes in the pedigree. Only unique pairs of nodes
+  # need to be supplied. These 2 columns are mandatory."
+  # "gendiff (optional): Specifies the number of generations that separate the
+  # two nodes. This column is useful only for plotting purposes and it can be
+  # omitted for epimutation rate estimation. However, we recommened that this
+  # column be supplied because it is useful for accurately scaling the edge lengths
+  # when plotting certain pedigrees with progenitor.endpoint and sibling design"
+  # "group (optional): Along with "gendiff" column, groupings supplied in this column
+  # will help in scaling the edge lengths when plotting the pedigree."
+  
+  edge_df_G0 <- data.frame(from = node_df$node[which(node_df$meth == "N")][1],
+                           to = node_df$node[which(node_df$meth == "N")][-1])
+  
+  edge_df_GN <- data.frame()
+  for(x in node_df$node[which(node_df$meth == "N")][-1]) {
+    edge_df_x <- data.frame(from = x,
+                            to = node_df$node[which(node_df$meth == "Y")] [
+                                   grep( 
+                                        paste0( paste0(as.integer(gsub("_\\d+", "", gsub("_Rep\\d+", "", x))) + 1),
+                                                gsub("^\\d+", "", gsub("_Rep\\d+", "", x)),
+                                                "_" ),
+                                        node_df$node[which(node_df$meth == "Y")]
+                                       )
+                                 ]
+                           )
+    edge_df_GN <- rbind(edge_df_GN, edge_df_x)
+  }
+  
+  edge_df <- rbind(edge_df_G0, edge_df_GN)
+  #edge_df$line <- as.numeric( paste0(
+  ##                                   gsub("_", "",
+  ##                                        gsub("_Rep.+", "",
+  ##                                             edge_df$from) ),
+  #                                   gsub("_", ".",
+  #                                        gsub("_Rep", "",
+  #                                             edge_df$to) )
+  #                                  ) )
+  edge_df$gendiff <- as.integer(gsub("_.+", "", edge_df$to)) -
+                     as.integer(gsub("_.+", "", edge_df$from))
+  edge_df$gendiff[edge_df$gendiff == 2] <- 1
+  edge_df$gento <- as.integer(gsub("_.+", "", edge_df$to))
+  edge_df$group <- "A"
+  edge_df[edge_df$gento >= 30,]$group <- "B"
+  edge_df <- edge_df[ with(edge_df, order(to)), ]
+  
+  dropCols <- c("gento")
+  edge_df <- edge_df[ , !(names(edge_df) %in% dropCols)]
+  
+  edge_file <- paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, "_",
+                      paste0(bin_i, collapse = "_"), ".fn")
+  # NOTE: remove this file after use by buildPedigree() due to large file numbers (> 100k)
+  fwrite(edge_df,
+         file = edge_file,
+         quote = F, sep = "\t", row.names = F, col.names = T)
+
+
+  # Build the pedigree of the MA lines in the given genomic bin
+  #buildPedigree_file <- paste0(outDir, "buildPedigree_MA1_2_MappedOn_", refbase, "_", context, "_",
+  #                             paste0(bin_i, collapse = "_"), ".RData")
+  invisible(capture.output(buildPedigree_out <- suppressMessages(buildPedigree(nodelist = node_file,
+                                                                               edgelist = edge_file,
+                                                                               cytosine = sub("p", "", context),
+                                                                               posteriorMaxFilter = 0.99))))
+  system(paste0("rm ", inDirBin, "*", "_", paste0(bin_i, collapse = "_"), ".txt"))
+  system(paste0("rm ", node_file, " ", edge_file))
+  ## NOTE: remove this file after use by buildPedigree() due to large file numbers (> 100k)
+  #save(buildPedigree_out,
+  #     file = buildPedigree_file)
+
+
+  # Get the mean, minimum and maximum methylation divergence values at delta.t = 62
+  # (MA1_2_mean.D, MA1_2_min.D, MA1_2_max.D)
+  pedigree <- buildPedigree_out$Pdata
+  delta.t <- pedigree[, 2] + pedigree[, 3] - 2 * pedigree[, 1]
+  pedigree <- data.frame(pedigree, delta.t) 
+  D_at_dt62 <- pedigree[pedigree$delta.t == 62,]$D.value
+  MA1_2_mean.D <- mean(D_at_dt62, na.rm = T)
+  MA1_2_min.D <- min(D_at_dt62, na.rm = T)
+  MA1_2_max.D <- max(D_at_dt62, na.rm = T)
+
+  data.frame(bin_i,
+             MA1_2_mean.D,
+             MA1_2_min.D,
+             MA1_2_max.D)
+
+
+  # Plot the pedigree of the MA lines
+  
+  # plotPedigree doesn't work with sampling.design set to "progenitor.endpoint":
+  #plotPedigree(nodelist = node_file,
+  #             edgelist = edge_file,
+  #             sampling.design = "progenitor.endpoint",
+  #             output.dir = plotDir,
+  #             plot.width = 5, plot.height = 5, aspect.ratio = 1,
+  #             vertex.size = 6, vertex.label = FALSE,
+  #             out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context, "_",
+  #                              paste0(bin_i, collapse = "_")))
+
+
+  ## Plot divergence time (delta.t) versus methylation divergence (D.value)
+  ## Interactive plot for inspecting the divergence data and removing outlier samples (if any)
+  #
+  #pedigree <- buildPedigree_out$Pdata
+  #dt <- pedigree[, 2] + pedigree[, 3] - 2 * pedigree[, 1]
+  ##dt_max <- max(dt, na.rm = T)
+  #
+  #pdf(paste0(plotDir, "divergence_time_vs_methylation_divergence_MA1_2_MappedOn_", refbase, "_", context, "_",
+  #           paste0(bin_i, collapse = "_"), ".pdf"))
+  #plot(x = dt,
+  #     y = pedigree[, "D.value"],
+  #     ylab = paste0(gsub("p", "", context), " methyation divergence"),
+  #     xlab = expression(paste(Delta, italic("t"), " (generations)", sep = "")))
+  #dev.off()
+
+
+  # Epimutation rate estimation in selfing systems
+  
+  # "Models ABneutral, ABselectMM, ABselectUU and ABnull can be used to estimate
+  # the rate of spontaneous epimutations in selfing-derived MA lines.
+  # The models are currently restricted to diploids."
+  
+  # Run model with no selection (ABneutral)
+  # "ABneutral fits a neutral epimutation model. The model assumes that epimutation
+  # accumulation is under no selective constraint. Returned are estimates of the
+  # methylation gain and loss rates and the proportion of epi-heterozygote loci
+  # in the pedigree founder genome."
+  
+  # "NOTE: it is recommended to use at least 50 Nstarts to achieve best solutions"
+  
+  #ABneutral_file <- paste0("ABneutral_MA1_2_MappedOn_", refbase, "_", context, "_",
+  #                         paste0(bin_i, collapse = "_"))
+  #ABneutral_out <- ABneutral(pedigree.data = buildPedigree_out$Pdata,
+  #                           p0uu = buildPedigree_out$tmpp0, eqp = buildPedigree_out$tmpp0, eqp.weight = 1,
+  #                           Nstarts = 50, out.dir = outDir,
+  #                           out.name = ABneutral_file)
+  ### NOTE: not an actual .RData file but a list that can be loaded with dget
+  ##ABneutral_file_full <- paste0(outDir, ABneutral_file, ".Rdata")
+  ##ABneutral_outTest <- dget(ABneutral_file_full)
+  ##stopifnot(all.equal(ABneutral_out, ABneutral_outTest))
+  ##rm(ABneutral_outTest); gc()
+  #head(ABneutral_out$pedigree)
+  
+  ## Plot estimates of ABneutral model
+  ## "In 'ABplot' function you can set parameters to customize the pdf output."
+  #ABplot(pedigree.names = paste0(outDir, ABneutral_file, ".Rdata"),
+  #       output.dir = plotDir,
+  #       out.name = ABneutral_file,
+  #       plot.height = 8, plot.width = 11)
+  #system(paste0("rm ", outDir, ABneutral_file, ".Rdata"))
+  
+  
+  # Boostrap analysis
+  
+  # "NOTE: it is recommended to use at least 50 Nboot to achieve best solutions" 
+  
+  #ABneutral_BOOTfile <- paste0("ABneutral_BOOT_MA1_2_MappedOn_", refbase, "_", context, "_",
+  #                             paste0(bin_i, collapse = "_"))
+  #ABneutral_BOOTout <- BOOTmodel(pedigree.data = paste0(outDir, ABneutral_file, ".Rdata"),
+  #                               Nboot = 50,
+  #                               out.dir = outDir,
+  #                               out.name = ABneutral_BOOTfile)
+  #print(summary(ABneutral_BOOTout))
+  ##ABneutral_BOOToutTest <- dget(paste0(outDir, ABneutral_BOOTfile, ".Rdata"))
+  ##stopifnot(all.equal(ABneutral_BOOTout, ABneutral_BOOToutTest))
+  ##rm(ABneutral_BOOToutTest); gc()
+
 }, mc.cores = detectCores(), mc.preschedule = T)
- 
-
-# Extract node, generation and methylome info from filePaths
-node <- gsub("../coverage/report/methimpute/MA\\d+_\\d+_G", "", filePaths)
-node <- gsub("_SRR.+", "", node)
-node <- gsub("_BSseq", "", node)
-node <- gsub("_L", "_", node)
-generation <- as.integer(gsub("_.+", "", node))
-methylome <- rep("Y", length(node))
 
 
-# Make pedigree files for the MA lineage, to enable alphabeta to
-# reconstruct the topology of the underlying pedigree
-
-# "AlphaBeta requires two types of input files: 'nodeslist.fn'
-# and 'edgelist.fn'. The structure of these files follows the
-# standard file format required by the R network package igraph."
-
-# "The nodes of the network correspond to 'individuals' whose
-# methylomes have been sampled (i.e. type S* nodes), or of the
-# common ancestors of these individuals, whose methylomes have
-# typically not been sampled (i.e. type S nodes)"
-# e.g., "nodelist_MA1_2_MappedOn_t2t-col.20210610_dedup_CpG.fn"
-
-node_df_GM <- data.frame(filename = filePaths,
-                         node = node,
-                         gen = generation,
-                         meth = methylome)
-node_df_G0 <- data.frame(filename = "-",
-                         node = "0_0",
-                         gen  = as.integer(0),
-                         meth = "N")
-node_df_G2 <- data.frame(filename = "-",
-                         node = gsub("^3_", "2_",
-                                     node[ grep( "Rep1", node ) ] [ grep( "^3_", node[ grep( "Rep1", node ) ] ) ] ),
-                         gen = as.integer(2),
-                         meth = "N") 
-node_df_G3 <- node_df_GM[node_df_GM$gen == 3,]
-node_df_G30 <- data.frame(filename = "-",
-                          node = gsub("^31_", "30_",
-                                      node[ grep( "Rep1", node ) ] [ grep( "^31_", node[ grep( "Rep1", node ) ] ) ] ),
-                          gen = as.integer(30),
-                          meth = "N") 
-node_df_G31 <- node_df_GM[node_df_GM$gen == 31,]
-
-rm(node_df_GM)
-
-# Combine node generations into one data.frame
-node_df <- dplyr::bind_rows(mget(sort(ls(pattern = "node_df"))))
-print(node_df)
-node_file <- paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, ".fn")
-write.table(node_df,
-            file = node_file,
-            quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
-#fwrite(node_df,
-#       file = node_file,
-#       quote = FALSE, sep = ",", row.names = FALSE, col.names = TRUE)
-#node_df <- fread(node_file)
-print(node_df)
-
-
-# Create edges file, corresponding to a sparse directed acyclic graph (DAG)
-# of connections between individuals (nodes) from different generations
-# e.g., "edgelist_MA1_2_MappedOn_t2t-col.20210610_dedup_CpG.fn"
-
-# "from and to: Specifies the network edges, which are any direct connections
-# between type S and type S* nodes in the pedigree. Only unique pairs of nodes
-# need to be supplied. These 2 columns are mandatory."
-# "gendiff (optional): Specifies the number of generations that separate the
-# two nodes. This column is useful only for plotting purposes and it can be
-# omitted for epimutation rate estimation. However, we recommened that this
-# column be supplied because it is useful for accurately scaling the edge lengths
-# when plotting certain pedigrees with progenitor.endpoint and sibling design"
-# "group (optional): Along with "gendiff" column, groupings supplied in this column
-# will help in scaling the edge lengths when plotting the pedigree."
-
-edge_df_G0 <- data.frame(from = node_df$node[which(node_df$meth == "N")][1],
-                         to = node_df$node[which(node_df$meth == "N")][-1])
-
-edge_df_GN <- data.frame()
-for(x in node_df$node[which(node_df$meth == "N")][-1]) {
-  edge_df_x <- data.frame(from = x,
-                          to = node_df$node[which(node_df$meth == "Y")] [
-                                 grep( 
-                                      paste0( paste0(as.integer(gsub("_\\d+", "", gsub("_Rep\\d+", "", x))) + 1),
-                                              gsub("^\\d+", "", gsub("_Rep\\d+", "", x)),
-                                              "_" ),
-                                      node_df$node[which(node_df$meth == "Y")]
-                                     )
-                               ]
-                         )
-  edge_df_GN <- rbind(edge_df_GN, edge_df_x)
-}
-
-edge_df <- rbind(edge_df_G0, edge_df_GN)
-#edge_df$line <- as.numeric( paste0(
-##                                   gsub("_", "",
-##                                        gsub("_Rep.+", "",
-##                                             edge_df$from) ),
-#                                   gsub("_", ".",
-#                                        gsub("_Rep", "",
-#                                             edge_df$to) )
-#                                  ) )
-edge_df$gendiff <- as.integer(gsub("_.+", "", edge_df$to)) -
-                   as.integer(gsub("_.+", "", edge_df$from))
-edge_df$gendiff[edge_df$gendiff == 2] <- 1
-edge_df$gento <- as.integer(gsub("_.+", "", edge_df$to))
-edge_df$group <- "A"
-edge_df[edge_df$gento >= 30,]$group <- "B"
-edge_df <- edge_df[ with(edge_df, order(to)), ]
-
-dropCols <- c("gento")
-edge_df <- edge_df[ , !(names(edge_df) %in% dropCols)]
-print(edge_df)
-
-edge_file <- paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, ".fn")
-write.table(edge_df,
-            file = edge_file,
-            quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
-#fwrite(edge_df,
-#       file = edge_file,
-#       quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
-#edge_df <- fread(edge_file)
-#print(edge_df)
-
-
-# Build the pedigree of the MA lines
-
-output_file <- paste0(outDir, "pedigree_output_MA1_2_MappedOn_", refbase, "_", context, ".RData")
-output <- buildPedigree(nodelist = node_file,
-                        edgelist = edge_file,
-                        cytosine = sub("p", "", context),
-                        posteriorMaxFilter = 0.99)
-outputTmp <- output
-save(output,
-     file = output_file)
-rm(output)
-load(output_file)
-stopifnot(identical(output, outputTmp))
-rm(outputTmp); gc()
-
-# Plot the pedigree of the MA lines
-
-# plotPedigree doesn't work with sampling.design set to "progenitor.endpoint":
-#plotPedigree(nodelist = node_file,
-#             edgelist = edge_file,
-#             sampling.design = "progenitor.endpoint",
-#             output.dir = plotDir,
-#             plot.width = 5, plot.height = 5, aspect.ratio = 1,
-#             vertex.size = 6, vertex.label = FALSE,
-#             out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context))
-#sampleFile <- "../nodelist_MA1_1.fn"
-#edgesFile <- "../edgelist_MA1_1.fn"
-#sampleFile <- system.file("extdata/vg", "nodelist.fn", package = "AlphaBeta")
-#edgesFile <- system.file("extdata/vg", "edgelist.fn", package = "AlphaBeta")
-#plotPedigree(nodelist = sampleFile, edgelist = edgesFile, sampling.design = "progenitor.endpoint", output.dir = plotDir, plot.width = 5, plot.height = 5, aspect.ratio = 1, vertex.size = 6, vertex.label = FALSE, out.pdf = "MA1_1")
-## Error: Can't convert from <tbl_df<
-##   V1          : character
-##   V2          : character
-##   weight.scale: character
-##   grp         : character
-##   relevel     : double
-## >> to <tbl_df<
-##   V1          : character
-##   V2          : character
-##   weight.scale: character
-##   grp         : character
-## >> due to loss of precision.
-## Dropped variables: `relevel`
-
-
-# Plot divergence time (delta.t) versus methylome divergence (D.value)
-# Interactive plot for inspecting the divergence data and removing outlier samples (if any)
-
-pedigree <- output$Pdata
-dt <- pedigree[, 2] + pedigree[, 3] - 2 * pedigree[, 1]
-dt_max <- max(dt, na.rm = T)
-
-pdf(paste0(plotDir, "divergence_time_vs_methylome_divergence_MA1_2_MappedOn_", refbase, "_", context, ".pdf"))
-plot(x = dt,
-     y = pedigree[, "D.value"],
-     ylab = "Methylome divergence value",
-     xlab = expression(paste(Delta, italic("t"), sep = "")))
-dev.off()
-
-
-# Epimutation rate estimation in selfing systems
-
-# "Models ABneutral, ABselectMM, ABselectUU and ABnull can be used to estimate
-# the rate of spontaneous epimutations in selfing-derived MA lines.
-# The models are currently restricted to diploids."
-
-# Run model with no selection (ABneutral)
-# "ABneutral fits a neutral epimutation model. The model assumes that epimutation
-# accumulation is under no selective constraint. Returned are estimates of the
-# methylation gain and loss rates and the proportion of epi-heterozygote loci
-# in the pedigree founder genome."
-
-# "NOTE: it is recommended to use at least 50 Nstarts to achieve best solutions"
-
-print("Initial proportions of unmethylated cytosines:")
-p0uu_in <- output$tmpp0
-print(p0uu_in)
-
-ABneutral_out <- ABneutral(pedigree.data = pedigree,
-                           p0uu = p0uu_in, eqp = p0uu_in, eqp.weight = 1,
-                           Nstarts = 50, out.dir = outDir,
-                           out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context))
-print(summary(ABneutral_out))
-head(ABneutral_out$pedigree)
-ABneutral_file <- paste0(outDir, "ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
-ABneutral_outTest <- dget(ABneutral_file)
-#stopifnot(identical(ABneutral_out, ABneutral_outTest))
-rm(ABneutral_outTest); gc()
-
-# Plot estimates of ABneutral model
-# "In 'ABplot' function you can set parameters to customize the pdf output."
-ABplot(pedigree.names = ABneutral_file,
-       output.dir = plotDir,
-       out.name = paste0("ABneutral_global_estimates_MA1_2_MappedOn_", refbase, "_", context),
-       plot.height = 8, plot.width = 11)
-
-
-# Boostrap analysis
-
-# "NOTE: it is recommended to use at least 50 Nboot to achieve best solutions" 
-
-ABneutral_BOOTout <- BOOTmodel(pedigree.data = ABneutral_file,
-                               Nboot = 50,
-                               out.dir = outDir,
-                               out.name = paste0("ABneutral_BOOT_global_estimates_MA1_2_MappedOn_", refbase, "_", context))
-print(summary(ABneutral_BOOTout))
-ABneutralBOOT_file <- paste0(outDir, "ABneutral_BOOT_global_estimates_MA1_2_MappedOn_", refbase, "_", context, ".Rdata")
-ABneutral_BOOToutTest <- dget(ABneutralBOOT_file)
-#stopifnot(identical(ABneutral_BOOTout, ABneutral_BOOToutTest))
-rm(ABneutral_BOOToutTest); gc()
-
+targetDF <- dplyr::bind_rows(targetDF_list)
+fwrite(targetDF,
+       file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+                     "_MA1_2_MappedOn_", refbase, "_", context, ".tsv"),
+       quote = F, sep = "\t", row.names = F, col.names = T)
