@@ -25,6 +25,7 @@ genomeStepSize <- as.numeric(args[4])
 #genomeStepSize <- 1000
 
 options(stringsAsFactors = F)
+options(scipen=999)
 library(AlphaBeta)
 library(dplyr)
 library(data.table)
@@ -78,7 +79,6 @@ if(!grepl("Chr", fai[,1][1])) {
 }
 chrLens <- fai[,2]
 
-
 # Define paths to methylome TXT files generated with methimpute
 filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
 
@@ -124,14 +124,19 @@ for(i in seq_along(chrs)) {
   binDF <- rbind(binDF, chr_binDF)
 }
 
-targetDF <- data.frame()
-for(i in 1:nrow(binDF)) {
+#targetDF <- data.frame()
+
+targetList <-
+mclapply(1:1000, function(i) {
+#for(i in 1:100) {
+  print(i)
   bin_i <- binDF[i,]
   filePaths_bin_i_trunc <- gsub(pattern = "methylome.txt", replacement = paste0("methylome_", paste0(bin_i, collapse = "_"), ".txt"),
                                 x = gsub(pattern = "../coverage/report/methimpute/", replacement = "",
                                          x = filePathsGlobal))
   filePaths_bin_i <- paste0(inDirBin, filePaths_bin_i_trunc)
-  mclapply(1:length(methylomesGlobalList), function(x) {
+#  mclapply(1:length(methylomesGlobalList), function(x) {
+  lapply(1:length(methylomesGlobalList), function(x) {
 
     methylome_bin_i <- methylomesGlobalList[[x]] %>%
       dplyr::filter(seqnames == bin_i$chr) %>%
@@ -140,12 +145,12 @@ for(i in 1:nrow(binDF)) {
     fwrite(methylome_bin_i,
            file = filePaths_bin_i[x],
            quote = F, sep = "\t", row.names = F, col.names = T)
+   })
+#  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
 
-  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
-
+#}
+}, mc.cores = detectCores(), mc.preschedule = T)
  
-
-
 
 # Extract node, generation and methylome info from filePaths
 node <- gsub("../coverage/report/methimpute/MA\\d+_\\d+_G", "", filePaths)
