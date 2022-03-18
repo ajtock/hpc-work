@@ -150,7 +150,7 @@ rule all:
                refbase = refbase,
                context = context),
         # alphabetaPerCytosine
-        expand("mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv",
+        expand("coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv",
                refbase = refbase,
                context = context,
                ABgenomeBinName = ABgenomeBinName,
