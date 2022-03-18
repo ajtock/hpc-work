@@ -1,29 +1,66 @@
 #!/home/ajt200/miniconda3/envs/R-4.1.2/bin/Rscript
 
-# Estimate epimutation rates and spectra with AlphaBeta,
+# Estimate methylation divergence and epimutation rates and spectra with AlphaBeta,
 # using output TXT files from METHimpute run on Bismark-processed
 # BS-seq data from mutation accumulation (MA) lines
 
+# Target outputs are genomic binned methylation divergence values,
+# to enable analysis of relationships with binned among-read variation in
+# ONT DeepSignal-derived DNA methylation (Fleiss' kappa), and
+# definition of epimutation hotspots and coldspots corresponding to
+# the top 10% and bottom 10% of bins with regard to methylation divergence
+
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2.R t2t-col.20210610 CpG
+# ./alphabeta_per_cytosine_MA1_2.R t2t-col.20210610 CpG 10000 1000
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
 context <- args[2]
+genomeBinSize <- as.numeric(args[3]
+genomeStepSize <- as.numeric(args[4])
 
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
+#genomeBinSize <- 10000
+#genomeStepSize <- 1000
 
 options(stringsAsFactors = F)
 library(AlphaBeta)
 library(dplyr)
-#library(data.table)
+library(data.table)
+library(parallel)
 library(yaml)
 config <- read_yaml("../config.yaml")
 
+if(floor(log10(genomeBinSize)) + 1 < 4) {
+  genomeBinName <- paste0(genomeBinSize, "bp")
+  genomeBinNamePlot <- paste0(genomeBinSize, "-bp")
+} else if(floor(log10(genomeBinSize)) + 1 >= 4 &
+          floor(log10(genomeBinSize)) + 1 <= 6) {
+  genomeBinName <- paste0(genomeBinSize/1e3, "kb")
+  genomeBinNamePlot <- paste0(genomeBinSize/1e3, "-kb")
+} else if(floor(log10(genomeBinSize)) + 1 >= 7) {
+  genomeBinName <- paste0(genomeBinSize/1e6, "Mb")
+  genomeBinNamePlot <- paste0(genomeBinSize/1e6, "-Mb")
+}
+
+if(floor(log10(genomeStepSize)) + 1 < 4) {
+  genomeStepName <- paste0(genomeStepSize, "bp")
+  genomeStepNamePlot <- paste0(genomeStepSize, "-bp")
+} else if(floor(log10(genomeStepSize)) + 1 >= 4 &
+          floor(log10(genomeStepSize)) + 1 <= 6) {
+  genomeStepName <- paste0(genomeStepSize/1e3, "kb")
+  genomeStepNamePlot <- paste0(genomeStepSize/1e3, "-kb")
+} else if(floor(log10(genomeStepSize)) + 1 >= 7) {
+  genomeStepName <- paste0(genomeStepSize/1e6, "Mb")
+  genomeStepNamePlot <- paste0(genomeStepSize/1e6, "-Mb")
+}
+
 inDir <- paste0("../coverage/report/methimpute/")
-outDir <- paste0("../coverage/report/alphabeta/")
+inDirBin <- paste0(inDir, "genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName, "/")
+outDir <- paste0("../coverage/report/alphabeta/genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName, "/")
 plotDir <- paste0(outDir, "plots/")
+system(paste0("[ -d ", inDirBin, " ] || mkdir -p ", inDirBin))
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
@@ -43,7 +80,67 @@ chrLens <- fai[,2]
 
 
 # Define paths to methylome TXT files generated with methimpute
-filePaths <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
+filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
+
+methylomesGlobalList <- mclapply(1:length(filePathsGlobal), function(x) {
+#methylomesGlobalList <- mclapply(1, function(x) {
+  fread(filePathsGlobal[x])
+#}, mc.cores = length(filePathsGlobal[[1]]), mc.preschedule = F)
+}, mc.cores = length(filePathsGlobal), mc.preschedule = F)
+
+# Define genomic windows
+print(genomeBinName)
+print(genomeStepName)
+binDF <- data.frame()
+for(i in seq_along(chrs)) {
+  # Define sliding windows of width genomeBinSize bp,
+  # with a step of genomeStepSize bp
+  ## Note: the active code creates windows of genomeBinSize,
+  ## and the last window of a chromosome may be smaller than genomeBinSize
+  binStarts <- seq(from = 1,
+                   to = chrLens[i]-genomeBinSize,
+                   by = genomeStepSize)
+  if(chrLens[i] - binStarts[length(binStarts)] >= genomeBinSize) {
+    binStarts <- c(binStarts,
+                   binStarts[length(binStarts)]+genomeStepSize)
+  }
+  binEnds <- seq(from = binStarts[1]+genomeBinSize-1,
+                 to = chrLens[i],
+                 by = genomeStepSize)
+  binEnds <- c(binEnds,
+               rep(chrLens[i], times = length(binStarts)-length(binEnds)))                                                                    
+  stopifnot(binEnds[length(binEnds)] == chrLens[i])
+  stopifnot(length(binStarts) == length(binEnds))
+
+  chr_binDF <- data.frame(chr = chrs[i],
+                          start = binStarts,
+                          end = binEnds)
+  binDF <- rbind(binDF, chr_binDF)
+}
+
+targetDF <- data.frame()
+for(i in 1:nrow(binDF)) {
+  bin_i <- binDF[i,]
+  filePaths_bin_i_trunc <- gsub(pattern = "methylome.txt", replacement = paste0("methylome_", paste0(bin_i, collapse = "_"), ".txt"),
+                                x = gsub(pattern = "../coverage/report/methimpute/", replacement = "",
+                                         x = filePathsGlobal))
+  filePaths_bin_i <- paste0(inDirBin, filePaths_bin_i_trunc)
+  mclapply(1:length(methylomesGlobalList), function(x) {
+
+    methylome_bin_i <- methylomesGlobalList[[x]] %>%
+      dplyr::filter(seqnames == bin_i$chr) %>%
+      dplyr::filter(start >= bin_i$start & start <= bin_i$end)
+
+    fwrite(methylome_bin_i,
+           file = filePaths_bin_i[x],
+           quote = F, sep = "\t", row.names = F, col.names = T)
+
+  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
+
+ 
+
+
+
 # Extract node, generation and methylome info from filePaths
 node <- gsub("../coverage/report/methimpute/MA\\d+_\\d+_G", "", filePaths)
 node <- gsub("_SRR.+", "", node)
