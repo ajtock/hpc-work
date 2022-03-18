@@ -16,7 +16,7 @@
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
 context <- args[2]
-genomeBinSize <- as.numeric(args[3]
+genomeBinSize <- as.numeric(args[3])
 genomeStepSize <- as.numeric(args[4])
 
 #refbase <- "t2t-col.20210610"
