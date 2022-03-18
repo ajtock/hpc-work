@@ -38,7 +38,8 @@ genomeBinName = config["GENOMEPROFILES"]["genomeBinName"]
 ABgenomeBinName  = config["ALPHABETA"]["genomeBinName"]
 ABgenomeStepName = config["ALPHABETA"]["genomeStepName"]
 
-context = ['CpG','CHG','CHH']
+#context = ['CpG','CHG','CHH']
+context = ['CpG']
 cwd     = os.getcwd() + "/"
 
 print(sample)
