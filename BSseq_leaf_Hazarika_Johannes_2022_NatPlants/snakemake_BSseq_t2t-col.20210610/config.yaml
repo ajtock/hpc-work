@@ -64,7 +64,7 @@ GENOMEPROFILES:
 
 ## alphabetaPerCytosine
 ALPHABETA:
-  genomeBinSize = 10000
-  genomeBinName = "10kb"
-  genomeBinSize = 1000
-  genomeBinName = "1kb"
+  genomeBinSize: 10000
+  genomeBinName: "10kb"
+  genomeStepSize: 1000
+  genomeStepName: "1kb"
