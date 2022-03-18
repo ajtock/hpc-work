@@ -61,3 +61,10 @@ GENOMEPROFILES:
   genomeBinSize: 10000
   genomeBinName: "10kb"
   ignoreChrs: "ChrM ChrC lambda pUC19"
+
+## alphabetaPerCytosine
+ALPHABETA:
+  genomeBinSize = 10000
+  genomeBinName = "10kb"
+  genomeBinSize = 1000
+  genomeBinName = "1kb"
