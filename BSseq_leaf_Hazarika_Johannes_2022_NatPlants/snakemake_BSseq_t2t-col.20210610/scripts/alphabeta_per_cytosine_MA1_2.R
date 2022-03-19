@@ -376,7 +376,8 @@ targetDF_list <- mclapply(1:nrow(binDF), function(i) {
 }, mc.cores = detectCores(), mc.preschedule = T)
 
 
-targetDF <- dplyr::bind_rows(targetDF_list)
+#targetDF <- dplyr::bind_rows(targetDF_list)
+targetDF <- do.call(rbind, targetDF_list)
 fwrite(targetDF,
        file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
                      "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
