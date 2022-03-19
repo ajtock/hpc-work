@@ -551,8 +551,8 @@ rule methimputePerCytosine:
 rule alphabetaPerCytosine:
     """Estimate epimutation rates and spectra with AlphaBeta"""
     resources:
-        partition = "skylake", 
-        mem_mb    = 180000,
+        partition = "icelake", 
+        mem_mb    = 256000,
         time      = "12:00:00"
     input:
         ["".join (map (str, x)) for x in zip (
