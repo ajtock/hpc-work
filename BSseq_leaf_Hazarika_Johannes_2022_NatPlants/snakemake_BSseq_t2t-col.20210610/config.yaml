@@ -68,3 +68,8 @@ ALPHABETA:
   genomeBinName: "10kb"
   genomeStepSize: 1000
   genomeStepName: "1kb"
+  chrName: ["Chr1",
+            "Chr2",
+            "Chr3",
+            "Chr4",
+            "Chr5"]

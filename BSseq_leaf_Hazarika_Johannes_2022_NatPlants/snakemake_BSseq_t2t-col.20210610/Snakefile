@@ -29,14 +29,15 @@ SRCDIR = srcdir("")
 # Specify config file parameters
 configfile: "config.yaml"
 # Define wildcards and variables
-sample        = config["SAMPLES"]
+sample           = config["SAMPLES"]
 # An alternative approach would be globbing for filenames:
 #sample = glob_wildcards("data/{S}_R1.fastq.gz").S
-reference     = config["MAPPING"]["reference"]
-refbase       = config["MAPPING"]["reference_prefix"]
-genomeBinName = config["GENOMEPROFILES"]["genomeBinName"]
+reference        = config["MAPPING"]["reference"]
+refbase          = config["MAPPING"]["reference_prefix"]
+genomeBinName    = config["GENOMEPROFILES"]["genomeBinName"]
 ABgenomeBinName  = config["ALPHABETA"]["genomeBinName"]
 ABgenomeStepName = config["ALPHABETA"]["genomeStepName"]
+chrName          = config["ALPHABETA"]["chrName"]
 
 #context = ['CpG','CHG','CHH']
 context = ['CpG']
@@ -151,11 +152,12 @@ rule all:
                refbase = refbase,
                context = context),
         # alphabetaPerCytosine
-        expand("coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv",
+        expand("coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv",
                refbase = refbase,
                context = context,
                ABgenomeBinName = ABgenomeBinName,
-               ABgenomeStepName = ABgenomeStepName)
+               ABgenomeStepName = ABgenomeStepName,
+               chrName = chrName)
 
 # Run fastqc on raw data
 rule fastqc_raw:
@@ -559,15 +561,17 @@ rule alphabetaPerCytosine:
          ["_MappedOn_{refbase}_dedup_{context}_methylome.txt"]*len(sample))
         ]
     output:
-        "coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv"
+        "coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv"
     params:
         genomeBinSize = config["ALPHABETA"]["genomeBinSize"],
-        genomeStepSize = config["ALPHABETA"]["genomeStepSize"]
+        genomeStepSize = config["ALPHABETA"]["genomeStepSize"],
+        chrName = config["ALPHABETA"]["chrName"]
     log:
-        "logs/alphabetaPerCytosine/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.log"
+        "logs/alphabetaPerCytosine/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.log"
     shell:
         "(scripts/alphabeta_per_cytosine_MA1_2.R"
         " {refbase}"
         " {wildcards.context}"
         " {params.genomeBinSize}"
-        " {params.genomeStepSize} ) &> {log}"
+        " {params.genomeStepSize}"
+        " {params.chrName} ) &> {log}"
