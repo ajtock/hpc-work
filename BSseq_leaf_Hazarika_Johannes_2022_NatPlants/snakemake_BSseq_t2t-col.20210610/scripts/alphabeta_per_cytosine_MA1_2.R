@@ -11,18 +11,20 @@
 # the top 10% and bottom 10% of bins with regard to methylation divergence
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2.R t2t-col.20210610 CpG 10000 1000
+# ./alphabeta_per_cytosine_MA1_2.R t2t-col.20210610 CpG 10000 1000 Chr1
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
 context <- args[2]
 genomeBinSize <- as.numeric(args[3])
 genomeStepSize <- as.numeric(args[4])
+chrName <- args[5]
 
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
 #genomeBinSize <- 10000
 #genomeStepSize <- 1000
+#chrName <- "Chr1"
 
 options(stringsAsFactors = F)
 options(scipen=999)
@@ -73,11 +75,11 @@ ignoreChrs <- unlist(strsplit(config$GENOMEPROFILES$ignoreChrs,
                               split = " "))
 fai <- fai[!(fai$V1 %in% ignoreChrs),]
 if(!grepl("Chr", fai[,1][1])) {
-  chrs <- paste0("Chr", fai[,1])
+  chrs <- paste0("Chr", fai[,1])[which(paste0("Chr", fai[,1]) %in% chrName)]
 } else {
-  chrs <- fai[,1]
+  chrs <- fai[,1][which(fai[,1] %in% chrName)]
 }
-chrLens <- fai[,2]
+chrLens <- fai[,2][which(fai[,1] %in% chrName)]
 
 # Define paths to methylome TXT files generated with methimpute
 filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
@@ -377,5 +379,5 @@ targetDF_list <- mclapply(1:nrow(binDF), function(i) {
 targetDF <- dplyr::bind_rows(targetDF_list)
 fwrite(targetDF,
        file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
-                     "_MA1_2_MappedOn_", refbase, "_", context, ".tsv"),
+                     "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
        quote = F, sep = "\t", row.names = F, col.names = T)
