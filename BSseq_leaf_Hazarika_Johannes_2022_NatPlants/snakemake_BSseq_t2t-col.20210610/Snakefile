@@ -552,7 +552,7 @@ rule alphabetaPerCytosine:
     """Estimate epimutation rates and spectra with AlphaBeta"""
     resources:
         partition = "icelake", 
-        mem_mb    = 256000,
+        mem_mb    = 47320,
         time      = "12:00:00"
     input:
         ["".join (map (str, x)) for x in zip (
@@ -562,6 +562,7 @@ rule alphabetaPerCytosine:
         ]
     output:
         "coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv"
+    threads: 14
     params:
         genomeBinSize = config["ALPHABETA"]["genomeBinSize"],
         genomeStepSize = config["ALPHABETA"]["genomeStepSize"],
