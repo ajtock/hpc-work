@@ -134,8 +134,8 @@ targetDF_list <- lapply(1:nrow(binDF), function(i) {
 
   # Write filePaths_bin_i
   # NOTE: remove these files after use by buildPedigree() due to large file numbers (> 1M)
-#  mclapply(1:length(methylomesGlobalList), function(x) {
-  lapply(1:length(methylomesGlobalList), function(x) {
+  mclapply(1:length(methylomesGlobalList), function(x) {
+#  lapply(1:length(methylomesGlobalList), function(x) {
 
     methylome_bin_i <- methylomesGlobalList[[x]] %>%
       dplyr::filter(seqnames == bin_i$chr) %>%
@@ -144,8 +144,8 @@ targetDF_list <- lapply(1:nrow(binDF), function(i) {
     fwrite(methylome_bin_i,
            file = filePaths_bin_i[x],
            quote = F, sep = "\t", row.names = F, col.names = T)
-  })
-#  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
+#  })
+  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
 
 
   # Extract node, generation and methylome info from filePaths_bin_i
