@@ -123,9 +123,9 @@ for(i in seq_along(chrs)) {
 }
 
 
-targetDF_list <- lapply(1:nrow(binDF), function(i) {
+targetDF_list <- mclapply(1:nrow(binDF), function(i) {
 
-  print(i)
+#  print(i)
   bin_i <- binDF[i,]
   filePaths_bin_i_trunc <- gsub(pattern = "methylome.txt", replacement = paste0("methylome_", paste0(bin_i, collapse = "_"), ".txt"),
                                 x = gsub(pattern = "coverage/report/methimpute/", replacement = "",
@@ -134,8 +134,8 @@ targetDF_list <- lapply(1:nrow(binDF), function(i) {
 
   # Write filePaths_bin_i
   # NOTE: remove these files after use by buildPedigree() due to large file numbers (> 1M)
-  mclapply(1:length(methylomesGlobalList), function(x) {
-#  lapply(1:length(methylomesGlobalList), function(x) {
+#  mclapply(1:length(methylomesGlobalList), function(x) {
+  lapply(1:length(methylomesGlobalList), function(x) {
 
     methylome_bin_i <- methylomesGlobalList[[x]] %>%
       dplyr::filter(seqnames == bin_i$chr) %>%
@@ -144,8 +144,8 @@ targetDF_list <- lapply(1:nrow(binDF), function(i) {
     fwrite(methylome_bin_i,
            file = filePaths_bin_i[x],
            quote = F, sep = "\t", row.names = F, col.names = T)
-#  })
-  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
+  })
+#  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
 
 
   # Extract node, generation and methylome info from filePaths_bin_i
@@ -374,12 +374,11 @@ targetDF_list <- lapply(1:nrow(binDF), function(i) {
   ##stopifnot(all.equal(ABneutral_BOOTout, ABneutral_BOOToutTest))
   ##rm(ABneutral_BOOToutTest); gc()
 
-})
-#}, mc.cores = detectCores(), mc.preschedule = T)
+}, mc.cores = detectCores()/2, mc.preschedule = T)
 
 
-targetDF <- dplyr::bind_rows(targetDF_list)
-#targetDF <- do.call(rbind, targetDF_list)
+#targetDF <- dplyr::bind_rows(targetDF_list)
+targetDF <- do.call(rbind, targetDF_list)
 fwrite(targetDF,
        file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
                      "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
