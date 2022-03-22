@@ -151,7 +151,7 @@ rule all:
                sample = sample,
                refbase = refbase,
                context = context),
-        # alphabetaPerCytosine
+        # genomeBins
         expand("coverage/report/alphabeta/mD_genomeBins_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv",
                refbase = refbase,
                context = context,
@@ -164,6 +164,7 @@ rule all:
                ABgenomeBinName = ABgenomeBinName,
                ABgenomeStepName = ABgenomeStepName,
                chrName = chrName)
+
 
 # Run fastqc on raw data
 rule fastqc_raw:
