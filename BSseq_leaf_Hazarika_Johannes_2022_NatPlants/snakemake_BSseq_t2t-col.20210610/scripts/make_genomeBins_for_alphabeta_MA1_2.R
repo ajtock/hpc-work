@@ -104,4 +104,4 @@ for(i in seq_along(chrs)) {
 fwrite(binDF,
        file = paste0(outDir, "mD_genomeBins_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
                      "_MA1_2_MappedOn_", refbase, "_", context, ".tsv"),
-       quote = F, sep = "\t", row.names = F, col.names = T)
+       quote = F, sep = "\t", row.names = F, col.names = F)
