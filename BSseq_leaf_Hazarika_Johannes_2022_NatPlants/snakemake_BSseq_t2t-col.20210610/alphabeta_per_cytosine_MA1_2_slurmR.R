@@ -22,8 +22,8 @@ chrName <- args[5]
 
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
-#genomeBinSize <- 2000000
-#genomeStepSize <- 200000
+#genomeBinSize <- 1000000
+#genomeStepSize <- 100000
 #chrName <- "Chr1"
 
 options(stringsAsFactors = F)
@@ -132,18 +132,15 @@ for(i in 1:length(chrs)) {
 
 
 library(doParallel)
-
-cl <- makeSlurmCluster(nrow(binDF))
-
-
-registerDoParallel(cores = )
+cl <- makeSlurmCluster(128)
+registerDoParallel(cores = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
 print(getDoParWorkers())
 
 
-targetDF_list <- mclapply(1:nrow(binDF), function(i) {
+targetDF <- foreach(i=1:nrow(binDF), .combine = rbind) %dopar% {
 
 #  print(i)
   bin_i <- binDF[i,]
@@ -291,6 +288,10 @@ targetDF_list <- mclapply(1:nrow(binDF), function(i) {
                                                                                edgelist = edge_file,
                                                                                cytosine = sub("p", "", context),
                                                                                posteriorMaxFilter = 0.99))))
+  buildPedigree_out <- buildPedigree(nodelist = node_file,
+                                     edgelist = edge_file,
+                                     cytosine = sub("p", "", context),
+                                     posteriorMaxFilter = 0.99)
   system(paste0("rm ", inDirBin, "*", "_", paste0(bin_i, collapse = "_"), ".txt"))
   system(paste0("rm ", node_file, " ", edge_file))
   ## NOTE: remove this file after use by buildPedigree() due to large file numbers (> 100k)
@@ -312,7 +313,7 @@ targetDF_list <- mclapply(1:nrow(binDF), function(i) {
              MA1_2_mean.D,
              MA1_2_min.D,
              MA1_2_max.D)
-
+}
 
   # Plot the pedigree of the MA lines
   
@@ -394,11 +395,11 @@ targetDF_list <- mclapply(1:nrow(binDF), function(i) {
   ##stopifnot(all.equal(ABneutral_BOOTout, ABneutral_BOOToutTest))
   ##rm(ABneutral_BOOToutTest); gc()
 
-}, mc.cores = 16, mc.preschedule = T)
+#}, mc.cores = 16, mc.preschedule = T)
 
 
 #targetDF <- dplyr::bind_rows(targetDF_list)
-targetDF <- do.call(rbind, targetDF_list)
+#targetDF <- do.call(rbind, targetDF_list)
 fwrite(targetDF,
        file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
                      "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),

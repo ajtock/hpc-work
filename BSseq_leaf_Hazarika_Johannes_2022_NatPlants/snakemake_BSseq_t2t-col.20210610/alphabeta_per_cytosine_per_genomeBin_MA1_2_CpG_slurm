@@ -36,9 +36,9 @@
 #! Number of CPUs per task. Default: 1
 #!SBATCH --cpus-per-task=1
 #! Minimum RAM needed per node
-#SBATCH --mem=30G
+#SBATCH --mem=40G
 #! Array task IDs
-#SBATCH --array=1-2
+#SBATCH --array=1-615
 
 #! sbatch directives end here (put any additional directives above this line)
 
