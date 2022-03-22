@@ -151,12 +151,12 @@ rule all:
                sample = sample,
                refbase = refbase,
                context = context),
-        # genomeBins
-        expand("coverage/report/alphabeta/mD_genomeBins_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv",
-               refbase = refbase,
-               context = context,
-               ABgenomeBinName = ABgenomeBinName,
-               ABgenomeStepName = ABgenomeStepName),
+#        # genomeBins
+#        expand("coverage/report/alphabeta/mD_genomeBins_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv",
+#               refbase = refbase,
+#               context = context,
+#               ABgenomeBinName = ABgenomeBinName,
+#               ABgenomeStepName = ABgenomeStepName),
         # alphabetaPerCytosine
         expand("coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv",
                refbase = refbase,
@@ -589,7 +589,8 @@ rule genomeBins:
 rule alphabetaPerCytosine:
     """Estimate epimutation rates and spectra with AlphaBeta"""
     resources:
-        partition = "skylake", 
+        partition = "icelake", 
+        mem_mb    = 256000,
         time      = "12:00:00"
     input:
         ["".join (map (str, x)) for x in zip (
@@ -599,7 +600,7 @@ rule alphabetaPerCytosine:
         ]
     output:
         "coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv"
-    threads: 1
+    threads: 76
     params:
         genomeBinSize = config["ALPHABETA"]["genomeBinSize"],
         genomeStepSize = config["ALPHABETA"]["genomeStepSize"],
@@ -607,7 +608,7 @@ rule alphabetaPerCytosine:
     log:
         "logs/alphabetaPerCytosine/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.log"
     shell:
-        "(scripts/alphabeta_per_cytosine_MA1_2_slurmR.R"
+        "(scripts/alphabeta_per_cytosine_MA1_2_dopar.R"
         " {refbase}"
         " {wildcards.context}"
         " {params.genomeBinSize}"

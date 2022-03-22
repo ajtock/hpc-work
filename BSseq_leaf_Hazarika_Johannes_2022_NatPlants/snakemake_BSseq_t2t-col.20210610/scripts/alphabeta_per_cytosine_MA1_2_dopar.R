@@ -125,7 +125,7 @@ for(i in 1:length(chrs)) {
 
 
 library(doParallel)
-num_cores <- detectCores() - 1  
+num_cores <- detectCores() - 4 
 cl <- makeCluster(num_cores, type="FORK")  
 registerDoParallel(cl)  
 print("Currently registered parallel backend name, version and cores")
