@@ -40,7 +40,7 @@ slurmRDir <- "slurmR/"
 system(paste0("[ -d ", slurmRDir, " ] || mkdir -p ", slurmRDir))
 opts_slurmR$set_tmp_path("./slurmR/")
 opts_slurmR$set_opts(account="HENDERSON-SL3-CPU",
-                     partition="icelake",
+                     partition="skylake",
                      time="12:00:00")
 
 if(floor(log10(genomeBinSize)) + 1 < 4) {
@@ -98,9 +98,10 @@ filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_
 # e.g., >= 4; see https://www.pnas.org/doi/10.1073/pnas.1424254112
 # However, coverage threshold in https://www.nature.com/articles/s41477-021-01086-7
 # seems to be >= 1 (as implemented by default in MethylStar) and with a maximum posterior probability >= 0.99 
-methylomesGlobalList <- mclapply(1:length(filePathsGlobal), function(x) {
+methylomesGlobalList <- lapply(1:length(filePathsGlobal), function(x) {
   fread(filePathsGlobal[x])
-}, mc.cores = length(filePathsGlobal), mc.preschedule = F)
+})
+#}, mc.cores = length(filePathsGlobal), mc.preschedule = F)
 
 # Define genomic windows
 binDF <- data.frame()
@@ -132,15 +133,15 @@ for(i in 1:length(chrs)) {
 
 
 library(doParallel)
-cl <- makeSlurmCluster(128)
-registerDoParallel(cores = cl)
+cl <- makeSlurmCluster(32)
+registerDoParallel(cl = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
 print(getDoParWorkers())
 
 
-targetDF <- foreach(i=1:nrow(binDF), .combine = rbind) %dopar% {
+targetDF <- foreach(i=1:nrow(binDF), .combine = rbind, .maxcombine = 2e5, .inorder = F) %dopar% {
 
 #  print(i)
   bin_i <- binDF[i,]
@@ -152,7 +153,7 @@ targetDF <- foreach(i=1:nrow(binDF), .combine = rbind) %dopar% {
   # Write filePaths_bin_i
   # NOTE: remove these files after use by buildPedigree() due to large file numbers (> 1M)
 #  mclapply(1:length(methylomesGlobalList), function(x) {
-  lapply(1:length(methylomesGlobalList), function(x) {
+  for(x in 1:length(methylomesGlobalList)) {
 
     methylome_bin_i <- methylomesGlobalList[[x]] %>%
       dplyr::filter(seqnames == bin_i$chr) %>%
@@ -161,7 +162,7 @@ targetDF <- foreach(i=1:nrow(binDF), .combine = rbind) %dopar% {
     fwrite(methylome_bin_i,
            file = filePaths_bin_i[x],
            quote = F, sep = "\t", row.names = F, col.names = T)
-  })
+  }
 #  }, mc.cores = length(methylomesGlobalList), mc.preschedule = F)
 
 
@@ -284,10 +285,10 @@ targetDF <- foreach(i=1:nrow(binDF), .combine = rbind) %dopar% {
   # Build the pedigree of the MA lines in the given genomic bin
   #buildPedigree_file <- paste0(outDir, "buildPedigree_MA1_2_MappedOn_", refbase, "_", context, "_",
   #                             paste0(bin_i, collapse = "_"), ".RData")
-  invisible(capture.output(buildPedigree_out <- suppressMessages(buildPedigree(nodelist = node_file,
-                                                                               edgelist = edge_file,
-                                                                               cytosine = sub("p", "", context),
-                                                                               posteriorMaxFilter = 0.99))))
+  #invisible(capture.output(buildPedigree_out <- suppressMessages(buildPedigree(nodelist = node_file,
+  #                                                                             edgelist = edge_file,
+  #                                                                             cytosine = sub("p", "", context),
+  #                                                                             posteriorMaxFilter = 0.99))))
   buildPedigree_out <- buildPedigree(nodelist = node_file,
                                      edgelist = edge_file,
                                      cytosine = sub("p", "", context),
@@ -314,6 +315,15 @@ targetDF <- foreach(i=1:nrow(binDF), .combine = rbind) %dopar% {
              MA1_2_min.D,
              MA1_2_max.D)
 }
+
+#targetDF <- dplyr::bind_rows(targetDF_list)
+#targetDF <- do.call(rbind, targetDF_list)
+fwrite(targetDF,
+       file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+                     "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
+       quote = F, sep = "\t", row.names = F, col.names = T)
+
+stopCluster(cl)
 
   # Plot the pedigree of the MA lines
   
@@ -396,11 +406,3 @@ targetDF <- foreach(i=1:nrow(binDF), .combine = rbind) %dopar% {
   ##rm(ABneutral_BOOToutTest); gc()
 
 #}, mc.cores = 16, mc.preschedule = T)
-
-
-#targetDF <- dplyr::bind_rows(targetDF_list)
-#targetDF <- do.call(rbind, targetDF_list)
-fwrite(targetDF,
-       file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
-                     "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
-       quote = F, sep = "\t", row.names = F, col.names = T)
