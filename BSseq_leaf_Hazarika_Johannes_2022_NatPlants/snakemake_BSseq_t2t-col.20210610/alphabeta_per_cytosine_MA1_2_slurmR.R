@@ -133,13 +133,16 @@ for(i in 1:length(chrs)) {
 
 
 library(doParallel)
-cl <- makeSlurmCluster(32)
+cl <- makeSlurmCluster(32,
+                       account="HENDERSON-SL3-CPU",
+                       partition="skylake",
+                       time="12:00:00")
+
 registerDoParallel(cl = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
 print(getDoParWorkers())
-
 
 targetDF <- foreach(i=1:nrow(binDF), .combine = rbind, .maxcombine = 2e5, .inorder = F) %dopar% {
 
