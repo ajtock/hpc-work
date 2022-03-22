@@ -374,7 +374,7 @@ targetDF_list <- mclapply(1:nrow(binDF), function(i) {
   ##stopifnot(all.equal(ABneutral_BOOTout, ABneutral_BOOToutTest))
   ##rm(ABneutral_BOOToutTest); gc()
 
-}, mc.cores = 24, mc.preschedule = T)
+}, mc.cores = 16, mc.preschedule = T)
 
 
 #targetDF <- dplyr::bind_rows(targetDF_list)
