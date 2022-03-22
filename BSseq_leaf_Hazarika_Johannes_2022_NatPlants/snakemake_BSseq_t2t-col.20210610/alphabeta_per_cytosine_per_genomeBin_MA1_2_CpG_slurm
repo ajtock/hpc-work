@@ -28,17 +28,17 @@
 #! interrupted by node failure or system downtime):
 #SBATCH --no-requeue
 #! Per-array-task-ID log file (NOTE: enclosing directory must exist)
-#SBATCH --output=logs/per_read_tsv2bed_bam_conversion_per_chr_CpG_%A_%a.out
+#SBATCH --output=logs/alphabeta_per_cytosine_per_genomeBin_MA1_2_CpG_%A_%a.out
 #! Per-array-task-ID error file (NOTE: enclosing directory must exist)
-#SBATCH --error=logs/per_read_tsv2bed_bam_conversion_per_chr_CpG_%A_%a.err
+#SBATCH --error=logs/alphabeta_per_cytosine_per_genomeBin_MA1_2_CpG_%A_%a.err
 #! For 6GB per CPU, set "-p skylake"; for 12GB per CPU, set "-p skylake-himem": 
-#SBATCH -p icelake
+#SBATCH -p skylake
 #! Number of CPUs per task. Default: 1
 #!SBATCH --cpus-per-task=1
 #! Minimum RAM needed per node
 #SBATCH --mem=30G
 #! Array task IDs
-#SBATCH --array=2-8
+#SBATCH --array=1-2
 
 #! sbatch directives end here (put any additional directives above this line)
 
@@ -70,32 +70,37 @@ module load rhel7/default-peta4            # REQUIRED - loads the basic environm
 [ -d logs ] || mkdir -p logs
 
 #! Get the relevant line of the TSV parameters file
-PARAMS=$(cat slurm_params/per_read_tsv2bed_bam_conversion_per_chr_CpG_slurm_params.tsv | head -n ${SLURM_ARRAY_TASK_ID} | tail -n 1)                
+PARAMS=$(cat slurm_params/alphabeta_per_cytosine_per_genomeBin_MA1_2_CpG_slurm_params.tsv | head -n ${SLURM_ARRAY_TASK_ID} | tail -n 1)
+ 
 #! Get each parameter
-PREFIX=$(echo $PARAMS | cut -d ' ' -f 1)
-REF_BASE=$(echo $PARAMS | cut -d ' ' -f 2)
-THREADS=$(echo $PARAMS | cut -d ' ' -f 3)
-SORT_MEM=$(echo $PARAMS | cut -d ' ' -f 4)
-CONTEXT=$(echo $PARAMS | cut -d ' ' -f 5)
-CHR=$(echo $PARAMS | cut -d ' ' -f 6)
+REF_BASE="t2t-col.20210610"
+CONTEXT="CpG"
+BINSIZE="2000000"
+STEPSIZE="200000"
+CHR=$(echo $PARAMS | cut -d ' ' -f 1)
+BINSTART=$(echo $PARAMS | cut -d ' ' -f 2)
+BINEND=$(echo $PARAMS | cut -d ' ' -f 3)
 
 #! Output some informative messages
 echo "Slurm array task ID: $SLURM_ARRAY_TASK_ID"
 echo "Number of CPUs used: $SLURM_CPUS_PER_TASK"
 echo "This job is running on:"
 hostname
-echo "prefix: $PREFIX"
 echo "refbase: $REF_BASE"
-echo "threads: $THREADS"
-echo "sortMem: $SORT_MEM"
 echo "context: $CONTEXT"
-echo "chr: $CHR"
+echo "genomeBinSize: $BINSIZE"
+echo "genomeStepSize: $STEPSIZE"
+echo "chrName: $CHR"
+echo "binStart: $BINSTART"
+echo "binEnd: $BINEND"
 
 #! Full path to application executable: 
-application="per_read_tsv2bed_bam_conversion_per_chr.sh"
+application="./alphabeta_per_cytosine_per_genomeBin_MA1_2.R"
+
+echo $(which R)
 
 #! Run options for the application:
-options="$PREFIX $REF_BASE $THREADS $SORT_MEM $CONTEXT $CHR"
+options="$REF_BASE $CONTEXT $BINSIZE $STEPSIZE $CHR $BINSTART $BINEND"
 
 #! Work directory (i.e. where the job will run):
 workdir="$SLURM_SUBMIT_DIR"  # The value of SLURM_SUBMIT_DIR sets workdir to the directory
