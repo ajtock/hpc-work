@@ -67,7 +67,7 @@ else:
 shell.executable("/bin/bash")
 shell.prefix("set -euo pipefail; ")
 
-#ruleorder: fastqc_raw > trim_galore > fastqc_trimmed > bismark > deduplicate_bismark > samtools > bamCoverage > methylation_extractor > bismark2bedGraph > bedGraphToBigWig > coverage2cytosine > covgzToTSV > methimputePerCytosine > alphabetaPerCytosine
+#ruleorder: fastqc_raw > trim_galore > fastqc_trimmed > bismark > deduplicate_bismark > samtools > bamCoverage > methylation_extractor > bismark2bedGraph > bedGraphToBigWig > coverage2cytosine > covgzToTSV > methimputePerCytosine > genomeBins [> alphabetaPerCytosine]
 
 rule all:
     input:
@@ -152,12 +152,18 @@ rule all:
                refbase = refbase,
                context = context),
         # alphabetaPerCytosine
-        expand("coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv",
+        expand("coverage/report/alphabeta/mD_genomeBins_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv",
                refbase = refbase,
                context = context,
                ABgenomeBinName = ABgenomeBinName,
-               ABgenomeStepName = ABgenomeStepName,
-               chrName = chrName)
+               ABgenomeStepName = ABgenomeStepName),
+#        # alphabetaPerCytosine
+#        expand("coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv",
+#               refbase = refbase,
+#               context = context,
+#               ABgenomeBinName = ABgenomeBinName,
+#               ABgenomeStepName = ABgenomeStepName,
+#               chrName = chrName)
 
 # Run fastqc on raw data
 rule fastqc_raw:
@@ -544,15 +550,15 @@ rule methimputePerCytosine:
         " {refbase}"
         " {wildcards.context} ) &> {log}"
 
-# Use R script alphabeta_per_cytosine_MA1_2.R to
-# estimate epimutation rates and spectra with AlphaBeta,
+# Make genomic bins for later estimation
+# of methylation divergence with AlphaBeta,
 # using output TXT files from METHimpute run on Bismark-processed
 # BS-seq data from mutation accumulation (MA) lines
-rule alphabetaPerCytosine:
-    """Estimate epimutation rates and spectra with AlphaBeta"""
+rule genomeBins:
+    """Make genomic bins"""
     resources:
         partition = "icelake", 
-        mem_mb    = 256000,
+        mem_mb    = 3380,
         time      = "12:00:00"
     input:
         ["".join (map (str, x)) for x in zip (
@@ -561,18 +567,49 @@ rule alphabetaPerCytosine:
          ["_MappedOn_{refbase}_dedup_{context}_methylome.txt"]*len(sample))
         ]
     output:
-        "coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv"
-    threads: 76
+        "coverage/report/alphabeta/mD_genomeBins_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.tsv"
+    threads: 1
     params:
         genomeBinSize = config["ALPHABETA"]["genomeBinSize"],
-        genomeStepSize = config["ALPHABETA"]["genomeStepSize"],
-        chrName = config["ALPHABETA"]["chrName"]
+        genomeStepSize = config["ALPHABETA"]["genomeStepSize"]
     log:
-        "logs/alphabetaPerCytosine/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.log"
+        "logs/genomeBins/mD_genomeBins_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{context}.log"
     shell:
-        "(scripts/alphabeta_per_cytosine_MA1_2.R"
+        "(scripts/make_genomeBins_for_alphabeta_MA1_2.R"
         " {refbase}"
         " {wildcards.context}"
         " {params.genomeBinSize}"
-        " {params.genomeStepSize}"
-        " {params.chrName} ) &> {log}"
+        " {params.genomeStepSize} ) &> {log}"
+
+## Use R script alphabeta_per_cytosine_MA1_2.R to
+## estimate epimutation rates and spectra with AlphaBeta,
+## using output TXT files from METHimpute run on Bismark-processed
+## BS-seq data from mutation accumulation (MA) lines
+#rule alphabetaPerCytosine:
+#    """Estimate epimutation rates and spectra with AlphaBeta"""
+#    resources:
+#        partition = "icelake", 
+#        mem_mb    = 256000,
+#        time      = "12:00:00"
+#    input:
+#        ["".join (map (str, x)) for x in zip (
+#         ["coverage/report/methimpute/"]*len(sample),
+#         sample,
+#         ["_MappedOn_{refbase}_dedup_{context}_methylome.txt"]*len(sample))
+#        ]
+#    output:
+#        "coverage/report/alphabeta/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.tsv"
+#    threads: 76
+#    params:
+#        genomeBinSize = config["ALPHABETA"]["genomeBinSize"],
+#        genomeStepSize = config["ALPHABETA"]["genomeStepSize"],
+#        chrName = config["ALPHABETA"]["chrName"]
+#    log:
+#        "logs/alphabetaPerCytosine/mD_at_dt62_genomeBinSize{ABgenomeBinName}_genomeStepSize{ABgenomeStepName}_MA1_2_MappedOn_{refbase}_{chrName}_{context}.log"
+#    shell:
+#        "(scripts/alphabeta_per_cytosine_MA1_2.R"
+#        " {refbase}"
+#        " {wildcards.context}"
+#        " {params.genomeBinSize}"
+#        " {params.genomeStepSize}"
+#        " {params.chrName} ) &> {log}"
