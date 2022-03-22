@@ -71,10 +71,9 @@ if(!grepl("Chr", fai[,1][1])) {
 }
 chrLens <- fai[,2]
 
-# Define paths to methylome TXT files generated with methimpute
-filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
+## Define paths to methylome TXT files generated with methimpute
+#filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
 
-binDF_file <- paste0(outDir, 
 # Define genomic windows
 binDF <- data.frame()
 for(i in seq_along(chrs)) {
