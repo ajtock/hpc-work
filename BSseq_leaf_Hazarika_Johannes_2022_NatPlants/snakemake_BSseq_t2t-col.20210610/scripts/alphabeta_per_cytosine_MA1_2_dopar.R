@@ -126,14 +126,21 @@ for(i in 1:length(chrs)) {
 
 library(doParallel)
 num_cores <- detectCores() - 2
-cl <- makeCluster(num_cores, type = "PSOCK")  
+cl <- makeForkCluster(num_cores)
 registerDoParallel(cl)  
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
 print(getDoParWorkers())
 
-targetDF <- foreach(i=1:nrow(binDF), .combine = rbind, .maxcombine = 2e5, .inorder = F) %dopar% {
+targetDF <- foreach(i = 1:nrow(binDF), .combine = rbind, .maxcombine = 2e5, .inorder = F) %dopar% {
+
+#  options(stringsAsFactors = F)
+#  options(scipen=999)
+#  library(AlphaBeta)
+#  library(dplyr)
+#  library(data.table)
+#  library(parallel)
 
 #  print(i)
   bin_i <- binDF[i,]
