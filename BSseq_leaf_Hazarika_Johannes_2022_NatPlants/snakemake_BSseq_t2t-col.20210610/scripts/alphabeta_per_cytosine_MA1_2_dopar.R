@@ -125,8 +125,8 @@ for(i in 1:length(chrs)) {
 
 
 library(doParallel)
-num_cores <- detectCores() - 4 
-cl <- makeCluster(num_cores, type="PSOCK")  
+num_cores <- detectCores() - 2
+cl <- makeCluster(num_cores, type = "PSOCK")  
 registerDoParallel(cl)  
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())

@@ -64,10 +64,10 @@ GENOMEPROFILES:
 
 ## alphabetaPerCytosine
 ALPHABETA:
-  genomeBinSize: 2000000
-  genomeBinName: "2Mb"
-  genomeStepSize: 200000
-  genomeStepName: "200kb"
+  genomeBinSize: 10000
+  genomeBinName: "10kb"
+  genomeStepSize: 10000
+  genomeStepName: "10kb"
   chrName: ["Chr1"]
 #            "Chr2",
 #            "Chr3",
