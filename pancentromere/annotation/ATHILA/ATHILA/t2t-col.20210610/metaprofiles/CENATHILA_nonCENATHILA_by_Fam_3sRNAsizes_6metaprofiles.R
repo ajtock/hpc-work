@@ -8,7 +8,7 @@
 # around CENATHILA and nonCENATHIA within a given family
 
 # Usage:
-# ./CENATHILA_nonCENATHILA_by_Fam_3sRNAsizes_6metaprofiles.R 'Chr1,Chr2,Chr3,Chr4,Chr5' both 180 2000 2000 2000 2kb 10 10 10bp 10bp '0.02,0.96' 'AGO5_D7_sRNA_Rep1,Input_D7_sRNA_Rep1' 'miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_,miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_' 'AGO5 D7 Rep1,Input D7 Rep1' 'cyan3,grey50,cyan4,grey40,dodgerblue4,black' '21,22,24' ATHILA1 t2t-col.20210610
+# ./CENATHILA_nonCENATHILA_by_Fam_3sRNAsizes_6metaprofiles.R 'Chr1,Chr2,Chr3,Chr4,Chr5' both 180 2000 2000 2000 2kb 10 10 10bp 10bp '0.02,0.96' 'AGO5_D7_sRNA_Rep1,Input_D7_sRNA_Rep1' 'miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_,miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_' 'AGO5 D7 Rep1,Input D7 Rep1' 'deepskyblue3,gold,seagreen3,orange1,mediumpurple4,orange3' '21,22,24' ATHILA1 t2t-col.20210610
 
 #chrName <- unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
 #                           split = ","))
@@ -35,13 +35,13 @@
 ## bottom left
 #legendPos <- as.numeric(unlist(strsplit("0.02,0.40",
 #                                        split = ",")))
-#ChIPNames <- unlist(strsplit("Col_0_sRNA_SRR1042171,ddm1_2_sRNA_SRR1042172,rdr6_15_sRNA_SRR1042173,ddm1_2_rdr6_15_sRNA_SRR1042174",
+#ChIPNames <- unlist(strsplit("AGO5_D7_sRNA_Rep1,Input_D7_sRNA_Rep1",
 #                             split = ","))
-#ChIPNamesDir <- unlist(strsplit("miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_,miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_,miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_,miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_",
+#ChIPNamesDir <- unlist(strsplit("miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_,miRNAseq_seedling_floral_Bradamante_Gutzat_2022_bioRxiv/snakemake_miRNAseq_",
 #                                split = ","))
-#ChIPNamesPlot <- unlist(strsplit("Col-0,ddm1-2,rdr6-15,ddm1-2 rdr6-15",
+#ChIPNamesPlot <- unlist(strsplit("AGO5 D7 Rep1,Input D7 Rep1",
 #                                 split = ","))
-#ChIPColours <- unlist(strsplit("springgreen2,dodgerblue1,darkorange1,navy",
+#ChIPColours <- unlist(strsplit("cyan3,grey50,cyan4,grey40,dodgerblue4,black",
 #                               split = ","))
 #sRNAsize <- unlist(strsplit("21,22,24",
 #                            split = ","))
@@ -117,7 +117,11 @@ print(paste0("CENATHILA families in ", refbase, ":"))
 #[1] "CENATHILA families in t2t-col.20210610:"
 print(sort(unique(CENATHILA_BED$class)))
 #[1] "ATHILA1"  "ATHILA2"  "ATHILA5"  "ATHILA6A" "ATHILA6B"
-ATHILAFam_CENATHILA_rowIndices <- which(CENATHILA_BED$class == ATHILAFam)
+if(ATHILAFam %in% c("ATHILA4")) {
+  ATHILAFam_CENATHILA_rowIndices <- which(CENATHILA_BED$class == ATHILAFam)
+} else {
+  ATHILAFam_CENATHILA_rowIndices <- grep(ATHILAFam, CENATHILA_BED$class)
+}
 
 nonCENATHILA_BED <- read.table(paste0("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/ATHILA/",
                                       refbase, "/",
@@ -130,7 +134,12 @@ print(paste0("nonCENATHILA families in ", refbase, ":"))
 print(sort(unique(nonCENATHILA_BED$class)))
 #[1] "ATHILA0"  "ATHILA1"  "ATHILA2"  "ATHILA3"  "ATHILA4"  "ATHILA4C"
 #[7] "ATHILA5"  "ATHILA6A" "ATHILA6B" "ATHILA7A"
-ATHILAFam_nonCENATHILA_rowIndices <- which(nonCENATHILA_BED$class == ATHILAFam)
+if(ATHILAFam %in% c("ATHILA4")) {
+  ATHILAFam_nonCENATHILA_rowIndices <- which(nonCENATHILA_BED$class == ATHILAFam)
+} else {
+  ATHILAFam_nonCENATHILA_rowIndices <- grep(ATHILAFam, nonCENATHILA_BED$class)
+}
+
 
 if(length(ATHILAFam_CENATHILA_rowIndices) > 0) {
   if(length(chrName) == 5) {
@@ -382,15 +391,25 @@ for(x in seq_along(summaryDFfeature_ChIP)) {
 }
 
 # Define y-axis limits
-ymin_ChIP <- min(c(summaryDFfeature_ChIP[[1]]$CI_lower,
-                   summaryDFfeature_ChIP[[2]]$CI_lower,
-                   summaryDFfeature_ChIP[[3]]$CI_lower,
-                   summaryDFfeature_ChIP[[4]]$CI_lower),
+#ymin_ChIP <- min(c(summaryDFfeature_ChIP[[1]]$CI_lower,
+#                   summaryDFfeature_ChIP[[2]]$CI_lower,
+#                   summaryDFfeature_ChIP[[3]]$CI_lower,
+#                   summaryDFfeature_ChIP[[4]]$CI_lower),
+#                 na.rm = T)
+#ymax_ChIP <- max(c(summaryDFfeature_ChIP[[1]]$CI_upper,
+#                   summaryDFfeature_ChIP[[2]]$CI_upper,
+#                   summaryDFfeature_ChIP[[3]]$CI_upper,
+#                   summaryDFfeature_ChIP[[4]]$CI_upper),
+#                 na.rm = T)
+ymin_ChIP <- min(c(summaryDFfeature_ChIP[[1]]$mean,
+                   summaryDFfeature_ChIP[[2]]$mean,
+                   summaryDFfeature_ChIP[[3]]$mean,
+                   summaryDFfeature_ChIP[[4]]$mean),
                  na.rm = T)
-ymax_ChIP <- max(c(summaryDFfeature_ChIP[[1]]$CI_upper,
-                   summaryDFfeature_ChIP[[2]]$CI_upper,
-                   summaryDFfeature_ChIP[[3]]$CI_upper,
-                   summaryDFfeature_ChIP[[4]]$CI_upper),
+ymax_ChIP <- max(c(summaryDFfeature_ChIP[[1]]$mean,
+                   summaryDFfeature_ChIP[[2]]$mean,
+                   summaryDFfeature_ChIP[[3]]$mean,
+                   summaryDFfeature_ChIP[[4]]$mean),
                  na.rm = T)
 
 # Define legend labels
@@ -413,11 +432,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = ChIPColours) +
 scale_y_continuous(limits = c(ymin_ChIP, ymax_ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
@@ -464,11 +483,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = ChIPColours) +
 scale_y_continuous(limits = c(ymin_ChIP, ymax_ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
@@ -490,6 +509,8 @@ annotation_custom(legendLabs[[1]]) +
 annotation_custom(legendLabs[[2]]) +
 annotation_custom(legendLabs[[3]]) +
 annotation_custom(legendLabs[[4]]) +
+annotation_custom(legendLabs[[5]]) +
+annotation_custom(legendLabs[[6]]) +
 theme_bw() +
 theme(
       axis.ticks = element_line(size = 1.0, colour = "black"),
@@ -519,11 +540,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = ChIPColours) +
 scale_y_continuous(limits = c(ymin_ChIP, ymax_ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
@@ -570,11 +591,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = ChIPColours) +
 scale_y_continuous(limits = c(ymin_ChIP, ymax_ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
@@ -596,6 +617,8 @@ annotation_custom(legendLabs[[1]]) +
 annotation_custom(legendLabs[[2]]) +
 annotation_custom(legendLabs[[3]]) +
 annotation_custom(legendLabs[[4]]) +
+annotation_custom(legendLabs[[5]]) +
+annotation_custom(legendLabs[[6]]) +
 theme_bw() +
 theme(
       axis.ticks = element_line(size = 1.0, colour = "black"),
@@ -658,20 +681,20 @@ log2ChIP_nonCENATHILA_nonCENranLocMats <- mclapply(seq_along(ChIP_nonCENATHILA_n
 # Add column names
 for(x in seq_along(log2ChIP_CENATHILAMats)) {
   colnames(log2ChIP_CENATHILAMats[[x]]) <- c(paste0("u", 1:(upstream/ATHILA_binSize)),
-                                         paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
-                                         paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
+                                             paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
+                                             paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
 
   colnames(log2ChIP_CENATHILA_CENranLocMats[[x]]) <- c(paste0("u", 1:(upstream/ATHILA_binSize)),
-                                                   paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
-                                                   paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
+                                                       paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
+                                                       paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
 
   colnames(log2ChIP_nonCENATHILAMats[[x]]) <- c(paste0("u", 1:(upstream/ATHILA_binSize)),
-                                            paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
-                                            paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
+                                                paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
+                                                paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
 
   colnames(log2ChIP_nonCENATHILA_nonCENranLocMats[[x]]) <- c(paste0("u", 1:(upstream/ATHILA_binSize)),
-                                                         paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
-                                                         paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
+                                                             paste0("t", ((upstream/ATHILA_binSize)+1):((upstream+ATHILA_bodyLength)/ATHILA_binSize)),
+                                                             paste0("d", (((upstream+ATHILA_bodyLength)/ATHILA_binSize)+1):(((upstream+ATHILA_bodyLength)/ATHILA_binSize)+(downstream/ATHILA_binSize))))
 }
 
 # Create list of lists in which each element in the enclosing list corresponds to a library
@@ -784,15 +807,25 @@ for(x in seq_along(summaryDFfeature_log2ChIP)) {
 }
 
 # Define y-axis limits
-ymin_log2ChIP <- min(c(summaryDFfeature_log2ChIP[[1]]$CI_lower,
-                   summaryDFfeature_log2ChIP[[2]]$CI_lower,
-                   summaryDFfeature_log2ChIP[[3]]$CI_lower,
-                   summaryDFfeature_log2ChIP[[4]]$CI_lower),
+#ymin_log2ChIP <- min(c(summaryDFfeature_log2ChIP[[1]]$CI_lower,
+#                       summaryDFfeature_log2ChIP[[2]]$CI_lower,
+#                       summaryDFfeature_log2ChIP[[3]]$CI_lower,
+#                       summaryDFfeature_log2ChIP[[4]]$CI_lower),
+#                 na.rm = T)
+#ymax_log2ChIP <- max(c(summaryDFfeature_log2ChIP[[1]]$CI_upper,
+#                       summaryDFfeature_log2ChIP[[2]]$CI_upper,
+#                       summaryDFfeature_log2ChIP[[3]]$CI_upper,
+#                       summaryDFfeature_log2ChIP[[4]]$CI_upper),
+#                 na.rm = T)
+ymin_log2ChIP <- min(c(summaryDFfeature_log2ChIP[[1]]$mean,
+                       summaryDFfeature_log2ChIP[[2]]$mean,
+                       summaryDFfeature_log2ChIP[[3]]$mean,
+                       summaryDFfeature_log2ChIP[[4]]$mean),
                  na.rm = T)
-ymax_log2ChIP <- max(c(summaryDFfeature_log2ChIP[[1]]$CI_upper,
-                   summaryDFfeature_log2ChIP[[2]]$CI_upper,
-                   summaryDFfeature_log2ChIP[[3]]$CI_upper,
-                   summaryDFfeature_log2ChIP[[4]]$CI_upper),
+ymax_log2ChIP <- max(c(summaryDFfeature_log2ChIP[[1]]$mean,
+                       summaryDFfeature_log2ChIP[[2]]$mean,
+                       summaryDFfeature_log2ChIP[[3]]$mean,
+                       summaryDFfeature_log2ChIP[[4]]$mean),
                  na.rm = T)
 
 # Define legend labels
@@ -815,11 +848,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = log2ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = log2ChIPColours) +
 scale_y_continuous(limits = c(ymin_log2ChIP, ymax_log2ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
@@ -866,11 +899,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = log2ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = log2ChIPColours) +
 scale_y_continuous(limits = c(ymin_log2ChIP, ymax_log2ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
@@ -921,11 +954,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = log2ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = log2ChIPColours) +
 scale_y_continuous(limits = c(ymin_log2ChIP, ymax_log2ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
@@ -972,11 +1005,11 @@ geom_line(data = summaryDFfeature,
           mapping = aes(colour = libName),
           size = 1) +
 scale_colour_manual(values = log2ChIPColours) +
-geom_ribbon(data = summaryDFfeature,
-            mapping = aes(ymin = CI_lower,
-                          ymax = CI_upper,
-                          fill = libName),
-            alpha = 0.4) +
+#geom_ribbon(data = summaryDFfeature,
+#            mapping = aes(ymin = CI_lower,
+#                          ymax = CI_upper,
+#                          fill = libName),
+#            alpha = 0.4) +
 scale_fill_manual(values = log2ChIPColours) +
 scale_y_continuous(limits = c(ymin_log2ChIP, ymax_log2ChIP),
                    labels = function(x) sprintf("%6.3f", x)) +
