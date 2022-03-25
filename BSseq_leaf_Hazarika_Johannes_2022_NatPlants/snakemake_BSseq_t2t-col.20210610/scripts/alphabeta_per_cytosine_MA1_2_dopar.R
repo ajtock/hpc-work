@@ -11,7 +11,7 @@
 # the top 10% and bottom 10% of bins with regard to methylation divergence
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 1000 Chr1
+# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
@@ -348,95 +348,10 @@ targetDF <- foreach(i = icount(nrow_binDF), .combine = 'rbind', .maxcombine = nr
 }
 dopar_loop <- proc.time()-start
 stopCluster(cl)
+print(dopar_loop)
 
 
-#targetDF <- dplyr::bind_rows(targetDF_list)
-#targetDF <- do.call(rbind, targetDF_list)
 fwrite(targetDF,
        file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
                      "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
        quote = F, sep = "\t", row.names = F, col.names = T)
-
-
-
-  # Plot the pedigree of the MA lines
-  
-  # plotPedigree doesn't work with sampling.design set to "progenitor.endpoint":
-  #plotPedigree(nodelist = node_file,
-  #             edgelist = edge_file,
-  #             sampling.design = "progenitor.endpoint",
-  #             output.dir = plotDir,
-  #             plot.width = 5, plot.height = 5, aspect.ratio = 1,
-  #             vertex.size = 6, vertex.label = FALSE,
-  #             out.pdf = paste0("pedigree_output_MA1_2_MappedOn_", refbase, "_", context, "_",
-  #                              paste0(bin_i, collapse = "_")))
-
-
-  ## Plot divergence time (delta.t) versus methylation divergence (D.value)
-  ## Interactive plot for inspecting the divergence data and removing outlier samples (if any)
-  #
-  #pedigree <- buildPedigree_out$Pdata
-  #dt <- pedigree[, 2] + pedigree[, 3] - 2 * pedigree[, 1]
-  ##dt_max <- max(dt, na.rm = T)
-  #
-  #pdf(paste0(plotDir, "divergence_time_vs_methylation_divergence_MA1_2_MappedOn_", refbase, "_", context, "_",
-  #           paste0(bin_i, collapse = "_"), ".pdf"))
-  #plot(x = dt,
-  #     y = pedigree[, "D.value"],
-  #     ylab = paste0(gsub("p", "", context), " methyation divergence"),
-  #     xlab = expression(paste(Delta, italic("t"), " (generations)", sep = "")))
-  #dev.off()
-
-
-  # Epimutation rate estimation in selfing systems
-  
-  # "Models ABneutral, ABselectMM, ABselectUU and ABnull can be used to estimate
-  # the rate of spontaneous epimutations in selfing-derived MA lines.
-  # The models are currently restricted to diploids."
-  
-  # Run model with no selection (ABneutral)
-  # "ABneutral fits a neutral epimutation model. The model assumes that epimutation
-  # accumulation is under no selective constraint. Returned are estimates of the
-  # methylation gain and loss rates and the proportion of epi-heterozygote loci
-  # in the pedigree founder genome."
-  
-  # "NOTE: it is recommended to use at least 50 Nstarts to achieve best solutions"
-  
-  #ABneutral_file <- paste0("ABneutral_MA1_2_MappedOn_", refbase, "_", context, "_",
-  #                         paste0(bin_i, collapse = "_"))
-  #ABneutral_out <- ABneutral(pedigree.data = buildPedigree_out$Pdata,
-  #                           p0uu = buildPedigree_out$tmpp0, eqp = buildPedigree_out$tmpp0, eqp.weight = 1,
-  #                           Nstarts = 50, out.dir = outDir,
-  #                           out.name = ABneutral_file)
-  ### NOTE: not an actual .RData file but a list that can be loaded with dget
-  ##ABneutral_file_full <- paste0(outDir, ABneutral_file, ".Rdata")
-  ##ABneutral_outTest <- dget(ABneutral_file_full)
-  ##stopifnot(all.equal(ABneutral_out, ABneutral_outTest))
-  ##rm(ABneutral_outTest); gc()
-  #head(ABneutral_out$pedigree)
-  
-  ## Plot estimates of ABneutral model
-  ## "In 'ABplot' function you can set parameters to customize the pdf output."
-  #ABplot(pedigree.names = paste0(outDir, ABneutral_file, ".Rdata"),
-  #       output.dir = plotDir,
-  #       out.name = ABneutral_file,
-  #       plot.height = 8, plot.width = 11)
-  #system(paste0("rm ", outDir, ABneutral_file, ".Rdata"))
-  
-  
-  # Boostrap analysis
-  
-  # "NOTE: it is recommended to use at least 50 Nboot to achieve best solutions" 
-  
-  #ABneutral_BOOTfile <- paste0("ABneutral_BOOT_MA1_2_MappedOn_", refbase, "_", context, "_",
-  #                             paste0(bin_i, collapse = "_"))
-  #ABneutral_BOOTout <- BOOTmodel(pedigree.data = paste0(outDir, ABneutral_file, ".Rdata"),
-  #                               Nboot = 50,
-  #                               out.dir = outDir,
-  #                               out.name = ABneutral_BOOTfile)
-  #print(summary(ABneutral_BOOTout))
-  ##ABneutral_BOOToutTest <- dget(paste0(outDir, ABneutral_BOOTfile, ".Rdata"))
-  ##stopifnot(all.equal(ABneutral_BOOTout, ABneutral_BOOToutTest))
-  ##rm(ABneutral_BOOToutTest); gc()
-
-#}, mc.cores = 16, mc.preschedule = T)
