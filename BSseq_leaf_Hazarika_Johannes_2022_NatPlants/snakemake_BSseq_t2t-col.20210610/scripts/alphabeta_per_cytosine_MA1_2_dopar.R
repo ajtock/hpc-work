@@ -127,7 +127,7 @@ for(i in 1:length(chrs)) {
 
 nrow_binDF <- nrow(binDF)
 
-num_cores <- 48 - 2
+num_cores <- 32
 
 #binDF <- binDF[1:(num_cores*2),]
 #nrow_binDF <- nrow(binDF)
@@ -350,6 +350,8 @@ dopar_loop <- proc.time()-start
 stopCluster(cl)
 print(dopar_loop)
 
+targetDF <- targetDF[ with(targetDF,
+                           order(chr, start, end)), ]
 
 fwrite(targetDF,
        file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
