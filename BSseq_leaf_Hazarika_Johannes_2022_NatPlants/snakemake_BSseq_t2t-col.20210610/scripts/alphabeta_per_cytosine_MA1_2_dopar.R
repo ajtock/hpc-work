@@ -11,7 +11,7 @@
 # the top 10% and bottom 10% of bins with regard to methylation divergence
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1 48
+# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
@@ -19,24 +19,27 @@ context <- args[2]
 genomeBinSize <- as.numeric(args[3])
 genomeStepSize <- as.numeric(args[4])
 chrName <- args[5]
-cores <- as.numeric(args[6]) - 4
+#cores <- as.numeric(args[6]) - 4
 
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
-#genomeBinSize <- 10000
-#genomeStepSize <- 10000
+#genomeBinSize <- 1000000
+#genomeStepSize <- 100000
 #chrName <- "Chr1"
-#cores <- as.numeric(48) - 4
+##cores <- as.numeric(48) - 4
 
 options(stringsAsFactors = F)
 options(scipen=999)
 library(AlphaBeta)
 library(dplyr)
 library(data.table)
-library(parallel)
-library(doParallel)
+#library(parallel)
+#library(doParallel)
 #library(doFuture)
-library(iterators)
+#library(snow)
+#library(Rmpi)
+library(doMPI)
+#library(iterators)
 library(yaml)
 config <- read_yaml("config.yaml")
 
@@ -365,11 +368,11 @@ bin_mD <- function(i, bins) {
 }
 
 
-registerDoParallel(cores = cores)
-print("Currently registered parallel backend name, version and cores")
-print(getDoParName())
-print(getDoParVersion())
-print(getDoParWorkers())
+#registerDoParallel(cores = cores)
+#print("Currently registered parallel backend name, version and cores")
+#print(getDoParName())
+#print(getDoParVersion())
+#print(getDoParWorkers())
 
 
 #cl <- makeCluster(cores, type = "FORK", outfile = "./info_dopar.log")
@@ -383,9 +386,9 @@ print(getDoParWorkers())
 
 
 #registerDoFuture()
-###cl <- parallel::makeCluster(cores, type = "FORK", outfile = "./info_dopar.log")
-###plan(cluster, workers = cl)
-#plan(multicore)
+#cl <- parallel::makeCluster(cores, type = "FORK", outfile = "./info_dopar.log")
+#plan(cluster, workers = cl)
+##plan(multicore)
 #print("Currently registered parallel backend name, version and cores")
 #print(getDoParName())
 #print(getDoParVersion())
@@ -394,17 +397,33 @@ print(getDoParWorkers())
 ###plan(future.batchtools::batchtools_slurm)
 
 
+# Create and register an MPI cluster
+cl <- startMPIcluster()
+registerDoMPI(cl)
+#library(doFuture)
+#registerDoFuture()
+#cl <- makeCluster(cores, type = "MPI")
+#plan(cluster, workers = cl)
+#stopCluster(cl)
+print("Currently registered parallel backend name, version and cores")
+print(getDoParName())
+print(getDoParVersion())
+print(getDoParWorkers())
+
+
+# Define chunkSize so that each cluster worker gets a single "task chunk"
+chunkSize <- ceiling(nrow_binDF / getDoParWorkers())
+mpiopts <- list(chunkSize=chunkSize)
+
 start <- proc.time()
 
-targetDF <- foreach(i = icount(nrow_binDF),
+targetDF <- foreach(i = icount(nrow_binDF), .options.mpi=mpiopts,
                     .combine = "rbind", .maxcombine = nrow_binDF+1e1,
                     .inorder = F, .errorhandling = "pass") %dopar% {
   bin_mD(i = i, bins = binDF)
 }
 
 dopar_loop <- proc.time()-start
-
-#stopCluster(cl)
 
 print(dopar_loop)
 
@@ -415,3 +434,8 @@ write.table(targetDF,
             file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
                           "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
             quote = F, sep = "\t", row.names = F, col.names = T)
+
+# Shutdown the cluster and quit
+closeCluster(cl)
+#stopCluster(cl)
+mpi.quit()
