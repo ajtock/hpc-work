@@ -29,9 +29,9 @@
 #! interrupted by node failure or system downtime):
 #SBATCH --no-requeue
 #! log file (NOTE: enclosing directory must exist)
-#SBATCH --output=logs/alphabeta_per_cytosine_per_genomeBin_MA1_2_CpG_Chr2.out
+#SBATCH --output=logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2.out
 #! error file (NOTE: enclosing directory must exist)
-#SBATCH --error=logs/alphabeta_per_cytosine_per_genomeBin_MA1_2_CpG_Chr2.err
+#SBATCH --error=logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2.err
 
 #! sbatch directives end here (put any additional directives above this line)
 
