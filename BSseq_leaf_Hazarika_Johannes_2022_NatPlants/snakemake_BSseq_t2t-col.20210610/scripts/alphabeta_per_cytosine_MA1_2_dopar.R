@@ -427,23 +427,40 @@ mpiopts <- list(chunkSize=chunkSize)
 
 start <- proc.time()
 
-targetDF <- foreach(i = icount(nrow_binDF), .options.mpi=mpiopts,
-                    .combine = "rbind", .maxcombine = nrow_binDF+1e1,
+#targetDF <- foreach(i = icount(nrow_binDF), .options.mpi=mpiopts,
+##                    .combine = "rbind", .maxcombine = nrow_binDF+1e1,
+#                    .inorder = F, .errorhandling = "pass") %dopar% {
+#  bin_mD(i = i, bins = binDF)
+#}
+
+targetDF <- foreach(i = icount(nrow_binDF),
                     .inorder = F, .errorhandling = "pass") %dopar% {
-  bin_mD_test(i = i, bins = binDF)
+  bin_mD(i = i, bins = binDF)
 }
 
 dopar_loop <- proc.time()-start
 
 print(dopar_loop)
 
-targetDF <- targetDF[ with(targetDF,
-                           order(chr, start, end)), ]
 
-write.table(targetDF,
-            file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
-                          "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
-            quote = F, sep = "\t", row.names = F, col.names = T)
+capture.output(targetDF,
+               file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+                             "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.txt"))
+
+#lapply(targetDF,
+#       write,
+#       paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#              "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.tsv"),
+#       append = T,
+#       ncolumns = 1000)
+
+#targetDF <- targetDF[ with(targetDF,
+#                           order(chr, start, end)), ]
+#
+#write.table(targetDF,
+#            file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#                          "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
+#            quote = F, sep = "\t", row.names = F, col.names = T)
 
 # Shutdown the cluster and quit
 closeCluster(cl)
