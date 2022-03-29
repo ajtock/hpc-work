@@ -367,6 +367,16 @@ bin_mD <- function(i, bins) {
 
 }
 
+bin_mD_test <- function(i, bins) {
+
+  bin_i <- binDF[i,]
+
+  data.frame(bin_i,
+             MA1_2_mean.D = NA,
+             MA1_2_min.D = NA,
+             MA1_2_max.D = NA)
+
+}
 
 #registerDoParallel(cores = cores)
 #print("Currently registered parallel backend name, version and cores")
@@ -420,7 +430,7 @@ start <- proc.time()
 targetDF <- foreach(i = icount(nrow_binDF), .options.mpi=mpiopts,
                     .combine = "rbind", .maxcombine = nrow_binDF+1e1,
                     .inorder = F, .errorhandling = "pass") %dopar% {
-  bin_mD(i = i, bins = binDF)
+  bin_mD_test(i = i, bins = binDF)
 }
 
 dopar_loop <- proc.time()-start
