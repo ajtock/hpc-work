@@ -13,7 +13,7 @@
 #SBATCH -J AB_MA1_2_CpG_Chr2
 #! Which project should be charged:
 #SBATCH -A HENDERSON-SL3-CPU
-#SBATCH -p icelake-himem
+#SBATCH -p icelake
 #! How many whole nodes should be allocated?
 #SBATCH --nodes=6
 #! How many (MPI) tasks will there be in total? (<= nodes*76)
@@ -122,8 +122,8 @@ export I_MPI_PIN_ORDER=scatter # Adjacent domains have minimal sharing of caches
 #CMD="$application $options"
 
 #! Choose this for a MPI code (possibly using OpenMP) using OpenMPI:
-#CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
-CMD="mpirun -np 1 $application $options"
+CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
+#CMD="mpirun -np 1 $application $options"
 
 
 ###############################################################
