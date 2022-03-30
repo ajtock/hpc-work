@@ -47,9 +47,9 @@ config <- read_yaml("config.yaml")
 #cl <- startMPIcluster()
 #registerDoMPI(cl)
 registerDoFuture()
-plan(multicore)
-#cl <- makeCluster(cores, type = "MPI")
-#plan(cluster, workers = cl)
+#plan(multicore)
+cl <- makeCluster(1, type = "MPI")
+plan(cluster, workers = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
@@ -155,7 +155,7 @@ bin_mD <- function(bins) {
 
   bin_i <- bins
 
-  methylomesGlobal_1 <- fread(filePathsGlobal[1])
+  methylomesGlobal_1 <- read.table(filePathsGlobal[1], header = T)
 
   methylome1_bin_i <- methylomesGlobal_1 %>%
     dplyr::filter(seqnames == bin_i$chr) %>%
@@ -178,7 +178,7 @@ bin_mD <- function(bins) {
     # NOTE: remove these files after use by buildPedigree() due to large file numbers (> 1M)
     for(x in 1:length(filePathsGlobal)) {
 
-      methylomesGlobal_x <- fread(filePathsGlobal[x])
+      methylomesGlobal_x <- read.table(filePathsGlobal[x], header = T)
 
       methylome_bin_i <- methylomesGlobal_x %>%
         dplyr::filter(seqnames == bin_i$chr) %>%
@@ -473,7 +473,7 @@ capture.output(targetDF,
 
 # Shutdown the cluster and quit
 #closeCluster(cl)
-stopCluster(cl)
+#stopCluster(cl)
 #mpi.quit()
 
 print("warnings 2")
