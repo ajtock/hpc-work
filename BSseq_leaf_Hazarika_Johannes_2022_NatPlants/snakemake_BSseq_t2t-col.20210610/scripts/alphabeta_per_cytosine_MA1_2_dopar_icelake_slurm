@@ -13,7 +13,7 @@
 #SBATCH -J AB_MA1_2_CpG_Chr2
 #! Which project should be charged:
 #SBATCH -A HENDERSON-SL3-CPU
-#SBATCH -p icelake
+#SBATCH -p icelake-himem
 #! How many whole nodes should be allocated?
 #SBATCH --nodes=5
 #! How many (MPI) tasks will there be in total? (<= nodes*76)
@@ -68,7 +68,7 @@ CONTEXT=$(echo $PARAMS | cut -d ' ' -f 2)
 BINSIZE=$(echo $PARAMS | cut -d ' ' -f 3)
 STEPSIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 CHR=$(echo $PARAMS | cut -d ' ' -f 5)
-CORES=$(( $numtasks - 1 )) 
+CORES=$(( $numtasks - 20 )) 
 
 #! Activate conda environment
 source ~/.bashrc

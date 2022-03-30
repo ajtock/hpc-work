@@ -29,7 +29,7 @@ cores <- as.numeric(args[6])
 #cores <- 379
 
 options(stringsAsFactors = F)
-options(scipen=999)
+options(scipen = 999)
 library(AlphaBeta, quietly = T)
 suppressMessages(library(dplyr, quietly = T))
 suppressMessages(library(data.table, quietly = T))
@@ -147,9 +147,12 @@ nrow_binDF <- nrow(binDF)
 
 
 # Define function to get binned methylation divergence values
-bin_mD <- function(i, bins) {
+bin_mD <- function(bins) {
 
-  bin_i <- binDF[i,]
+  options(stringsAsFactors = F)
+  options(scipen = 999)
+
+  bin_i <- bins
 
   methylomesGlobal_1 <- fread(filePathsGlobal[1])
 
@@ -379,7 +382,7 @@ bin_mD <- function(i, bins) {
 
 bin_mD_test <- function(i, bins) {
 
-  bin_i <- binDF[i,]
+  bin_i <- bins[i,]
 
   data.frame(bin_i,
              MA1_2_mean.D = NA,
@@ -419,7 +422,8 @@ bin_mD_test <- function(i, bins) {
 
 # Define chunkSize so that each cluster worker gets a single "task chunk"
 chunkSize <- ceiling(nrow_binDF / getDoParWorkers())
-mpiopts <- list(chunkSize=chunkSize)
+#initWorkers <- function() options(scipen = 999, stringsAsFactors = F)
+mpiopts <- list(chunkSize = chunkSize)
 
 start <- proc.time()
 
@@ -429,15 +433,14 @@ start <- proc.time()
 #  bin_mD(i = i, bins = binDF)
 #}
 
-targetDF <- foreach(i = icount(nrow_binDF),
-                    .options.mpi = mpiopts,
+targetDF <- foreach(i = iter(binDF, by = "row"),
                     .maxcombine = nrow_binDF+1e1,
                     .multicombine = T,
                     .inorder = F,
                     .errorhandling = "pass",
                     .packages = c("AlphaBeta", "data.table", "dplyr")
                    ) %dopar% {
-  bin_mD(i = i, bins = binDF)
+  bin_mD(bins = binDF)
 }
 
 dopar_loop <- proc.time()-start
