@@ -78,7 +78,7 @@ echo $(which R)
 echo "Number of nodes used: $numnodes"
 echo "Number of tasks: $numtasks"
 echo "Number of tasks per node: $mpi_tasks_per_node" 
-echo "Number of CPUs used: $SLURM_CPUS_PER_TASK"
+#echo "Number of CPUs used: $SLURM_CPUS_PER_TASK"
 echo "This job is running on:"
 hostname
 
