@@ -68,7 +68,7 @@ CONTEXT=$(echo $PARAMS | cut -d ' ' -f 2)
 BINSIZE=$(echo $PARAMS | cut -d ' ' -f 3)
 STEPSIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 CHR=$(echo $PARAMS | cut -d ' ' -f 5)
-CORES=$(( $numtasks - 20 )) 
+CORES=$(( $numtasks - 1 )) 
 
 #! Activate conda environment
 source ~/.bashrc
