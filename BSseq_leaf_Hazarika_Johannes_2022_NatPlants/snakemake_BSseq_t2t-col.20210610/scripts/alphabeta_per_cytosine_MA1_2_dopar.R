@@ -11,7 +11,7 @@
 # the top 10% and bottom 10% of bins with regard to methylation divergence
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1
+# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1 379
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
@@ -19,14 +19,14 @@ context <- args[2]
 genomeBinSize <- as.numeric(args[3])
 genomeStepSize <- as.numeric(args[4])
 chrName <- args[5]
-#cores <- as.numeric(args[6]) - 4
+cores <- as.numeric(args[6])
 
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
 #genomeBinSize <- 1000000
 #genomeStepSize <- 100000
 #chrName <- "Chr1"
-##cores <- as.numeric(48) - 4
+#cores <- 379
 
 options(stringsAsFactors = F)
 options(scipen=999)
@@ -409,7 +409,7 @@ bin_mD_test <- function(i, bins) {
 #cl <- startMPIcluster()
 #registerDoMPI(cl)
 registerDoFuture()
-cl <- makeCluster(type = "MPI")
+cl <- makeCluster(cores, type = "MPI")
 plan(cluster, workers = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())

@@ -68,6 +68,7 @@ CONTEXT=$(echo $PARAMS | cut -d ' ' -f 2)
 BINSIZE=$(echo $PARAMS | cut -d ' ' -f 3)
 STEPSIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 CHR=$(echo $PARAMS | cut -d ' ' -f 5)
+CORES=$(( $numtasks - 1 )) 
 
 #! Activate conda environment
 source ~/.bashrc
@@ -87,7 +88,7 @@ hostname
 application="./alphabeta_per_cytosine_MA1_2_dopar.R"
 
 #! Run options for the application:
-options="$REFBASE $CONTEXT $BINSIZE $STEPSIZE $CHR"
+options="$REFBASE $CONTEXT $BINSIZE $STEPSIZE $CHR $CORES"
 
 #! Work directory (i.e. where the job will run):
 workdir="$SLURM_SUBMIT_DIR"  # The value of SLURM_SUBMIT_DIR sets workdir to the directory
