@@ -44,12 +44,12 @@ library(yaml, quietly = T)
 config <- read_yaml("config.yaml")
 
 # Create and register an MPI cluster
-#cl <- startMPIcluster()
-#registerDoMPI(cl)
-registerDoFuture()
+cl <- startMPIcluster(count = 1)
+registerDoMPI(cl)
+#registerDoFuture()
 #plan(multicore)
-cl <- makeCluster(1, type = "MPI")
-plan(cluster, workers = cl)
+#cl <- makeCluster(1, type = "MPI")
+#plan(cluster, workers = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
@@ -472,9 +472,9 @@ capture.output(targetDF,
 #            quote = F, sep = "\t", row.names = F, col.names = T)
 
 # Shutdown the cluster and quit
-#closeCluster(cl)
+closeCluster(cl)
 #stopCluster(cl)
-#mpi.quit()
+mpi.quit()
 
 print("warnings 2")
 print(warnings())
