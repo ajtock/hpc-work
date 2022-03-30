@@ -68,7 +68,7 @@ CONTEXT=$(echo $PARAMS | cut -d ' ' -f 2)
 BINSIZE=$(echo $PARAMS | cut -d ' ' -f 3)
 STEPSIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 CHR=$(echo $PARAMS | cut -d ' ' -f 5)
-CORES=$(( $numtasks - 1 )) 
+CORES=$(( $numtasks - 20 )) 
 
 #! Activate conda environment
 source ~/.bashrc
@@ -122,7 +122,8 @@ export I_MPI_PIN_ORDER=scatter # Adjacent domains have minimal sharing of caches
 #CMD="$application $options"
 
 #! Choose this for a MPI code (possibly using OpenMP) using OpenMPI:
-CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
+#CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
+CMD="mpirun -np 1 $application $options"
 
 
 ###############################################################

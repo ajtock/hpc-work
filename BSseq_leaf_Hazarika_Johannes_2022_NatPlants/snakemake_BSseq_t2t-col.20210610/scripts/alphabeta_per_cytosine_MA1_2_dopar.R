@@ -28,17 +28,29 @@ cores <- as.numeric(args[6])
 #chrName <- "Chr1"
 #cores <- 379
 
-options(stringsAsFactors = F)
-options(scipen=999)
-library(AlphaBeta, quietly = T)
-suppressMessages(library(dplyr, quietly = T))
-suppressMessages(library(data.table, quietly = T))
 #library(parallel, quietly = T)
 #library(doParallel, quietly = T)
 suppressMessages(library(snow, quietly = T))
 library(doFuture, quietly = T)
 library(Rmpi, quietly = T)
 suppressMessages(library(doMPI, quietly = T))
+
+# Create and register an MPI cluster
+cl <- startMPIcluster()
+registerDoMPI(cl)
+#registerDoFuture()
+#cl <- makeCluster(cores, type = "MPI")
+#plan(cluster, workers = cl)
+print("Currently registered parallel backend name, version and cores")
+print(getDoParName())
+print(getDoParVersion())
+print(getDoParWorkers())
+
+options(stringsAsFactors = F)
+options(scipen=999)
+library(AlphaBeta, quietly = T)
+suppressMessages(library(dplyr, quietly = T))
+suppressMessages(library(data.table, quietly = T))
 library(iterators, quietly = T)
 library(yaml, quietly = T)
 config <- read_yaml("config.yaml")
@@ -405,18 +417,6 @@ bin_mD_test <- function(i, bins) {
 ###plan(future.batchtools::batchtools_slurm)
 
 
-# Create and register an MPI cluster
-#cl <- startMPIcluster()
-#registerDoMPI(cl)
-registerDoFuture()
-cl <- makeCluster(cores, type = "MPI")
-plan(cluster, workers = cl)
-print("Currently registered parallel backend name, version and cores")
-print(getDoParName())
-print(getDoParVersion())
-print(getDoParWorkers())
-
-
 # Define chunkSize so that each cluster worker gets a single "task chunk"
 chunkSize <- ceiling(nrow_binDF / getDoParWorkers())
 mpiopts <- list(chunkSize=chunkSize)
@@ -463,6 +463,6 @@ capture.output(targetDF,
 #            quote = F, sep = "\t", row.names = F, col.names = T)
 
 # Shutdown the cluster and quit
-#closeCluster(cl)
-stopCluster(cl)
-#mpi.quit()
+closeCluster(cl)
+#stopCluster(cl)
+mpi.quit()
