@@ -434,7 +434,9 @@ targetDF <- foreach(i = icount(nrow_binDF),
                     .maxcombine = nrow_binDF+1e1,
                     .multicombine = T,
                     .inorder = F,
-                    .errorhandling = "pass") %dopar% {
+                    .errorhandling = "pass",
+                    .packages = c("AlphaBeta", "data.table", "dplyr")
+                   ) %dopar% {
   bin_mD(i = i, bins = binDF)
 }
 
