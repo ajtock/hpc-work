@@ -434,14 +434,17 @@ start <- proc.time()
 #}
 
 targetDF <- foreach(i = iter(binDF, by = "row"),
-                    .maxcombine = nrow_binDF+1e1,
-                    .multicombine = T,
+#                    .maxcombine = nrow_binDF+1e1,
+#                    .multicombine = T,
                     .inorder = F,
                     .errorhandling = "pass",
                     .packages = c("AlphaBeta", "data.table", "dplyr")
                    ) %dopar% {
   bin_mD(bins = i)
 }
+
+print("warnings 1")
+print(warnings())
 
 dopar_loop <- proc.time()-start
 
@@ -471,3 +474,6 @@ capture.output(targetDF,
 #closeCluster(cl)
 stopCluster(cl)
 #mpi.quit()
+
+print("warnings 2")
+print(warnings())
