@@ -30,17 +30,17 @@ chrName <- args[5]
 
 options(stringsAsFactors = F)
 options(scipen=999)
-library(AlphaBeta)
-library(dplyr)
-library(data.table)
-#library(parallel)
-#library(doParallel)
-#library(doFuture)
-#library(snow)
-#library(Rmpi)
-library(doMPI)
-#library(iterators)
-library(yaml)
+library(AlphaBeta, quietly = T)
+library(dplyr, quietly = T)
+library(data.table, quietly = T)
+#library(parallel, quietly = T)
+#library(doParallel, quietly = T)
+#library(doFuture, quietly = T)
+#library(snow, quietly = T)
+#library(Rmpi, quietly = T)
+library(doMPI, quietly = T)
+library(iterators, quietly = T)
+library(yaml, quietly = T)
 config <- read_yaml("config.yaml")
 
 if(floor(log10(genomeBinSize)) + 1 < 4) {
@@ -320,8 +320,6 @@ bin_mD <- function(i, bins) {
     #                                   edgelist = edge_file,
     #                                   cytosine = sub("p", "", context),
     #                                   posteriorMaxFilter = 0.99)
-#    system(paste0("rm ", inDirBin, "*", "_", paste0(bin_i, collapse = "_"), ".txt"))
-#    system(paste0("rm ", node_file, " ", edge_file))
 
     unlink(paste0(inDirBin, "*_", paste0(bin_i, collapse = "_"), ".txt"))
     unlink(node_file)
@@ -427,14 +425,18 @@ mpiopts <- list(chunkSize=chunkSize)
 
 start <- proc.time()
 
-#targetDF <- foreach(i = icount(nrow_binDF), .options.mpi=mpiopts,
+#targetDF <- foreach(i = icount(nrow_binDF), .options.mpi = mpiopts,
 ##                    .combine = "rbind", .maxcombine = nrow_binDF+1e1,
 #                    .inorder = F, .errorhandling = "pass") %dopar% {
 #  bin_mD(i = i, bins = binDF)
 #}
 
 targetDF <- foreach(i = icount(nrow_binDF),
-                    .inorder = F, .errorhandling = "pass") %dopar% {
+                    .options.mpi = mpiopts,
+                    .maxcombine = nrow_binDF+1e1,
+                    .multicombine = T,
+                    .inorder = F,
+                    .errorhandling = "pass") %dopar% {
   bin_mD(i = i, bins = binDF)
 }
 
