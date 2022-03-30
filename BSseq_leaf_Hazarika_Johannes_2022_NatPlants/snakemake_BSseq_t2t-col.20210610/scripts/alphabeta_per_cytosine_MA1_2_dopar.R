@@ -440,7 +440,7 @@ targetDF <- foreach(i = iter(binDF, by = "row"),
                     .errorhandling = "pass",
                     .packages = c("AlphaBeta", "data.table", "dplyr")
                    ) %dopar% {
-  bin_mD(bins = binDF)
+  bin_mD(bins = i)
 }
 
 dopar_loop <- proc.time()-start
@@ -469,5 +469,5 @@ capture.output(targetDF,
 
 # Shutdown the cluster and quit
 #closeCluster(cl)
-#stopCluster(cl)
+stopCluster(cl)
 #mpi.quit()
