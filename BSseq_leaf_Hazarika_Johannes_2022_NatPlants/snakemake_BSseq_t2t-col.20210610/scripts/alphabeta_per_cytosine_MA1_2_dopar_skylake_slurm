@@ -19,8 +19,9 @@
 #! How many (MPI) tasks will there be in total? (<= nodes*32)
 #! The skylake/skylake-himem nodes have 32 CPUs (cores) each and
 #! 5980 MB/12030 MB of memory per CPU.
-#SBATCH --ntasks=448
+#SBATCH --ntasks=224
 #SBATCH --ntasks-per-node=32
+#SBATCH --cpus-per-task=2
 #! How much wallclock time will be required?
 #SBATCH --time=12:00:00
 #! What types of email messages do you wish to receive?
@@ -70,7 +71,7 @@ CONTEXT=$(echo $PARAMS | cut -d ' ' -f 2)
 BINSIZE=$(echo $PARAMS | cut -d ' ' -f 3)
 STEPSIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 CHR=$(echo $PARAMS | cut -d ' ' -f 5)
-CORES=$(( $numtasks - $numnodes )) 
+CORES=$(( $numtasks - 1 )) 
 
 #! Activate conda environment
 source ~/.bashrc
