@@ -44,11 +44,12 @@ library(yaml, quietly = T)
 config <- read_yaml("config.yaml")
 
 # Create and register an MPI cluster
-cl <- startMPIcluster(count = 1)
+cl <- startMPIcluster()
 registerDoMPI(cl)
 #registerDoFuture()
 #plan(multicore)
-#cl <- makeCluster(1, type = "MPI")
+#cl <- snow::makeCluster(cores, type = "MPI", outfile = "./alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
+#cl <- parallel::makeCluster(cores, type = "FORK", outfile = "./info_dopar.log")
 #plan(cluster, workers = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
@@ -392,15 +393,10 @@ bin_mD_test <- function(i, bins) {
 
 }
 
+
 #registerDoParallel(cores = cores)
-#print("Currently registered parallel backend name, version and cores")
-#print(getDoParName())
-#print(getDoParVersion())
-#print(getDoParWorkers())
-
-
-#cl <- makeCluster(cores, type = "FORK", outfile = "./info_dopar.log")
-#registerDoParallel(cl)
+##cl <- makeCluster(cores, type = "FORK", outfile = "./info_dopar.log")
+##registerDoParallel(cl)
 #print("Currently registered parallel backend name, version and cores")
 #print(getDoParName())
 #print(getDoParVersion())
@@ -435,8 +431,8 @@ start <- proc.time()
 #}
 
 targetDF <- foreach(i = iter(binDF, by = "row"),
-#                    .maxcombine = nrow_binDF+1e1,
-#                    .multicombine = T,
+                    .maxcombine = nrow_binDF+1e1,
+                    .multicombine = T,
                     .inorder = F,
                     .errorhandling = "pass",
                     .packages = c("AlphaBeta", "data.table", "dplyr")
@@ -471,10 +467,13 @@ capture.output(targetDF,
 #                          "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
 #            quote = F, sep = "\t", row.names = F, col.names = T)
 
+print("warnings 2")
+print(warnings())
+
 # Shutdown the cluster and quit
 closeCluster(cl)
 #stopCluster(cl)
 mpi.quit()
 
-print("warnings 2")
+print("warnings 3")
 print(warnings())
