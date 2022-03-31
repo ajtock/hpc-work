@@ -472,7 +472,7 @@ print(warnings())
 
 # Shutdown the cluster and quit
 #closeCluster(cl)
-stopCluster(cl)
+#stopCluster(cl)
 #mpi.quit()
 
 print("warnings 3")
