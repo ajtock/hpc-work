@@ -21,7 +21,8 @@
 #! 5980 MB/12030 MB of memory per CPU.
 #SBATCH --ntasks=448
 #SBATCH --ntasks-per-node=32
-#SBATCH --cpus-per-task=1
+#! SBATCH --cpus-per-task=1
+#! SBATCH --mem=191360
 #! How much wallclock time will be required?
 #SBATCH --time=12:00:00
 #! What types of email messages do you wish to receive?
