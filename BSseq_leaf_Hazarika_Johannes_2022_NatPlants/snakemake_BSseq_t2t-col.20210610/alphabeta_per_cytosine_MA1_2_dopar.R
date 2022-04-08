@@ -43,19 +43,15 @@ library(iterators, quietly = T)
 library(yaml, quietly = T)
 config <- read_yaml("config.yaml")
 
-# Change rc.meth.lvl to avoid nested parallelism, which may be causing
-# "socketConnection()" errors that lead to no data for some genomic bins
-body(rc.meth.lvl)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = NULL))
-
 # Create and register an MPI cluster
-#cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = T)
-#registerDoMPI(cl)
-registerDoFuture()
+cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = T)
+registerDoMPI(cl)
+#registerDoFuture()
 ##plan(multicore)
 #cl <- snow::makeMPIcluster(count = mpi.comm.size(0) - 1, outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
-cl <- snow::makeCluster(cores, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
+#cl <- snow::makeCluster(cores, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
 ##cl <- parallel::makeCluster(cores, type = "FORK", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_parallel_fork.log")
-plan(cluster, workers = cl)
+#plan(cluster, workers = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
@@ -442,7 +438,16 @@ targetDF <- foreach(i = iter(binDF, by = "row"),
                     .errorhandling = "pass",
                     .packages = c("AlphaBeta", "data.table", "dplyr")
                    ) %dopar% {
+
+  # Change rc.meth.lvl to avoid nested parallelism, which may be causing
+  # "socketConnection()" errors that lead to no data for some genomic bins
+  body(rc.meth.lvl)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = SerialParam(log = T)))
+  print(rc.meth.lvl)
+
+  # Run bin_mD in parallel
   bin_mD(bins = i)
+  print(rc.meth.lvl)
+
 }
 
 print("warnings 1")
