@@ -43,6 +43,14 @@ library(iterators, quietly = T)
 library(yaml, quietly = T)
 config <- read_yaml("config.yaml")
 
+# Change rc.meth.lvl and buildPedigree to avoid nested parallelism, which may be causing
+# "socketConnection()" errors that lead to no data for some genomic bins
+rc.meth.lvl.nopar <- rc.meth.lvl
+buildPedigree.nopar <- buildPedigree
+#body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = SerialParam(log = T)))
+body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun))
+body(buildPedigree.nopar)[[5]] <- substitute(rclvl <- rc.meth.lvl.nopar(nodelist, cytosine, posteriorMaxFilter))
+
 # Create and register an MPI cluster
 cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = T)
 registerDoMPI(cl)
@@ -177,7 +185,7 @@ bin_mD <- function(bins) {
     rm(filePaths_bin_i_trunc); invisible(gc())
 
     # Write filePaths_bin_i
-    # NOTE: remove these files after use by buildPedigree() due to large file numbers (> 1M)
+    # NOTE: remove these files after use by buildPedigree.nopar() due to large file numbers (> 1M)
     for(x in 1:length(filePathsGlobal)) {
 
       methylomesGlobal_x <- read.table(filePathsGlobal[x], header = T)
@@ -254,7 +262,7 @@ bin_mD <- function(bins) {
 
     node_file <- paste0(outDir, "nodelist_MA1_2_MappedOn_", refbase, "_", context, "_",
                         paste0(bin_i, collapse = "_"), ".fn")
-    # NOTE: remove this file after use by buildPedigree() due to large file numbers (> 100k)
+    # NOTE: remove this file after use by buildPedigree.nopar() due to large file numbers (> 100k)
     write.table(node_df,
                 file = node_file,
                 quote = F, sep = ",", row.names = F, col.names = T)
@@ -322,7 +330,7 @@ bin_mD <- function(bins) {
 
     edge_file <- paste0(outDir, "edgelist_MA1_2_MappedOn_", refbase, "_", context, "_",
                         paste0(bin_i, collapse = "_"), ".fn")
-    # NOTE: remove this file after use by buildPedigree() due to large file numbers (> 100k)
+    # NOTE: remove this file after use by buildPedigree.nopar() due to large file numbers (> 100k)
     write.table(edge_df,
                 file = edge_file,
                 quote = F, sep = "\t", row.names = F, col.names = T)
@@ -330,14 +338,14 @@ bin_mD <- function(bins) {
     rm(edge_df); invisible(gc())
 
     ## Build the pedigree of the MA lines in the given genomic bin
-    invisible(capture.output(buildPedigree_out <- suppressMessages(buildPedigree(nodelist = node_file,
-                                                                                 edgelist = edge_file,
-                                                                                 cytosine = sub("p", "", context),
-                                                                                 posteriorMaxFilter = 0.99))))
-    #buildPedigree_out <- buildPedigree(nodelist = node_file,
-    #                                   edgelist = edge_file,
-    #                                   cytosine = sub("p", "", context),
-    #                                   posteriorMaxFilter = 0.99)
+    invisible(capture.output(buildPedigree_out <- suppressMessages(buildPedigree.nopar(nodelist = node_file,
+                                                                                       edgelist = edge_file,
+                                                                                       cytosine = sub("p", "", context),
+                                                                                       posteriorMaxFilter = 0.99))))
+    #buildPedigree_out <- buildPedigree.nopar(nodelist = node_file,
+    #                                         edgelist = edge_file,
+    #                                         cytosine = sub("p", "", context),
+    #                                         posteriorMaxFilter = 0.99)
 
     unlink(paste0(inDirBin, "*_", paste0(bin_i, collapse = "_"), ".txt"))
     unlink(node_file)
@@ -431,25 +439,17 @@ start <- proc.time()
 #  bin_mD(i = i, bins = binDF)
 #}
 
-# Change rc.meth.lvl to avoid nested parallelism, which may be causing
-# "socketConnection()" errors that lead to no data for some genomic bins
-body(rc.meth.lvl)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = SerialParam(log = T)))
-
 targetDF <- foreach(i = iter(binDF, by = "row"),
                     .maxcombine = nrow_binDF+1e1,
                     .multicombine = T,
                     .inorder = F,
                     .errorhandling = "pass",
                     .packages = c("AlphaBeta", "data.table", "dplyr"),
-                    .export = c("rc.meth.lvl")
+                    .export = c("rc.meth.lvl.nopar", "buildPedigree.nopar")
                    ) %dopar% {
-
-  print(rc.meth.lvl)
 
   # Run bin_mD in parallel
   bin_mD(bins = i)
-
-  print(rc.meth.lvl)
 
 }
 
