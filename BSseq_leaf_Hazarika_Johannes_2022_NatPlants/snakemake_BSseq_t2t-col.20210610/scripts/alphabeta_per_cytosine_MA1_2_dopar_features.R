@@ -4,27 +4,25 @@
 # using output TXT files from METHimpute run on Bismark-processed
 # BS-seq data from mutation accumulation (MA) lines
 
-# Target outputs are genomic binned methylation divergence values,
-# to enable analysis of relationships with binned among-read variation in
-# ONT DeepSignal-derived DNA methylation (Fleiss' kappa), and
-# definition of epimutation hotspots and coldspots corresponding to
-# the top 10% and bottom 10% of bins with regard to methylation divergence
+# Target outputs are per-feature methylation divergence values,
+# to enable analysis of relationships with per-feature among-read variation in
+# ONT DeepSignal-derived DNA methylation (Fleiss' kappa)
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1 379
+# ./alphabeta_per_cytosine_MA1_2_dopar_features.R t2t-col.20210610 CpG gene bodies Chr1 379
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
 context <- args[2]
-genomeBinSize <- as.numeric(args[3])
-genomeStepSize <- as.numeric(args[4])
+featName <- args[3]
+featRegion <- args[4]
 chrName <- args[5]
 cores <- as.numeric(args[6])
 
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
-#genomeBinSize <- 1000000
-#genomeStepSize <- 100000
+#featName <- "gene"
+#featRegion <- "bodies"
 #chrName <- "Chr1"
 #cores <- 379
 
@@ -47,8 +45,8 @@ config <- read_yaml("config.yaml")
 # "socketConnection()" errors that lead to no data for some genomic bins
 rc.meth.lvl.nopar <- rc.meth.lvl
 buildPedigree.nopar <- buildPedigree
-body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = MulticoreParam(workers = 8, log = T)))
-#body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun))
+#body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = SerialParam(log = T)))
+body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun))
 body(buildPedigree.nopar)[[5]] <- substitute(rclvl <- rc.meth.lvl.nopar(nodelist, cytosine, posteriorMaxFilter))
 
 # Create and register an MPI cluster
@@ -66,37 +64,11 @@ print(getDoParVersion())
 print(getDoParWorkers())
 
 
-if(floor(log10(genomeBinSize)) + 1 < 4) {
-  genomeBinName <- paste0(genomeBinSize, "bp")
-  genomeBinNamePlot <- paste0(genomeBinSize, "-bp")
-} else if(floor(log10(genomeBinSize)) + 1 >= 4 &
-          floor(log10(genomeBinSize)) + 1 <= 6) {
-  genomeBinName <- paste0(genomeBinSize/1e3, "kb")
-  genomeBinNamePlot <- paste0(genomeBinSize/1e3, "-kb")
-} else if(floor(log10(genomeBinSize)) + 1 >= 7) {
-  genomeBinName <- paste0(genomeBinSize/1e6, "Mb")
-  genomeBinNamePlot <- paste0(genomeBinSize/1e6, "-Mb")
-}
-
-if(floor(log10(genomeStepSize)) + 1 < 4) {
-  genomeStepName <- paste0(genomeStepSize, "bp")
-  genomeStepNamePlot <- paste0(genomeStepSize, "-bp")
-} else if(floor(log10(genomeStepSize)) + 1 >= 4 &
-          floor(log10(genomeStepSize)) + 1 <= 6) {
-  genomeStepName <- paste0(genomeStepSize/1e3, "kb")
-  genomeStepNamePlot <- paste0(genomeStepSize/1e3, "-kb")
-} else if(floor(log10(genomeStepSize)) + 1 >= 7) {
-  genomeStepName <- paste0(genomeStepSize/1e6, "Mb")
-  genomeStepNamePlot <- paste0(genomeStepSize/1e6, "-Mb")
-}
-
 inDir <- paste0("coverage/report/methimpute/")
-inDirBin <- paste0(inDir, "genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName, "/")
-outDir <- paste0("coverage/report/alphabeta/")
-plotDir <- paste0(outDir, "plots/")
+inDirBin <- paste0(inDir, featName, "_", featRegion, "/")
+outDir <- paste0("coverage/report/alphabeta/", featName, "_", featRegion, "/")
 system(paste0("[ -d ", inDirBin, " ] || mkdir -p ", inDirBin))
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
-system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
 # Genomic definitions
 fai <- read.table(paste0("data/index/", refbase, ".fa.fai"), header = F)
@@ -111,6 +83,98 @@ if(!grepl("Chr", fai[,1][1])) {
   chrs <- fai[,1][which(fai[,1] %in% chrName)]
 }
 chrLens <- fai[,2][which(fai[,1] %in% chrName)]
+
+# Read in feature annotation
+if(featName == "CEN180") {
+  feat <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase,
+                            "/annotation/CEN180/CEN180_in_", refbase,
+                            "_", paste0(chrName, collapse = "_"), ".bed"),
+                     header = F)
+  colnames(feat) <- c("chr", "start0based", "end", "name", "score", "strand",
+                      "HORlengthsSum", "HORcount", "percentageIdentity")
+  featGR <- GRanges(seqnames = feat$chr,
+                    ranges = IRanges(start = feat$start0based+1,
+                                     end = feat$end),
+                    strand = feat$strand,
+                    name = feat$name,
+                    score = feat$HORlengthsSum)
+} else if(featName == "gene") {
+  feat <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase,
+                            "/annotation/genes/", refbase, "_representative_mRNA",
+                            "_", paste0(chrName, collapse = "_"), ".bed"),
+                     header = F)
+  colnames(feat) <- c("chr", "start0based", "end", "name", "score", "strand")
+  featGR <- GRanges(seqnames = feat$chr,
+                    ranges = IRanges(start = feat$start0based+1,
+                                     end = feat$end),
+                    strand = feat$strand,
+                    name = feat$name,
+                    score = feat$score)
+} else if(featName == "GYPSY") {
+  feat <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase,
+                            "/annotation/TEs_EDTA/", refbase, "_TEs_Gypsy_LTR",
+                            "_", paste0(chrName, collapse = "_"), ".bed"),
+                     header = F)
+  colnames(feat) <- c("chr", "start0based", "end", "name", "score", "strand")
+  featGR <- GRanges(seqnames = feat$chr,
+                    ranges = IRanges(start = feat$start0based+1,
+                                     end = feat$end),
+                    strand = feat$strand,
+                    name = feat$name,
+                    score = feat$score)
+} else {
+  stop(print("featName not one of CEN180, gene or GYPSY"))
+}
+
+# Load coordinates for mitochondrial insertion on Chr2, in BED format
+mito_ins <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase, "/annotation/", refbase , ".mitochondrial_insertion.bed"),
+                       header = F)
+colnames(mito_ins) <- c("chr", "start", "end", "name", "score", "strand")
+mito_ins <- mito_ins[ mito_ins$chr %in% "Chr2",]
+mito_ins <- mito_ins[ with(mito_ins, order(chr, start, end)) , ]
+mito_ins_GR <- GRanges(seqnames = "Chr2",
+                       ranges = IRanges(start = min(mito_ins$start)+1,
+                                        end = max(mito_ins$end)),
+                       strand = "*")
+
+featextGR <- GRanges(seqnames = seqnames(featGR),
+                     ranges = IRanges(start = start(featGR)-1000,
+                                      end = end(featGR)+1000),
+                     strand = strand(featGR),
+                     name = featGR$name,
+                     score = featGR$score)
+
+# Mask out featGR within mitochondrial insertion on Chr2
+fOverlaps_feat_mito_ins <- findOverlaps(query = featextGR,
+                                        subject = mito_ins_GR,
+                                        type = "any",
+                                        select = "all",
+                                        ignore.strand = T)
+if(length(fOverlaps_feat_mito_ins) > 0) {
+  featGR <- featGR[-unique(queryHits(fOverlaps_feat_mito_ins))]
+}
+
+# Get ranges corresponding to featRegion
+if(featRegion == "bodies") {
+  featGR <- featGR
+} else if(featRegion == "promoters") {
+  # Obtain 1000 bp upstream of start coordinates
+  featGR <- promoters(featGR, upstream = 1000, downstream = 0)
+} else if(featRegion == "terminators") {
+  # Obtain 1000 bp downstream of end coordinates
+  source("/projects/meiosis/ajt200/Rfunctions/TTSplus.R")
+  featGR <- TTSplus(featGR, upstream = -1, downstream = 1000)
+} else if(featRegion == "regions") {
+  featGR <- GRanges(seqnames = seqnames(featGR),
+                    ranges = IRanges(start = start(featGR)-1000,
+                                     end = end(featGR)+1000),
+                    strand = strand(featGR),
+                    name = featGR$name,
+                    score = featGR$score)
+} else {
+  stop("featRegion is none of bodies, promoters, terminators or regions")
+}
+
 
 # Define paths to methylome TXT files generated with methimpute
 filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
@@ -444,8 +508,8 @@ targetDF <- foreach(i = iter(binDF, by = "row"),
                     .multicombine = T,
                     .inorder = F,
                     .errorhandling = "pass",
-                    .packages = c("AlphaBeta", "data.table", "dplyr")
-#                    .export = c("rc.meth.lvl.nopar", "buildPedigree.nopar")
+                    .packages = c("AlphaBeta", "data.table", "dplyr"),
+                    .export = c("rc.meth.lvl.nopar", "buildPedigree.nopar")
                    ) %dopar% {
 
   # Run bin_mD in parallel
@@ -484,9 +548,9 @@ print("warnings 2")
 print(warnings())
 
 # Shutdown the cluster and quit
-closeCluster(cl)
+#closeCluster(cl)
 #stopCluster(cl)
-mpi.quit()
+#mpi.quit()
 
 print("warnings 3")
 print(warnings())
