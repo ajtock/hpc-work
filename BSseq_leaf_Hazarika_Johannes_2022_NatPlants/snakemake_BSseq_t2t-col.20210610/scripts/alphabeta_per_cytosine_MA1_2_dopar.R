@@ -47,8 +47,8 @@ config <- read_yaml("config.yaml")
 # "socketConnection()" errors that lead to no data for some genomic bins
 rc.meth.lvl.nopar <- rc.meth.lvl
 buildPedigree.nopar <- buildPedigree
-body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = MulticoreParam(workers = 8, log = T)))
-#body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun))
+#body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = SerialParam(workers = 4, log = T)))
+body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun))
 body(buildPedigree.nopar)[[5]] <- substitute(rclvl <- rc.meth.lvl.nopar(nodelist, cytosine, posteriorMaxFilter))
 
 # Create and register an MPI cluster
@@ -453,40 +453,34 @@ targetDF <- foreach(i = iter(binDF, by = "row"),
 
 }
 
-print("warnings 1")
-print(warnings())
-
 dopar_loop <- proc.time()-start
 
 print(dopar_loop)
 
+targetDF <- targetDF[ with(targetDF,
+                           order(chr, start, end)), ]
 
-capture.output(targetDF,
-               file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
-                             "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.txt"))
-
-#lapply(targetDF,
-#       write,
-#       paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
-#              "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.tsv"),
-#       append = T,
-#       ncolumns = 1000)
-
-#targetDF <- targetDF[ with(targetDF,
-#                           order(chr, start, end)), ]
-#
-#write.table(targetDF,
-#            file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
-#                          "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
-#            quote = F, sep = "\t", row.names = F, col.names = T)
-
-print("warnings 2")
-print(warnings())
+write.table(targetDF,
+            file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+                          "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
+            quote = F, sep = "\t", row.names = F, col.names = T)
 
 # Shutdown the cluster and quit
 closeCluster(cl)
 #stopCluster(cl)
 mpi.quit()
 
-print("warnings 3")
+print("warnings 1")
 print(warnings())
+
+
+#capture.output(targetDF,
+#               file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#                             "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.txt"))
+#
+#lapply(targetDF,
+#       write,
+#       paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#              "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.tsv"),
+#       append = T,
+#       ncolumns = 1000)
