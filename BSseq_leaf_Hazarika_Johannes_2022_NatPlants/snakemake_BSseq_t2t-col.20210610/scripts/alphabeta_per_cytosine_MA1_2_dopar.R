@@ -440,6 +440,7 @@ start <- proc.time()
 #}
 
 targetDF <- foreach(i = iter(binDF, by = "row"),
+                    .options.mpi = mpiopts,
                     .combine = "rbind",
                     .multicombine = T,
                     .maxcombine = nrow_binDF+1e1,
