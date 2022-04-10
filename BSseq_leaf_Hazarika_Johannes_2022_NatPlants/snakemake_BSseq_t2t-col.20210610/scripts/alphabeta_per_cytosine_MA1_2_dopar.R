@@ -440,8 +440,9 @@ start <- proc.time()
 #}
 
 targetDF <- foreach(i = iter(binDF, by = "row"),
-                    .maxcombine = nrow_binDF+1e1,
+                    .combine = "rbind",
                     .multicombine = T,
+                    .maxcombine = nrow_binDF+1e1,
                     .inorder = F,
                     .errorhandling = "pass",
                     .packages = c("AlphaBeta", "data.table", "dplyr")
