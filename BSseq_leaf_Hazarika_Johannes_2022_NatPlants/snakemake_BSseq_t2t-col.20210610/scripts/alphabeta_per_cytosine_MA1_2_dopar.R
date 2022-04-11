@@ -52,14 +52,14 @@ body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, 
 body(buildPedigree.nopar)[[5]] <- substitute(rclvl <- rc.meth.lvl.nopar(nodelist, cytosine, posteriorMaxFilter))
 
 # Create and register an MPI cluster
-cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = T)
+cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = F)
 registerDoMPI(cl)
 #registerDoFuture()
-##plan(multicore)
-#cl <- snow::makeMPIcluster(count = mpi.comm.size(0) - 1, outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
-#cl <- snow::makeCluster(cores, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
-##cl <- parallel::makeCluster(cores, type = "FORK", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_parallel_fork.log")
+#cl <- snow::makeCluster(mpi.universe.size() - 1, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
 #plan(cluster, workers = cl)
+##cl <- snow::makeMPIcluster(count = mpi.comm.size(0) - 1, outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
+##cl <- parallel::makeCluster(cores, type = "FORK", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_parallel_fork.log")
+##plan(multicore)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
@@ -427,6 +427,9 @@ bin_mD_test <- function(i, bins) {
 
 
 # Define chunkSize so that each cluster worker gets a single "task chunk"
+# (i.e. one task chunk covering multiple loop iterations (rows of binDF)),
+# which is faster than if each cluster worker gets multiple task chunks
+# (i.e., one task chunk per loop iteration (row of binDF))
 chunkSize <- ceiling(nrow_binDF / getDoParWorkers())
 #initWorkers <- function() options(scipen = 999, stringsAsFactors = F)
 mpiopts <- list(chunkSize = chunkSize)
@@ -467,12 +470,15 @@ write.table(targetDF,
                           "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
             quote = F, sep = "\t", row.names = F, col.names = T)
 
+print("warnings 1")
+print(warnings())
+
 # Shutdown the cluster and quit
-closeCluster(cl)
-#stopCluster(cl)
+#stopCluster(cl) # use if cl made with makeCluster()
+closeCluster(cl) # use if cl made with startMPIcluster()
 mpi.quit()
 
-print("warnings 1")
+print("warnings 2")
 print(warnings())
 
 
