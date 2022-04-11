@@ -52,7 +52,8 @@ body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, 
 body(buildPedigree.nopar)[[5]] <- substitute(rclvl <- rc.meth.lvl.nopar(nodelist, cytosine, posteriorMaxFilter))
 
 # Create and register an MPI cluster
-cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = F)
+#cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = F)
+cl <- startMPIcluster(verbose = F, bcast = T)
 registerDoMPI(cl)
 #registerDoFuture()
 #cl <- snow::makeCluster(mpi.universe.size() - 1, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
