@@ -10,7 +10,7 @@
 
 #! sbatch directives begin here ###############################
 #! Name of the job:
-#SBATCH -J AB_MA1_2_CpG_Chr2
+#SBATCH -J AB_MA1_2_CpG
 #! Which project should be charged:
 #SBATCH -A HENDERSON-SL3-CPU
 #SBATCH -p skylake
@@ -31,10 +31,12 @@
 #! Uncomment this to prevent the job from being requeued (e.g. if
 #! interrupted by node failure or system downtime):
 #SBATCH --no-requeue
-#! log file (NOTE: enclosing directory must exist)
-#SBATCH --output=logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2.out
-#! error file (NOTE: enclosing directory must exist)
-#SBATCH --error=logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2.err
+#! Per-array-task-ID log file (NOTE: enclosing directory must exist)
+#SBATCH --output=logs/alphabeta_per_cytosine_MA1_2_CpG_%A_%a.out
+#! Per-array-task-ID error file (NOTE: enclosing directory must exist)
+#SBATCH --error=logs/alphabeta_per_cytosine_MA1_2_CpG_%A_%a.err
+#! Array task IDs
+#SBATCH --array=1-5
 
 #! sbatch directives end here (put any additional directives above this line)
 
@@ -64,7 +66,7 @@ module load rhel7/default-peta4            # REQUIRED - loads the basic environm
 
 #! Insert additional module load commands after this line if needed:
 
-PARAMS=$(cat slurm_params/alphabeta_per_cytosine_MA1_2_dopar_slurm_params.tsv | head -n 1 | tail -n 1)
+PARAMS=$(cat slurm_params/alphabeta_per_cytosine_MA1_2_dopar_slurm_params.tsv | head -n ${SLURM_ARRAY_TASK_ID} | tail -n 1)
 
 #! Get each parameter
 REFBASE=$(echo $PARAMS | cut -d ' ' -f 1)
@@ -80,6 +82,7 @@ conda activate R-4.1.2
 echo $(which R)
 
 #! Output some informative messages
+echo "Slurm array task ID: $SLURM_ARRAY_TASK_ID"
 echo "Number of nodes used: $numnodes"
 echo "Number of tasks: $numtasks"
 echo "Number of tasks per node: $mpi_tasks_per_node" 
