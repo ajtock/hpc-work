@@ -126,10 +126,10 @@ export I_MPI_PIN_ORDER=scatter # Adjacent domains have minimal sharing of caches
 #CMD="$application $options"
 
 #! Choose this for a MPI code (possibly using OpenMP) using OpenMPI:
-#CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
-##CMD="mpirun -np $np $application $options"
-CMD="mpirun -np 1 $application $options"
-
+#! Use if R cluster object cl is made by startMPIcluster() (i.e., with doMPI package - faster than doFuture) 
+CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
+#! Use if R cluster object cl is made by snow::makeCluster() (i.e., with doFuture package)
+#CMD="mpirun -np 1 $application $options"
 
 ###############################################################
 ### You should not have to change anything below this line ####

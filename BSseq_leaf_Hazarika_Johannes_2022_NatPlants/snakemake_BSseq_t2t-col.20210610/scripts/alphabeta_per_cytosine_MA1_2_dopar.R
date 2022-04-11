@@ -11,7 +11,7 @@
 # the top 10% and bottom 10% of bins with regard to methylation divergence
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1 379
+# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1 447
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
@@ -26,7 +26,7 @@ cores <- as.numeric(args[6])
 #genomeBinSize <- 1000000
 #genomeStepSize <- 100000
 #chrName <- "Chr1"
-#cores <- 379
+#cores <- 447
 
 options(stringsAsFactors = F)
 options(scipen = 999)
@@ -474,8 +474,8 @@ print("warnings 1")
 print(warnings())
 
 # Shutdown the cluster and quit
-#stopCluster(cl) # use if cl made with makeCluster()
-closeCluster(cl) # use if cl made with startMPIcluster()
+#stopCluster(cl) # use if cl made with makeCluster() (i.e., using doFuture package)
+closeCluster(cl) # use if cl made with startMPIcluster() (i.e., using doMPI package - faster than doFuture)
 mpi.quit()
 
 print("warnings 2")
