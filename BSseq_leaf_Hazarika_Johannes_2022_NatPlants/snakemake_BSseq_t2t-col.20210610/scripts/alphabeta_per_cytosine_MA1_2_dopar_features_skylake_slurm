@@ -1,0 +1,166 @@
+#!/bin/bash
+#!
+#! Example SLURM job script for Peta4-Skylake (Skylake CPUs, OPA)
+#! Last updated: Mon 13 Nov 12:25:17 GMT 2017
+#!
+
+#!#############################################################
+#!#### Modify the options in this section as appropriate ######
+#!#############################################################
+
+#! sbatch directives begin here ###############################
+#! Name of the job:
+#SBATCH -J AB_MA1_2_CpG_feat
+#! Which project should be charged:
+#SBATCH -A HENDERSON-SL3-CPU
+#SBATCH -p skylake
+#! How many whole nodes should be allocated?
+#SBATCH --nodes=14
+#! How many (MPI) tasks will there be in total? (<= nodes*32)
+#! The skylake/skylake-himem nodes have 32 CPUs (cores) each and
+#! 5980 MB/12030 MB of memory per CPU.
+#SBATCH --ntasks=448
+#SBATCH --ntasks-per-node=32
+#! SBATCH --cpus-per-task=1
+#! SBATCH --mem=191360
+#! How much wallclock time will be required?
+#SBATCH --time=12:00:00
+#! What types of email messages do you wish to receive?
+#! #SBATCH --mail-type=END,FAIL
+#! #SBATCH --mail-user=ajt200@cam.ac.uk
+#! Uncomment this to prevent the job from being requeued (e.g. if
+#! interrupted by node failure or system downtime):
+#SBATCH --no-requeue
+#! Per-array-task-ID log file (NOTE: enclosing directory must exist)
+#SBATCH --output=logs/alphabeta_per_cytosine_MA1_2_CpG_gene_regions_%A_%a.out
+#! Per-array-task-ID error file (NOTE: enclosing directory must exist)
+#SBATCH --error=logs/alphabeta_per_cytosine_MA1_2_CpG_gene_regions_%A_%a.err
+#! Array task IDs
+#SBATCH --array=1-5
+
+#! sbatch directives end here (put any additional directives above this line)
+
+#! Notes:
+#! Charging is determined by cpu number*walltime.
+#! The --ntasks value refers to the number of tasks to be launched by SLURM only. This
+#! usually equates to the number of MPI tasks launched. Reduce this from nodes*32 if
+#! demanded by memory requirements, or if OMP_NUM_THREADS>1.
+#! Each task is allocated 1 CPU by default, and each CPU is allocated 5980 MB (skylake)
+#! or 12030 MB (skylake-himem). If this is insufficient, also specify
+#! --cpus-per-task and/or --mem (the latter specifies MB per node).
+
+#! Number of nodes and tasks per node allocated by SLURM (do not change):
+numnodes=$SLURM_JOB_NUM_NODES
+numtasks=$SLURM_NTASKS
+mpi_tasks_per_node=$(echo "$SLURM_TASKS_PER_NODE" | sed -e  's/^\([0-9][0-9]*\).*$/\1/')
+#! ############################################################
+#! Modify the settings below to specify the application's environment, location 
+#! and launch method:
+
+#! Optionally modify the environment seen by the application
+#! (note that SLURM reproduces the environment at submission irrespective of ~/.bashrc):
+. /etc/profile.d/modules.sh                # Leave this line (enables the module command)
+module purge                               # Removes all modules still loaded
+module load rhel7/default-peta4            # REQUIRED - loads the basic environment
+
+
+#! Insert additional module load commands after this line if needed:
+
+PARAMS=$(cat slurm_params/alphabeta_per_cytosine_MA1_2_dopar_features_slurm_params.tsv | head -n ${SLURM_ARRAY_TASK_ID} | tail -n 1)
+
+#! Get each parameter
+REFBASE=$(echo $PARAMS | cut -d ' ' -f 1)
+CONTEXT=$(echo $PARAMS | cut -d ' ' -f 2)
+FEATNAME=$(echo $PARAMS | cut -d ' ' -f 3)
+FEATREGION=$(echo $PARAMS | cut -d ' ' -f 4)
+CHR=$(echo $PARAMS | cut -d ' ' -f 5)
+CORES=$(( $numtasks - 1 )) 
+
+#! Activate conda environment
+source ~/.bashrc
+conda activate R-4.1.2
+echo $(which R)
+
+#! Output some informative messages
+echo "Slurm array task ID: $SLURM_ARRAY_TASK_ID"
+echo "Number of nodes used: $numnodes"
+echo "Number of tasks: $numtasks"
+echo "Number of tasks per node: $mpi_tasks_per_node" 
+#echo "Number of CPUs used: $SLURM_CPUS_PER_TASK"
+echo "This job is running on:"
+hostname
+
+
+#! Full path to application executable: 
+application="./alphabeta_per_cytosine_MA1_2_dopar_features.R"
+
+#! Run options for the application:
+options="$REFBASE $CONTEXT $FEATNAME $FEATREGION $CHR $CORES"
+
+#! Work directory (i.e. where the job will run):
+workdir="$SLURM_SUBMIT_DIR"  # The value of SLURM_SUBMIT_DIR sets workdir to the directory
+                             # in which sbatch is run.
+
+#! Are you using OpenMP (NB this is unrelated to OpenMPI)? If so increase this
+#! safe value to no more than 32:
+export OMP_NUM_THREADS=1
+
+#! Number of MPI tasks to be started by the application per node and in total (do not change):
+np=$[${numnodes}*${mpi_tasks_per_node}]
+
+#! The following variables define a sensible pinning strategy for Intel MPI tasks -
+#! this should be suitable for both pure MPI and hybrid MPI/OpenMP jobs:
+export I_MPI_PIN_DOMAIN=omp:compact # Domains are $OMP_NUM_THREADS cores in size
+export I_MPI_PIN_ORDER=scatter # Adjacent domains have minimal sharing of caches/sockets
+#! Notes:
+#! 1. These variables influence Intel MPI only.
+#! 2. Domains are non-overlapping sets of cores which map 1-1 to MPI tasks.
+#! 3. I_MPI_PIN_PROCESSOR_LIST is ignored if I_MPI_PIN_DOMAIN is set.
+#! 4. If MPI tasks perform better when sharing caches/sockets, try I_MPI_PIN_ORDER=compact.
+
+
+#! Uncomment one choice for CMD below (add mpirun/mpiexec options if necessary):
+
+#! Choose this for a MPI code (possibly using OpenMP) using Intel MPI.
+#CMD="mpirun -ppn $mpi_tasks_per_node -np $np $application $options"
+
+#! Choose this for a pure shared-memory OpenMP parallel program on a single node:
+#! (OMP_NUM_THREADS threads will be created):
+#CMD="$application $options"
+
+#! Choose this for a MPI code (possibly using OpenMP) using OpenMPI:
+#! Use if R cluster object cl is made by startMPIcluster() (i.e., with doMPI package - faster than doFuture) 
+CMD="mpirun -npernode $mpi_tasks_per_node -np $np $application $options"
+#! Use if R cluster object cl is made by snow::makeCluster() (i.e., with doFuture package)
+#CMD="mpirun -np 1 $application $options"
+
+###############################################################
+### You should not have to change anything below this line ####
+###############################################################
+
+cd $workdir
+echo -e "Changed directory to `pwd`.\n"
+
+JOBID=$SLURM_JOB_ID
+
+echo -e "JobID: $JOBID\n======"
+echo "Time: `date`"
+echo "Running on master node: `hostname`"
+echo "Current directory: `pwd`"
+
+if [ "$SLURM_JOB_NODELIST" ]; then
+        #! Create a machine file:
+        export NODEFILE=`generate_pbs_nodefile`
+        cat $NODEFILE | uniq > machine.file.$JOBID
+        echo -e "\nNodes allocated:\n================"
+        echo `cat machine.file.$JOBID | sed -e 's/\..*$//g'`
+fi
+
+echo -e "\nnumtasks=$numtasks, numnodes=$numnodes, mpi_tasks_per_node=$mpi_tasks_per_node (OMP_NUM_THREADS=$OMP_NUM_THREADS)"
+
+echo -e "\nExecuting command:\n==================\n$CMD\n"
+
+eval $CMD 
+
+
+conda deactivate

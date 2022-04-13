@@ -9,7 +9,7 @@
 # ONT DeepSignal-derived DNA methylation (Fleiss' kappa)
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2_dopar_features.R t2t-col.20210610 CpG gene regions Chr1 447
+# ./alphabeta_per_cytosine_MA1_2_dopar_features.R t2t-col.20210610 CpG gene bodies Chr1 379
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
@@ -22,13 +22,12 @@ cores <- as.numeric(args[6])
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
 #featName <- "gene"
-#featRegion <- "regions"
+#featRegion <- "bodies"
 #chrName <- "Chr1"
-#cores <- 447
+#cores <- 379
 
 options(stringsAsFactors = F)
 options(scipen = 999)
-suppressMessages(library(GenomicRanges, quietly = T))
 library(AlphaBeta, quietly = T)
 suppressMessages(library(dplyr, quietly = T))
 suppressMessages(library(data.table, quietly = T))
@@ -46,24 +45,24 @@ config <- read_yaml("config.yaml")
 # "socketConnection()" errors that lead to no data for some genomic bins
 rc.meth.lvl.nopar <- rc.meth.lvl
 buildPedigree.nopar <- buildPedigree
-#body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = SerialParam(workers = 4, log = T)))
+#body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- bplapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun, BPPARAM = SerialParam(log = T)))
 body(rc.meth.lvl.nopar)[[4]] <- substitute(list.rc <- lapply(genTable$filename, cytosine = cytosine, posteriorMaxFilter = posteriorMaxFilter, genTable = genTable, rcRun))
 body(buildPedigree.nopar)[[5]] <- substitute(rclvl <- rc.meth.lvl.nopar(nodelist, cytosine, posteriorMaxFilter))
 
 # Create and register an MPI cluster
-#cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = F)
-cl <- startMPIcluster(verbose = F, bcast = T)
+cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = T)
 registerDoMPI(cl)
 #registerDoFuture()
-#cl <- snow::makeCluster(mpi.universe.size() - 1, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
-#plan(cluster, workers = cl)
-##cl <- snow::makeMPIcluster(count = mpi.comm.size(0) - 1, outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
-##cl <- parallel::makeCluster(cores, type = "FORK", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_parallel_fork.log")
 ##plan(multicore)
+#cl <- snow::makeMPIcluster(count = mpi.comm.size(0) - 1, outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
+#cl <- snow::makeCluster(cores, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
+##cl <- parallel::makeCluster(cores, type = "FORK", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_parallel_fork.log")
+#plan(cluster, workers = cl)
 print("Currently registered parallel backend name, version and cores")
 print(getDoParName())
 print(getDoParVersion())
 print(getDoParWorkers())
+
 
 inDir <- paste0("coverage/report/methimpute/")
 inDirBin <- paste0(inDir, featName, "_", featRegion, "/")
@@ -87,7 +86,7 @@ chrLens <- fai[,2][which(fai[,1] %in% chrName)]
 
 # Read in feature annotation
 if(featName == "CEN180") {
-  feat <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase,
+  feat <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase,
                             "/annotation/CEN180/CEN180_in_", refbase,
                             "_", paste0(chrName, collapse = "_"), ".bed"),
                      header = F)
@@ -100,7 +99,7 @@ if(featName == "CEN180") {
                     name = feat$name,
                     score = feat$HORlengthsSum)
 } else if(featName == "gene") {
-  feat <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase,
+  feat <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase,
                             "/annotation/genes/", refbase, "_representative_mRNA",
                             "_", paste0(chrName, collapse = "_"), ".bed"),
                      header = F)
@@ -112,7 +111,7 @@ if(featName == "CEN180") {
                     name = feat$name,
                     score = feat$score)
 } else if(featName == "GYPSY") {
-  feat <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase,
+  feat <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase,
                             "/annotation/TEs_EDTA/", refbase, "_TEs_Gypsy_LTR",
                             "_", paste0(chrName, collapse = "_"), ".bed"),
                      header = F)
@@ -128,7 +127,7 @@ if(featName == "CEN180") {
 }
 
 # Load coordinates for mitochondrial insertion on Chr2, in BED format
-mito_ins <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase, "/annotation/", refbase , ".mitochondrial_insertion.bed"),
+mito_ins <- read.table(paste0("/home/ajt200/analysis/nanopore/", refbase, "/annotation/", refbase , ".mitochondrial_insertion.bed"),
                        header = F)
 colnames(mito_ins) <- c("chr", "start", "end", "name", "score", "strand")
 mito_ins <- mito_ins[ mito_ins$chr %in% "Chr2",]
@@ -155,34 +154,6 @@ if(length(fOverlaps_feat_mito_ins) > 0) {
   featGR <- featGR[-unique(queryHits(fOverlaps_feat_mito_ins))]
 }
 
-# Adapted from promoters() in GenomicRanges to extract regions relative to TTS
-TTSplus <- function (x, upstream = 100, downstream = 1000, ...)
-{
-    if (!isSingleNumber(upstream))
-        stop("'upstream' must be a single integer")
-    if (!is.integer(upstream))
-        upstream <- as.numeric(upstream)
-    if (!isSingleNumber(downstream))
-        stop("'downstream' must be a single integer")
-    if (!is.integer(downstream))
-        downstream <- as.numeric(downstream)
-    if (downstream < 0)
-        stop("'downstream' must be an integer >= 0")
-#    if (upstream < 0 | downstream < 0)
-#        stop("'upstream' and 'downstream' must be integers >= 0")
-    if (any(strand(x) == "*"))
-        warning("'*' ranges were treated as '+'")
-    on_plus <- which(strand(x) == "+" | strand(x) == "*")
-    on_plus_TTS <- end(x)[on_plus]
-    start(x)[on_plus] <- on_plus_TTS - upstream
-    end(x)[on_plus] <- on_plus_TTS + downstream
-    on_minus <- which(strand(x) == "-")
-    on_minus_TTS <- start(x)[on_minus]
-    end(x)[on_minus] <- on_minus_TTS + upstream
-    start(x)[on_minus] <- on_minus_TTS - downstream
-    x
-}
-
 # Get ranges corresponding to featRegion
 if(featRegion == "bodies") {
   featGR <- featGR
@@ -191,6 +162,7 @@ if(featRegion == "bodies") {
   featGR <- promoters(featGR, upstream = 1000, downstream = 0)
 } else if(featRegion == "terminators") {
   # Obtain 1000 bp downstream of end coordinates
+  source("/projects/meiosis/ajt200/Rfunctions/TTSplus.R")
   featGR <- TTSplus(featGR, upstream = -1, downstream = 1000)
 } else if(featRegion == "regions") {
   featGR <- GRanges(seqnames = seqnames(featGR),
@@ -218,10 +190,33 @@ filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_
 #})
 ##}, mc.cores = length(filePathsGlobal), mc.preschedule = F)
 
-# Convert featGR into data.frame
-binDF <- data.frame(featGR)
-binDF <- binDF[,-which(names(binDF) %in% c("width", "strand", "score"))]
-colnames(binDF)[1] <- "chr"
+# Define genomic windows
+binDF <- data.frame()
+for(i in 1:length(chrs)) {
+  # Define sliding windows of width genomeBinSize bp,
+  # with a step of genomeStepSize bp
+  ## Note: the active code creates windows of genomeBinSize,
+  ## and the last window of a chromosome may be smaller than genomeBinSize
+  binStarts <- seq(from = 1,
+                   to = chrLens[i]-genomeBinSize,
+                   by = genomeStepSize)
+  if(chrLens[i] - binStarts[length(binStarts)] >= genomeBinSize) {
+    binStarts <- c(binStarts,
+                   binStarts[length(binStarts)]+genomeStepSize)
+  }
+  binEnds <- seq(from = binStarts[1]+genomeBinSize-1,
+                 to = chrLens[i],
+                 by = genomeStepSize)
+  binEnds <- c(binEnds,
+               rep(chrLens[i], times = length(binStarts)-length(binEnds)))                                                                    
+  stopifnot(binEnds[length(binEnds)] == chrLens[i])
+  stopifnot(length(binStarts) == length(binEnds))
+
+  chr_binDF <- data.frame(chr = chrs[i],
+                          start = binStarts,
+                          end = binEnds)
+  binDF <- rbind(binDF, chr_binDF)
+}
 
 nrow_binDF <- nrow(binDF)
 
@@ -496,9 +491,6 @@ bin_mD_test <- function(i, bins) {
 
 
 # Define chunkSize so that each cluster worker gets a single "task chunk"
-# (i.e. one task chunk covering multiple loop iterations (rows of binDF)),
-# which is faster than if each cluster worker gets multiple task chunks
-# (i.e., one task chunk per loop iteration (row of binDF))
 chunkSize <- ceiling(nrow_binDF / getDoParWorkers())
 #initWorkers <- function() options(scipen = 999, stringsAsFactors = F)
 mpiopts <- list(chunkSize = chunkSize)
@@ -512,14 +504,12 @@ start <- proc.time()
 #}
 
 targetDF <- foreach(i = iter(binDF, by = "row"),
-                    .options.mpi = mpiopts,
-                    .combine = "rbind",
-                    .multicombine = T,
                     .maxcombine = nrow_binDF+1e1,
+                    .multicombine = T,
                     .inorder = F,
                     .errorhandling = "pass",
-                    .packages = c("AlphaBeta", "data.table", "dplyr")
-#                    .export = c("rc.meth.lvl.nopar", "buildPedigree.nopar")
+                    .packages = c("AlphaBeta", "data.table", "dplyr"),
+                    .export = c("rc.meth.lvl.nopar", "buildPedigree.nopar")
                    ) %dopar% {
 
   # Run bin_mD in parallel
@@ -527,37 +517,40 @@ targetDF <- foreach(i = iter(binDF, by = "row"),
 
 }
 
+print("warnings 1")
+print(warnings())
+
 dopar_loop <- proc.time()-start
 
 print(dopar_loop)
 
-targetDF <- targetDF[ with(targetDF,
-                           order(chr, start, end)), ]
 
-write.table(targetDF,
-            file = paste0(outDir, "mD_at_dt62_", featName, "_", featRegion,
-                          "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
-            quote = F, sep = "\t", row.names = F, col.names = T)
+capture.output(targetDF,
+               file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+                             "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.txt"))
 
-print("warnings 1")
-print(warnings())
+#lapply(targetDF,
+#       write,
+#       paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#              "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.tsv"),
+#       append = T,
+#       ncolumns = 1000)
 
-# Shutdown the cluster and quit
-#stopCluster(cl) # use if cl made with makeCluster() (i.e., using doFuture package)
-closeCluster(cl) # use if cl made with startMPIcluster() (i.e., using doMPI package - faster than doFuture)
-mpi.quit()
+#targetDF <- targetDF[ with(targetDF,
+#                           order(chr, start, end)), ]
+#
+#write.table(targetDF,
+#            file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#                          "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
+#            quote = F, sep = "\t", row.names = F, col.names = T)
 
 print("warnings 2")
 print(warnings())
 
+# Shutdown the cluster and quit
+#closeCluster(cl)
+#stopCluster(cl)
+#mpi.quit()
 
-#capture.output(targetDF,
-#               file = paste0(outDir, "mD_at_dt62_", featName, "_", featRegion,
-#                             "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.txt"))
-#
-#lapply(targetDF,
-#       write,
-#       paste0(outDir, "mD_at_dt62_", featName, "_", featRegion,
-#              "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.tsv"),
-#       append = T,
-#       ncolumns = 1000)
+print("warnings 3")
+print(warnings())
