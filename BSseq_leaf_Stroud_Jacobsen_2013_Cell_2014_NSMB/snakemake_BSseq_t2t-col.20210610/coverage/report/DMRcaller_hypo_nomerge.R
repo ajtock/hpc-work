@@ -5,7 +5,7 @@
 
 # Usage:
 # source ~/.bashrc
-# conda activate python
+# conda activate python_3.9.6
 # ./DMRcaller_hypo_nomerge.R --condition1 'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014' \
 #                            --condition2 'cmt2_BSseq_Rep1' \
 #                            --refbase t2t-col.20210610 \
