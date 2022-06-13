@@ -1,0 +1,4 @@
+prefix	refbase	threads	sortMem	context
+Col_0_CENH3_ChIP_deepsignalDNAmeth	t2t-col.20210610	32	11G	CpG
+Col_0_CENH3_ChIP_deepsignalDNAmeth	t2t-col.20210610	32	11G	CHG
+Col_0_CENH3_ChIP_deepsignalDNAmeth	t2t-col.20210610	32	11G	CHH
