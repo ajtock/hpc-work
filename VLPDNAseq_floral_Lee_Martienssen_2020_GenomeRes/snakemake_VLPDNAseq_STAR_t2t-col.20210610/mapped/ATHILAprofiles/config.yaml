@@ -1,0 +1,34 @@
+THREADS: 32
+SAMPLE: [
+         "Col_0_VLPDNAseq_Rep1_SRR8792541",
+         "Col_0_VLPDNAseq_Rep2_SRR8792542",
+         "Col_0_VLPDNAseq_Rep3_SRR8792543",
+         "ddm1_2_VLPDNAseq_Rep1_SRR8792544",
+         "ddm1_2_VLPDNAseq_Rep2_SRR8792545",
+         "ddm1_2_rdr6_15_VLPDNAseq_Rep1_SRR8792546",
+         "ddm1_2_rdr6_15_VLPDNAseq_Rep2_SRR8792547",
+         "ddm1_2_rdr6_15_VLPDNAseq_Rep3_SRR8792548"
+        ]
+FEATURES:
+      chrName: [
+                "Chr1_Chr2_Chr3_Chr4_Chr5",
+                "Chr1",
+                "Chr2",
+                "Chr3",
+                "Chr4",
+                "Chr5"
+               ]
+MAPPING:
+      mode: "both"
+      reference: "data/index/t2t-col.20210610"
+sRNA_SIZES: [21, 22, 24]
+COVERAGE:
+      regionBodyLength: 2000
+      startLabel: "Start"
+      endLabel: "End"
+      upstream: 2000
+      downstream: 2000
+      flankName: "2kb"
+      binSize: 10
+      binName: "10bp"
+      sortRegions: "keep"
