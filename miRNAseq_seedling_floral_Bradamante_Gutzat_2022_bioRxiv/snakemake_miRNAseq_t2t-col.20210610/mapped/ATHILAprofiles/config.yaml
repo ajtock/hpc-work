@@ -1,0 +1,42 @@
+THREADS: 76
+SAMPLE: [
+         "AGO5_D7_sRNA_Rep1",
+         "AGO5_D7_sRNA_Rep2",
+         "Input_D7_sRNA_Rep1",
+         "Input_D7_sRNA_Rep2",
+         "AGO5_D35_sRNA_Rep1",
+         "AGO5_D35_sRNA_Rep2",
+         "Input_D35_sRNA_Rep1",
+         "Input_D35_sRNA_Rep2",
+         "AGO9_D7_sRNA_Rep1",
+         "AGO9_D7_sRNA_Rep2",
+         "AGO9_D35_sRNA_Rep1",
+         "AGO9_D35_sRNA_Rep2"
+#         "GFP_D7_sRNA_Rep1",
+#         "GFP_D7_sRNA_Rep2",
+#         "GFP_D35_sRNA_Rep1",
+#         "GFP_D35_sRNA_Rep2"
+        ]
+FEATURES:
+      chrName: [
+                "Chr1_Chr2_Chr3_Chr4_Chr5",
+                "Chr1",
+                "Chr2",
+                "Chr3",
+                "Chr4",
+                "Chr5"
+               ]
+MAPPING:
+      mode: "both"
+      reference: "data/index/t2t-col.20210610"
+sRNA_SIZES: [21, 22, 24]
+COVERAGE:
+      regionBodyLength: 2000
+      startLabel: "Start"
+      endLabel: "End"
+      upstream: 2000
+      downstream: 2000
+      flankName: "2kb"
+      binSize: 10
+      binName: "10bp"
+      sortRegions: "keep"
