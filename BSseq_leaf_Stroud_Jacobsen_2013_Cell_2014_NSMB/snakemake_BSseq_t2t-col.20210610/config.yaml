@@ -4,20 +4,20 @@ SAMPLES: [
 #          "WT_BSseq_Rep3_2013"
 #          "cmt2_BSseq_Rep1",
 #          "cmt3_BSseq_Rep1",
-##          "cmt2_cmt3_BSseq_Rep1",
-          "ddm1_BSseq_Rep1",
-          "drd1_BSseq_Rep1",
-##          "drm1_drm2_BSseq_Rep1",
+          "cmt2_cmt3_BSseq_Rep1",
+#          "ddm1_BSseq_Rep1",
+#          "drd1_BSseq_Rep1",
+          "drm1_drm2_BSseq_Rep1",
 ##          "drm1_drm2_cmt2_BSseq_Rep1",
 ##          "drm1_drm2_cmt3_BSseq_Rep1",
 ##          "drm1_drm2_cmt2_cmt3_BSseq_Rep1",
-          "suvh4_BSseq_Rep1",
-          "suvh5_BSseq_Rep1",
-          "suvh6_BSseq_Rep1"
+#          "suvh4_BSseq_Rep1",
+#          "suvh5_BSseq_Rep1",
+#          "suvh6_BSseq_Rep1"
 #          "kss_BSseq_Rep1",
 #          "met1_BSseq_Rep1"
-##          "met1het_BSseq_Rep1",
-##          "met1_cmt3_BSseq_Rep1"
+          "met1het_BSseq_Rep1",
+          "met1_cmt3_BSseq_Rep1"
          ]
 THREADS: 8
 

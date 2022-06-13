@@ -38,7 +38,7 @@
 #! Minimum RAM needed per node
 #SBATCH --mem=150G
 #! Array task IDs
-#SBATCH --array=2-18
+#SBATCH --array=2
 
 #! sbatch directives end here (put any additional directives above this line)
 

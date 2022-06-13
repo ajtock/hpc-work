@@ -1,11 +1,2 @@
 condition1	condition2	refbase	chrName	genomeRegion	quantiles	context
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'suvh4_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CpG
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'suvh5_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CpG
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'drd1_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CpG
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'suvh4_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHG
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'suvh5_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHG
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'drd1_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHG
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'suvh4_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHH
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'suvh5_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHH
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'suvh6_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHH
-'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'drd1_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHH
+'WT_BSseq_Rep2_2013,WT_BSseq_Rep3_2013,WT_BSseq_Rep1_2014'	'met1het_BSseq_Rep1'	t2t-col.20210610	'Chr1,Chr2,Chr3,Chr4,Chr5'	genomewide	6	CHH
