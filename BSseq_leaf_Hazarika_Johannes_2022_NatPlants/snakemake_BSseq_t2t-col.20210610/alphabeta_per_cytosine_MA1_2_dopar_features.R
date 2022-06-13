@@ -4,32 +4,31 @@
 # using output TXT files from METHimpute run on Bismark-processed
 # BS-seq data from mutation accumulation (MA) lines
 
-# Target outputs are genomic binned methylation divergence values,
-# to enable analysis of relationships with binned among-read variation in
-# ONT DeepSignal-derived DNA methylation (Fleiss' kappa), and
-# definition of epimutation hotspots and coldspots corresponding to
-# the top 10% and bottom 10% of bins with regard to methylation divergence
+# Target outputs are per-feature methylation divergence values,
+# to enable analysis of relationships with per-feature among-read variation in
+# ONT DeepSignal-derived DNA methylation (Fleiss' kappa)
 
 # Usage:
-# ./alphabeta_per_cytosine_MA1_2_dopar.R t2t-col.20210610 CpG 10000 10000 Chr1 447
+# ./alphabeta_per_cytosine_MA1_2_dopar_features.R t2t-col.20210610 CpG gene regions Chr1 447
 
 args <- commandArgs(trailingOnly = T)
 refbase <- args[1]
 context <- args[2]
-genomeBinSize <- as.numeric(args[3])
-genomeStepSize <- as.numeric(args[4])
+featName <- args[3]
+featRegion <- args[4]
 chrName <- args[5]
 cores <- as.numeric(args[6])
 
 #refbase <- "t2t-col.20210610"
 #context <- "CpG"
-#genomeBinSize <- 1000000
-#genomeStepSize <- 100000
+#featName <- "gene"
+#featRegion <- "regions"
 #chrName <- "Chr1"
 #cores <- 447
 
 options(stringsAsFactors = F)
 options(scipen = 999)
+suppressMessages(library(GenomicRanges, quietly = T))
 library(AlphaBeta, quietly = T)
 suppressMessages(library(dplyr, quietly = T))
 suppressMessages(library(data.table, quietly = T))
@@ -66,38 +65,11 @@ print(getDoParName())
 print(getDoParVersion())
 print(getDoParWorkers())
 
-
-if(floor(log10(genomeBinSize)) + 1 < 4) {
-  genomeBinName <- paste0(genomeBinSize, "bp")
-  genomeBinNamePlot <- paste0(genomeBinSize, "-bp")
-} else if(floor(log10(genomeBinSize)) + 1 >= 4 &
-          floor(log10(genomeBinSize)) + 1 <= 6) {
-  genomeBinName <- paste0(genomeBinSize/1e3, "kb")
-  genomeBinNamePlot <- paste0(genomeBinSize/1e3, "-kb")
-} else if(floor(log10(genomeBinSize)) + 1 >= 7) {
-  genomeBinName <- paste0(genomeBinSize/1e6, "Mb")
-  genomeBinNamePlot <- paste0(genomeBinSize/1e6, "-Mb")
-}
-
-if(floor(log10(genomeStepSize)) + 1 < 4) {
-  genomeStepName <- paste0(genomeStepSize, "bp")
-  genomeStepNamePlot <- paste0(genomeStepSize, "-bp")
-} else if(floor(log10(genomeStepSize)) + 1 >= 4 &
-          floor(log10(genomeStepSize)) + 1 <= 6) {
-  genomeStepName <- paste0(genomeStepSize/1e3, "kb")
-  genomeStepNamePlot <- paste0(genomeStepSize/1e3, "-kb")
-} else if(floor(log10(genomeStepSize)) + 1 >= 7) {
-  genomeStepName <- paste0(genomeStepSize/1e6, "Mb")
-  genomeStepNamePlot <- paste0(genomeStepSize/1e6, "-Mb")
-}
-
 inDir <- paste0("coverage/report/methimpute/")
-inDirBin <- paste0(inDir, "genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName, "/")
-outDir <- paste0("coverage/report/alphabeta/")
-plotDir <- paste0(outDir, "plots/")
+inDirBin <- paste0(inDir, featName, "_", featRegion, "/")
+outDir <- paste0("coverage/report/alphabeta/", featName, "_", featRegion, "/")
 system(paste0("[ -d ", inDirBin, " ] || mkdir -p ", inDirBin))
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
-system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
 # Genomic definitions
 fai <- read.table(paste0("data/index/", refbase, ".fa.fai"), header = F)
@@ -113,6 +85,125 @@ if(!grepl("Chr", fai[,1][1])) {
 }
 chrLens <- fai[,2][which(fai[,1] %in% chrName)]
 
+# Read in feature annotation
+if(featName == "CEN180") {
+  feat <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase,
+                            "/annotation/CEN180/CEN180_in_", refbase,
+                            "_", paste0(chrName, collapse = "_"), ".bed"),
+                     header = F)
+  colnames(feat) <- c("chr", "start0based", "end", "name", "score", "strand",
+                      "HORlengthsSum", "HORcount", "percentageIdentity")
+  featGR <- GRanges(seqnames = feat$chr,
+                    ranges = IRanges(start = feat$start0based+1,
+                                     end = feat$end),
+                    strand = feat$strand,
+                    name = feat$name,
+                    score = feat$HORlengthsSum)
+} else if(featName == "gene") {
+  feat <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase,
+                            "/annotation/genes/", refbase, "_representative_mRNA",
+                            "_", paste0(chrName, collapse = "_"), ".bed"),
+                     header = F)
+  colnames(feat) <- c("chr", "start0based", "end", "name", "score", "strand")
+  featGR <- GRanges(seqnames = feat$chr,
+                    ranges = IRanges(start = feat$start0based+1,
+                                     end = feat$end),
+                    strand = feat$strand,
+                    name = feat$name,
+                    score = feat$score)
+} else if(featName == "GYPSY") {
+  feat <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase,
+                            "/annotation/TEs_EDTA/", refbase, "_TEs_Gypsy_LTR",
+                            "_", paste0(chrName, collapse = "_"), ".bed"),
+                     header = F)
+  colnames(feat) <- c("chr", "start0based", "end", "name", "score", "strand")
+  featGR <- GRanges(seqnames = feat$chr,
+                    ranges = IRanges(start = feat$start0based+1,
+                                     end = feat$end),
+                    strand = feat$strand,
+                    name = feat$name,
+                    score = feat$score)
+} else {
+  stop(print("featName not one of CEN180, gene or GYPSY"))
+}
+
+# Load coordinates for mitochondrial insertion on Chr2, in BED format
+mito_ins <- read.table(paste0("/home/ajt200/rds/hpc-work/nanopore/", refbase, "/annotation/", refbase , ".mitochondrial_insertion.bed"),
+                       header = F)
+colnames(mito_ins) <- c("chr", "start", "end", "name", "score", "strand")
+mito_ins <- mito_ins[ mito_ins$chr %in% "Chr2",]
+mito_ins <- mito_ins[ with(mito_ins, order(chr, start, end)) , ]
+mito_ins_GR <- GRanges(seqnames = "Chr2",
+                       ranges = IRanges(start = min(mito_ins$start)+1,
+                                        end = max(mito_ins$end)),
+                       strand = "*")
+
+featextGR <- GRanges(seqnames = seqnames(featGR),
+                     ranges = IRanges(start = start(featGR)-1000,
+                                      end = end(featGR)+1000),
+                     strand = strand(featGR),
+                     name = featGR$name,
+                     score = featGR$score)
+
+# Mask out featGR within mitochondrial insertion on Chr2
+fOverlaps_feat_mito_ins <- findOverlaps(query = featextGR,
+                                        subject = mito_ins_GR,
+                                        type = "any",
+                                        select = "all",
+                                        ignore.strand = T)
+if(length(fOverlaps_feat_mito_ins) > 0) {
+  featGR <- featGR[-unique(queryHits(fOverlaps_feat_mito_ins))]
+}
+
+# Adapted from promoters() in GenomicRanges to extract regions relative to TTS
+TTSplus <- function (x, upstream = 100, downstream = 1000, ...)
+{
+    if (!isSingleNumber(upstream))
+        stop("'upstream' must be a single integer")
+    if (!is.integer(upstream))
+        upstream <- as.numeric(upstream)
+    if (!isSingleNumber(downstream))
+        stop("'downstream' must be a single integer")
+    if (!is.integer(downstream))
+        downstream <- as.numeric(downstream)
+    if (downstream < 0)
+        stop("'downstream' must be an integer >= 0")
+#    if (upstream < 0 | downstream < 0)
+#        stop("'upstream' and 'downstream' must be integers >= 0")
+    if (any(strand(x) == "*"))
+        warning("'*' ranges were treated as '+'")
+    on_plus <- which(strand(x) == "+" | strand(x) == "*")
+    on_plus_TTS <- end(x)[on_plus]
+    start(x)[on_plus] <- on_plus_TTS - upstream
+    end(x)[on_plus] <- on_plus_TTS + downstream
+    on_minus <- which(strand(x) == "-")
+    on_minus_TTS <- start(x)[on_minus]
+    end(x)[on_minus] <- on_minus_TTS + upstream
+    start(x)[on_minus] <- on_minus_TTS - downstream
+    x
+}
+
+# Get ranges corresponding to featRegion
+if(featRegion == "bodies") {
+  featGR <- featGR
+} else if(featRegion == "promoters") {
+  # Obtain 1000 bp upstream of start coordinates
+  featGR <- promoters(featGR, upstream = 1000, downstream = 0)
+} else if(featRegion == "terminators") {
+  # Obtain 1000 bp downstream of end coordinates
+  featGR <- TTSplus(featGR, upstream = -1, downstream = 1000)
+} else if(featRegion == "regions") {
+  featGR <- GRanges(seqnames = seqnames(featGR),
+                    ranges = IRanges(start = start(featGR)-1000,
+                                     end = end(featGR)+1000),
+                    strand = strand(featGR),
+                    name = featGR$name,
+                    score = featGR$score)
+} else {
+  stop("featRegion is none of bodies, promoters, terminators or regions")
+}
+
+
 # Define paths to methylome TXT files generated with methimpute
 filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_", context, "_methylome.txt")
 
@@ -127,33 +218,10 @@ filePathsGlobal <- paste0(inDir, config$SAMPLES, "_MappedOn_", refbase, "_dedup_
 #})
 ##}, mc.cores = length(filePathsGlobal), mc.preschedule = F)
 
-# Define genomic windows
-binDF <- data.frame()
-for(i in 1:length(chrs)) {
-  # Define sliding windows of width genomeBinSize bp,
-  # with a step of genomeStepSize bp
-  ## Note: the active code creates windows of genomeBinSize,
-  ## and the last window of a chromosome may be smaller than genomeBinSize
-  binStarts <- seq(from = 1,
-                   to = chrLens[i]-genomeBinSize,
-                   by = genomeStepSize)
-  if(chrLens[i] - binStarts[length(binStarts)] >= genomeBinSize) {
-    binStarts <- c(binStarts,
-                   binStarts[length(binStarts)]+genomeStepSize)
-  }
-  binEnds <- seq(from = binStarts[1]+genomeBinSize-1,
-                 to = chrLens[i],
-                 by = genomeStepSize)
-  binEnds <- c(binEnds,
-               rep(chrLens[i], times = length(binStarts)-length(binEnds)))                                                                    
-  stopifnot(binEnds[length(binEnds)] == chrLens[i])
-  stopifnot(length(binStarts) == length(binEnds))
-
-  chr_binDF <- data.frame(chr = chrs[i],
-                          start = binStarts,
-                          end = binEnds)
-  binDF <- rbind(binDF, chr_binDF)
-}
+# Convert featGR into data.frame
+binDF <- data.frame(featGR)
+binDF <- binDF[,-which(names(binDF) %in% c("width", "strand", "score"))]
+colnames(binDF)[1] <- "chr"
 
 nrow_binDF <- nrow(binDF)
 
@@ -467,7 +535,7 @@ targetDF <- targetDF[ with(targetDF,
                            order(chr, start, end)), ]
 
 write.table(targetDF,
-            file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+            file = paste0(outDir, "mD_at_dt62_", featName, "_", featRegion,
                           "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, ".tsv"),
             quote = F, sep = "\t", row.names = F, col.names = T)
 
@@ -484,12 +552,12 @@ print(warnings())
 
 
 #capture.output(targetDF,
-#               file = paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#               file = paste0(outDir, "mD_at_dt62_", featName, "_", featRegion,
 #                             "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.txt"))
 #
 #lapply(targetDF,
 #       write,
-#       paste0(outDir, "mD_at_dt62_genomeBinSize", genomeBinName, "_genomeStepSize", genomeStepName,
+#       paste0(outDir, "mD_at_dt62_", featName, "_", featRegion,
 #              "_MA1_2_MappedOn_", refbase, "_", chrName, "_", context, "_list.tsv"),
 #       append = T,
 #       ncolumns = 1000)
