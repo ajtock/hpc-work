@@ -513,38 +513,38 @@ source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHI
 permTest_HORlengthsSum_list <- foreach(acc_idx = 1:length(acc),
                                        .multicombine = T,
                                        .inorder = T) %do% {
-  permTest(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "HORlengthsSum")
+  permTestHist(acc_idx = acc_idx,
+               CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+               CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+               region_name = regionName,
+               metric_name = "HORlengthsSum")
 }
 permTest_HORcount_list <- foreach(acc_idx = 1:length(acc),
                                   .multicombine = T,
                                   .inorder = T) %do% {
-  permTest(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "HORcount")
+  permTestHist(acc_idx = acc_idx,
+               CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+               CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+               region_name = regionName,
+               metric_name = "HORcount")
 }
 permTest_WeightedConsensusScore_list <- foreach(acc_idx = 1:length(acc),
                                                 .multicombine = T,
                                                 .inorder = T) %do% {
-  permTest(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "WeightedConsensusScore")
+  permTestHist(acc_idx = acc_idx,
+               CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+               CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+               region_name = regionName,
+               metric_name = "WeightedConsensusScore")
 }
 permTest_EditDistance_list <- foreach(acc_idx = 1:length(acc),
                                       .multicombine = T,
                                       .inorder = T) %do% {
-  permTest(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "EditDistance")
+  permTestHist(acc_idx = acc_idx,
+               CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+               CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+               region_name = regionName,
+               metric_name = "EditDistance")
 }
 
 # Calculate mean metrics across accessions
