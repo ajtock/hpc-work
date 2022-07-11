@@ -5,7 +5,7 @@
 
 # Usage:
 # conda activate R-4.1.2
-# ./66Atha_CENATHILA_flanks_CEN180_metrics_v260522_hpc.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 1000 1e4 Flanks
+# ./66Atha_CENATHILA_flanks_CEN180_metrics_v260522_hpc_All_hist.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 1000 1e4 Flanks
 # conda deactivate
 
 #chrName <- unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
@@ -44,7 +44,7 @@ flankNamePlot <- paste0(c(strsplit(flankName, split = "")[[1]][1:(length(strspli
                           collapse = "")
 
 options(stringsAsFactors = F)
-source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAcc_function_hpc.R")
+source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_function_hpc.R")
 source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/TTSplus.R")
 suppressMessages(library(data.table, quietly = T))
 suppressMessages(library(GenomicRanges, quietly = T))
@@ -251,14 +251,12 @@ CENATHILA_list <- foreach(x = 1:length(acc), .inorder = T) %dopar% {
   tab
 }
 
-
 CENATHILA_DF_phylo <- dplyr::bind_rows(CENATHILA_list) 
 phylo <- sort(unique(CENATHILA_DF_phylo$phylo))
 
 phylo_colFun <- cols25(n = 18)[-c(7:16)][1:length(phylo)]
 stopifnot(length(phylo_colFun) == length(phylo))
 names(phylo_colFun) <- phylo
-
 
 CENATHILA_GR_list <- foreach(x = 1:length(acc), .inorder = T) %dopar% {
   GRanges(seqnames = as.character(CENATHILA_list[[x]]$chr),
@@ -267,7 +265,6 @@ CENATHILA_GR_list <- foreach(x = 1:length(acc), .inorder = T) %dopar% {
           strand = as.character(CENATHILA_list[[x]]$strand),
           phylo = as.character(CENATHILA_list[[x]]$phylo))
 }
-
 
 
 # Define function to select randomly positioned loci of the same
@@ -451,7 +448,7 @@ CENranLoc_CEN180_metrics_list <- foreach(acc_idx = 1:length(acc), .inorder = T) 
   }
 }
 
-# Commented out because metric means are calculated as part of the permTestAcc function instead
+# Commented out because metric means are calculated as part of the permTestAllList function instead
 ### Calculate mean values across features (in flanking, upstream, and downstream regions)
 ##CENATHILA_Flanks_CEN180_mean_DF_list <- foreach(acc_idx = 1:length(acc), .inorder = T) %do% {
 ##  tab <- CENATHILA_CEN180_metrics_list[[acc_idx]]
@@ -509,142 +506,147 @@ CENranLoc_CEN180_metrics_list <- foreach(acc_idx = 1:length(acc), .inorder = T) 
 ##  dplyr::bind_rows(acc_DF_list)
 ##}
 
-source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAcc_function_hpc.R")
-permTestAcc_HORlengthsSum_list <- foreach(acc_idx = 1:length(acc),
-                                       .multicombine = T,
-                                       .inorder = T) %do% {
-  permTestAcc(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "HORlengthsSum")
+source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_function_hpc.R")
+permTestAllList_HORlengthsSum_list <- foreach(acc_idx = 1:length(acc),
+                                              .multicombine = T,
+                                              .inorder = T) %do% {
+  permTestAllList(acc_idx = acc_idx,
+                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+                  region_name = regionName,
+                  metric_name = "HORlengthsSum")
 }
-permTestAcc_HORcount_list <- foreach(acc_idx = 1:length(acc),
-                                  .multicombine = T,
-                                  .inorder = T) %do% {
-  permTestAcc(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "HORcount")
+# Do permutation test across all accessions
+
+
+# Plot histogram summary of permutation tests 
+
+permTestAllList_HORcount_list <- foreach(acc_idx = 1:length(acc),
+                                         .multicombine = T,
+                                         .inorder = T) %do% {
+  permTestAllList(acc_idx = acc_idx,
+                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+                  region_name = regionName,
+                  metric_name = "HORcount")
 }
-permTestAcc_WeightedConsensusScore_list <- foreach(acc_idx = 1:length(acc),
-                                                .multicombine = T,
-                                                .inorder = T) %do% {
-  permTestAcc(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "WeightedConsensusScore")
+permTestAllList_WeightedConsensusScore_list <- foreach(acc_idx = 1:length(acc),
+                                                       .multicombine = T,
+                                                       .inorder = T) %do% {
+  permTestAllList(acc_idx = acc_idx,
+                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+                  region_name = regionName,
+                  metric_name = "WeightedConsensusScore")
 }
-permTestAcc_EditDistance_list <- foreach(acc_idx = 1:length(acc),
-                                      .multicombine = T,
-                                      .inorder = T) %do% {
-  permTestAcc(acc_idx = acc_idx,
-           CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-           CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-           region_name = regionName,
-           metric_name = "EditDistance")
+permTestAllList_EditDistance_list <- foreach(acc_idx = 1:length(acc),
+                                             .multicombine = T,
+                                             .inorder = T) %do% {
+  permTestAllList(acc_idx = acc_idx,
+                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+                  region_name = regionName,
+                  metric_name = "EditDistance")
 }
 
 # Calculate mean metrics across accessions
 # HORlengthsSum
-permTestAcc_HORlengthsSum <- dplyr::bind_rows(permTestAcc_HORlengthsSum_list)
-permTestAcc_HORlengthsSum_fam <- sort(unique(permTestAcc_HORlengthsSum$fam))
-permTestAcc_HORlengthsSum_all_acc_fam_list <- lapply(permTestAcc_HORlengthsSum_fam, function(x) {
+permTestAllList_HORlengthsSum <- dplyr::bind_rows(permTestAllList_HORlengthsSum_list)
+permTestAllList_HORlengthsSum_fam <- sort(unique(permTestAllList_HORlengthsSum$fam))
+permTestAllList_HORlengthsSum_all_acc_fam_list <- lapply(permTestAllList_HORlengthsSum_fam, function(x) {
   data.frame(
-             accession = paste0(length(unique(permTestAcc_HORlengthsSum$accession)), " accessions"),
-             metric = permTestAcc_HORlengthsSum$metric[1],
-             region = permTestAcc_HORlengthsSum$region[1],
+             accession = paste0(length(unique(permTestAllList_HORlengthsSum$accession)), " accessions"),
+             metric = permTestAllList_HORlengthsSum$metric[1],
+             region = permTestAllList_HORlengthsSum$region[1],
              fam = x,
-             features = mean(permTestAcc_HORlengthsSum[permTestAcc_HORlengthsSum$fam == x,]$features, na.rm = T),
+             features = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$features, na.rm = T),
              alternative = ".",
-             alphaThreshold = mean(permTestAcc_HORlengthsSum[permTestAcc_HORlengthsSum$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAcc_HORlengthsSum[permTestAcc_HORlengthsSum$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAcc_HORlengthsSum[permTestAcc_HORlengthsSum$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAcc_HORlengthsSum[permTestAcc_HORlengthsSum$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAcc_HORlengthsSum[permTestAcc_HORlengthsSum$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAcc_HORlengthsSum[permTestAcc_HORlengthsSum$fam == x,]$pval, na.rm = T)
+             alphaThreshold = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$alphaThreshold, na.rm = T),
+             observed = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$observed, na.rm = T),
+             expected = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$expected, na.rm = T),
+             log2obsexp = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$log2obsexp, na.rm = T),
+             log2alpha = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$log2alpha, na.rm = T),
+             pval = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$pval, na.rm = T)
             )
 })
-permTestAcc_HORlengthsSum_all_acc_fam <- dplyr::bind_rows(permTestAcc_HORlengthsSum_all_acc_fam_list)
-permTestAcc_HORlengthsSum <- rbind(permTestAcc_HORlengthsSum,
-                                permTestAcc_HORlengthsSum_all_acc_fam)
+permTestAllList_HORlengthsSum_all_acc_fam <- dplyr::bind_rows(permTestAllList_HORlengthsSum_all_acc_fam_list)
+permTestAllList_HORlengthsSum <- rbind(permTestAllList_HORlengthsSum,
+                                       permTestAllList_HORlengthsSum_all_acc_fam)
 
 # HORcount
-permTestAcc_HORcount <- dplyr::bind_rows(permTestAcc_HORcount_list)
-permTestAcc_HORcount_fam <- sort(unique(permTestAcc_HORcount$fam))
-permTestAcc_HORcount_all_acc_fam_list <- lapply(permTestAcc_HORcount_fam, function(x) {
+permTestAllList_HORcount <- dplyr::bind_rows(permTestAllList_HORcount_list)
+permTestAllList_HORcount_fam <- sort(unique(permTestAllList_HORcount$fam))
+permTestAllList_HORcount_all_acc_fam_list <- lapply(permTestAllList_HORcount_fam, function(x) {
   data.frame(
-             accession = paste0(length(unique(permTestAcc_HORcount$accession)), " accessions"),
-             metric = permTestAcc_HORcount$metric[1],
-             region = permTestAcc_HORcount$region[1],
+             accession = paste0(length(unique(permTestAllList_HORcount$accession)), " accessions"),
+             metric = permTestAllList_HORcount$metric[1],
+             region = permTestAllList_HORcount$region[1],
              fam = x,
-             features = mean(permTestAcc_HORcount[permTestAcc_HORcount$fam == x,]$features, na.rm = T),
+             features = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$features, na.rm = T),
              alternative = ".",
-             alphaThreshold = mean(permTestAcc_HORcount[permTestAcc_HORcount$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAcc_HORcount[permTestAcc_HORcount$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAcc_HORcount[permTestAcc_HORcount$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAcc_HORcount[permTestAcc_HORcount$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAcc_HORcount[permTestAcc_HORcount$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAcc_HORcount[permTestAcc_HORcount$fam == x,]$pval, na.rm = T)
+             alphaThreshold = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$alphaThreshold, na.rm = T),
+             observed = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$observed, na.rm = T),
+             expected = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$expected, na.rm = T),
+             log2obsexp = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$log2obsexp, na.rm = T),
+             log2alpha = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$log2alpha, na.rm = T),
+             pval = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$pval, na.rm = T)
             )
 })
-permTestAcc_HORcount_all_acc_fam <- dplyr::bind_rows(permTestAcc_HORcount_all_acc_fam_list)
-permTestAcc_HORcount <- rbind(permTestAcc_HORcount,
-                           permTestAcc_HORcount_all_acc_fam)
+permTestAllList_HORcount_all_acc_fam <- dplyr::bind_rows(permTestAllList_HORcount_all_acc_fam_list)
+permTestAllList_HORcount <- rbind(permTestAllList_HORcount,
+                                  permTestAllList_HORcount_all_acc_fam)
 
 # WeightedConsensusScore
-permTestAcc_WeightedConsensusScore <- dplyr::bind_rows(permTestAcc_WeightedConsensusScore_list)
-permTestAcc_WeightedConsensusScore_fam <- sort(unique(permTestAcc_WeightedConsensusScore$fam))
-permTestAcc_WeightedConsensusScore_all_acc_fam_list <- lapply(permTestAcc_WeightedConsensusScore_fam, function(x) {
+permTestAllList_WeightedConsensusScore <- dplyr::bind_rows(permTestAllList_WeightedConsensusScore_list)
+permTestAllList_WeightedConsensusScore_fam <- sort(unique(permTestAllList_WeightedConsensusScore$fam))
+permTestAllList_WeightedConsensusScore_all_acc_fam_list <- lapply(permTestAllList_WeightedConsensusScore_fam, function(x) {
   data.frame(
-             accession = paste0(length(unique(permTestAcc_WeightedConsensusScore$accession)), " accessions"),
-             metric = permTestAcc_WeightedConsensusScore$metric[1],
-             region = permTestAcc_WeightedConsensusScore$region[1],
+             accession = paste0(length(unique(permTestAllList_WeightedConsensusScore$accession)), " accessions"),
+             metric = permTestAllList_WeightedConsensusScore$metric[1],
+             region = permTestAllList_WeightedConsensusScore$region[1],
              fam = x,
-             features = mean(permTestAcc_WeightedConsensusScore[permTestAcc_WeightedConsensusScore$fam == x,]$features, na.rm = T),
+             features = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$features, na.rm = T),
              alternative = ".",
-             alphaThreshold = mean(permTestAcc_WeightedConsensusScore[permTestAcc_WeightedConsensusScore$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAcc_WeightedConsensusScore[permTestAcc_WeightedConsensusScore$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAcc_WeightedConsensusScore[permTestAcc_WeightedConsensusScore$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAcc_WeightedConsensusScore[permTestAcc_WeightedConsensusScore$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAcc_WeightedConsensusScore[permTestAcc_WeightedConsensusScore$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAcc_WeightedConsensusScore[permTestAcc_WeightedConsensusScore$fam == x,]$pval, na.rm = T)
+             alphaThreshold = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$alphaThreshold, na.rm = T),
+             observed = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$observed, na.rm = T),
+             expected = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$expected, na.rm = T),
+             log2obsexp = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$log2obsexp, na.rm = T),
+             log2alpha = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$log2alpha, na.rm = T),
+             pval = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$pval, na.rm = T)
             )
 })
-permTestAcc_WeightedConsensusScore_all_acc_fam <- dplyr::bind_rows(permTestAcc_WeightedConsensusScore_all_acc_fam_list)
-permTestAcc_WeightedConsensusScore <- rbind(permTestAcc_WeightedConsensusScore,
-                                         permTestAcc_WeightedConsensusScore_all_acc_fam)
+permTestAllList_WeightedConsensusScore_all_acc_fam <- dplyr::bind_rows(permTestAllList_WeightedConsensusScore_all_acc_fam_list)
+permTestAllList_WeightedConsensusScore <- rbind(permTestAllList_WeightedConsensusScore,
+                                                permTestAllList_WeightedConsensusScore_all_acc_fam)
 
 # EditDistance
-permTestAcc_EditDistance <- dplyr::bind_rows(permTestAcc_EditDistance_list)
-permTestAcc_EditDistance_fam <- sort(unique(permTestAcc_EditDistance$fam))
-permTestAcc_EditDistance_all_acc_fam_list <- lapply(permTestAcc_EditDistance_fam, function(x) {
+permTestAllList_EditDistance <- dplyr::bind_rows(permTestAllList_EditDistance_list)
+permTestAllList_EditDistance_fam <- sort(unique(permTestAllList_EditDistance$fam))
+permTestAllList_EditDistance_all_acc_fam_list <- lapply(permTestAllList_EditDistance_fam, function(x) {
   data.frame(
-             accession = paste0(length(unique(permTestAcc_EditDistance$accession)), " accessions"),
-             metric = permTestAcc_EditDistance$metric[1],
-             region = permTestAcc_EditDistance$region[1],
+             accession = paste0(length(unique(permTestAllList_EditDistance$accession)), " accessions"),
+             metric = permTestAllList_EditDistance$metric[1],
+             region = permTestAllList_EditDistance$region[1],
              fam = x,
-             features = mean(permTestAcc_EditDistance[permTestAcc_EditDistance$fam == x,]$features, na.rm = T),
+             features = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$features, na.rm = T),
              alternative = ".",
-             alphaThreshold = mean(permTestAcc_EditDistance[permTestAcc_EditDistance$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAcc_EditDistance[permTestAcc_EditDistance$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAcc_EditDistance[permTestAcc_EditDistance$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAcc_EditDistance[permTestAcc_EditDistance$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAcc_EditDistance[permTestAcc_EditDistance$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAcc_EditDistance[permTestAcc_EditDistance$fam == x,]$pval, na.rm = T)
+             alphaThreshold = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$alphaThreshold, na.rm = T),
+             observed = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$observed, na.rm = T),
+             expected = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$expected, na.rm = T),
+             log2obsexp = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$log2obsexp, na.rm = T),
+             log2alpha = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$log2alpha, na.rm = T),
+             pval = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$pval, na.rm = T)
             )
 })
-permTestAcc_EditDistance_all_acc_fam <- dplyr::bind_rows(permTestAcc_EditDistance_all_acc_fam_list)
-permTestAcc_EditDistance <- rbind(permTestAcc_EditDistance,
-                               permTestAcc_EditDistance_all_acc_fam)
+permTestAllList_EditDistance_all_acc_fam <- dplyr::bind_rows(permTestAllList_EditDistance_all_acc_fam_list)
+permTestAllList_EditDistance <- rbind(permTestAllList_EditDistance,
+                                      permTestAllList_EditDistance_all_acc_fam)
 
 combined <- rbind(
-                  permTestAcc_HORlengthsSum,
-                  permTestAcc_HORcount,
-                  permTestAcc_WeightedConsensusScore,
-                  permTestAcc_EditDistance
+                  permTestAllList_HORlengthsSum,
+                  permTestAllList_HORcount,
+                  permTestAllList_WeightedConsensusScore,
+                  permTestAllList_EditDistance
                  )
 
 colnames(combined)[which(colnames(combined) == "accession")] <- "Accession"
