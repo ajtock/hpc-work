@@ -516,11 +516,6 @@ permTestAccList_HORlengthsSum_list <- foreach(acc_idx = 1:length(acc),
                   region_name = regionName,
                   metric_name = "HORlengthsSum")
 }
-# Do permutation test across all accessions
-
-
-# Plot histogram summary of permutation tests 
-
 permTestAccList_HORcount_list <- foreach(acc_idx = 1:length(acc),
                                          .multicombine = T,
                                          .inorder = T) %do% {

@@ -20,8 +20,8 @@ setClass("permTest",
 # higher or lower at CENATHILA than at perms sets of random centromeric loci
 permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metrics_list, region_name, metric_name) {
 
-  fam_names <- sort(unique(unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(x) {
-    sort(unique(CENATHILA_CEN180_metrics_list[[x]]$Family))
+  fam_names <- sort(unique(unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(acc_idx) {
+    CENATHILA_CEN180_metrics_list[[acc_idx]]$Family
   }))))
 
   # Analyse by ATHILA family
@@ -30,22 +30,25 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
  
     print(fam_names[y])
 
-    features <- nrow(
-                     CENATHILA_CEN180_metrics_list[[acc_idx]][
-                       CENATHILA_CEN180_metrics_list[[acc_idx]]$Family == fam_names[y] , ]
-                    ) / 2
+    features <- sum(unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(acc_idx) {
+                      nrow(
+                       CENATHILA_CEN180_metrics_list[[acc_idx]][
+                         CENATHILA_CEN180_metrics_list[[acc_idx]]$Family == fam_names[y] , ]
+                      ) / 2
+                })))
 
     if(region_name %in% c("Upstream", "Downstream")) {
 
       CENATHILA <- mean(
-                        CENATHILA_CEN180_metrics_list[[acc_idx]][
-                          which(CENATHILA_CEN180_metrics_list[[acc_idx]]$Region == region_name &
-                                CENATHILA_CEN180_metrics_list[[acc_idx]]$Family == fam_names[y]) ,
-                          which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
-                          drop = T],
+                        unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(acc_idx) {
+                          CENATHILA_CEN180_metrics_list[[acc_idx]][
+                            which(CENATHILA_CEN180_metrics_list[[acc_idx]]$Region == region_name &
+                                  CENATHILA_CEN180_metrics_list[[acc_idx]]$Family == fam_names[y]) ,
+                            which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
+                            drop = T]
+                        })),
                         na.rm = T)
 
-      CENranLoc_permsList <- CENranLoc_CEN180_metrics_list[[acc_idx]]
       CENranLoc <- foreach(x = iter(1:perms),
 #                           .options.mpi = mpiopts,
                            .combine = "c",
@@ -53,24 +56,27 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                            .maxcombine = perms+1e1,
                            .inorder = F) %dopar% {
         mean(
-             CENranLoc_permsList[[x]][
-               which(CENranLoc_permsList[[x]]$Region == region_name &
-                     CENranLoc_permsList[[x]]$Family == fam_names[y]) ,
-               which(colnames(CENranLoc_permsList[[x]]) == metric_name) ,
-               drop = T],
+             unlist(lapply(1:length(CENranLoc_CEN180_metrics_list), function(acc_idx) {
+               CENranLoc_CEN180_metrics_list[[acc_idx]][[x]][
+                 which(CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]$Region == region_name &
+                       CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]$Family == fam_names[y]) ,
+                 which(colnames(CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]) == metric_name) ,
+                 drop = T]
+             })),
              na.rm = T)
       }
 
     } else if(region_name == "Flanks") {
 
       CENATHILA <- mean(
-                        CENATHILA_CEN180_metrics_list[[acc_idx]][
-                          which(CENATHILA_CEN180_metrics_list[[acc_idx]]$Family == fam_names[y]) ,
-                          which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
-                          drop = T],
+                        unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(acc_idx) {
+                          CENATHILA_CEN180_metrics_list[[acc_idx]][
+                            which(CENATHILA_CEN180_metrics_list[[acc_idx]]$Family == fam_names[y]) ,
+                            which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
+                            drop = T]
+                        })),
                         na.rm = T)
 
-      CENranLoc_permsList <- CENranLoc_CEN180_metrics_list[[acc_idx]]
       CENranLoc <- foreach(x = iter(1:perms),
 #                           .options.mpi = mpiopts,
                            .combine = "c",
@@ -78,10 +84,12 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                            .maxcombine = perms+1e1,
                            .inorder = F) %dopar% {
         mean(
-             CENranLoc_permsList[[x]][
-               which(CENranLoc_permsList[[x]]$Family == fam_names[y]) ,
-               which(colnames(CENranLoc_permsList[[x]]) == metric_name) ,
-               drop = T],
+             unlist(lapply(1:length(CENranLoc_CEN180_metrics_list), function(acc_idx) {
+               CENranLoc_CEN180_metrics_list[[acc_idx]][[x]][
+                 which(CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]$Family == fam_names[y]) ,
+                 which(colnames(CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]) == metric_name) ,
+                 drop = T]
+             })),
              na.rm = T)
       }
 
@@ -117,23 +125,10 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                                permDist = permDist,
                                features = features,
                                fam = fam_names[y],
-                               accession = acc[acc_idx],
+                               accession = paste0(length(CENATHILA_CEN180_metrics_list), " accessions"),
                                metric = metric_name,
                                region = region_name)
 
-#      permTestDF_y <- data.frame(accession = permTestResults_y@accession,
-#                                 metric = permTestResults_y@metric,
-#                                 region = permTestResults_y@region,
-#                                 fam = permTestResults_y@fam,
-#                                 features = permTestResults_y@features,
-#                                 alternative = permTestResults_y@alternative,
-#                                 alphaThreshold = permTestResults_y@alphaThreshold,
-#                                 observed = permTestResults_y@observed,
-#                                 expected = permTestResults_y@expected,
-#                                 log2obsexp = permTestResults_y@log2obsexp,
-#                                 log2alpha = permTestResults_y@log2alpha,
-#                                 pval = permTestResults_y@pval)
-#      permTestDF_fam <- rbind(permTestDF_fam, permTestDF_y)
       permTestResults_fam <- c(permTestResults_fam, permTestResults_y)
 
     }
@@ -142,20 +137,23 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
 
 
   # Analyse all ATHILA (not by ATHILA family)
-  features <- nrow(
-                   CENATHILA_CEN180_metrics_list[[acc_idx]]
-                  ) / 2
+  features <- sum(unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(acc_idx) {
+                    nrow(
+                     CENATHILA_CEN180_metrics_list[[acc_idx]]
+                    ) / 2
+              })))
 
   if(region_name %in% c("Upstream", "Downstream")) {
 
     CENATHILA <- mean(
-                      CENATHILA_CEN180_metrics_list[[acc_idx]][
-                        which(CENATHILA_CEN180_metrics_list[[acc_idx]]$Region == region_name) ,
-                        which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
-                        drop = T],
+                      unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(acc_idx) {
+                        CENATHILA_CEN180_metrics_list[[acc_idx]][
+                          which(CENATHILA_CEN180_metrics_list[[acc_idx]]$Region == region_name) ,
+                          which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
+                          drop = T]
+                      })),
                       na.rm = T)
 
-    CENranLoc_permsList <- CENranLoc_CEN180_metrics_list[[acc_idx]]
     CENranLoc <- foreach(x = iter(1:perms),
 #                         .options.mpi = mpiopts,
                          .combine = "c",
@@ -163,22 +161,25 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                          .maxcombine = perms+1e1,
                          .inorder = F) %dopar% {
       mean(
-           CENranLoc_permsList[[x]][
-             which(CENranLoc_permsList[[x]]$Region == region_name) ,
-             which(colnames(CENranLoc_permsList[[x]]) == metric_name) ,
-             drop = T],
+           unlist(lapply(1:length(CENranLoc_CEN180_metrics_list), function(acc_idx) {
+             CENranLoc_CEN180_metrics_list[[acc_idx]][[x]][
+               which(CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]$Region == region_name) ,
+               which(colnames(CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]) == metric_name) ,
+               drop = T]
+           })),
            na.rm = T)
     }
 
   } else if(region_name == "Flanks") {
 
     CENATHILA <- mean(
-                      CENATHILA_CEN180_metrics_list[[acc_idx]][ ,
-                        which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
-                        drop = T],
+                      unlist(lapply(1:length(CENATHILA_CEN180_metrics_list), function(acc_idx) {
+                        CENATHILA_CEN180_metrics_list[[acc_idx]][ ,
+                          which(colnames(CENATHILA_CEN180_metrics_list[[acc_idx]]) == metric_name) ,
+                          drop = T]
+                      })),
                       na.rm = T)
 
-    CENranLoc_permsList <- CENranLoc_CEN180_metrics_list[[acc_idx]]
     CENranLoc <- foreach(x = iter(1:perms),
 #                         .options.mpi = mpiopts,
                          .combine = "c",
@@ -186,16 +187,18 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                          .maxcombine = perms+1e1,
                          .inorder = F) %dopar% {
       mean(
-           CENranLoc_permsList[[x]][ ,
-             which(colnames(CENranLoc_permsList[[x]]) == metric_name) ,
-             drop = T],
+           unlist(lapply(1:length(CENranLoc_CEN180_metrics_list), function(acc_idx) {
+             CENranLoc_CEN180_metrics_list[[acc_idx]][[x]][ ,
+               which(colnames(CENranLoc_CEN180_metrics_list[[acc_idx]][[x]]) == metric_name) ,
+               drop = T]
+           })),
            na.rm = T)
     }
 
   }
 
   if(!is.na(CENATHILA)) {
- 
+
     permDist <- CENranLoc
     observed <- CENATHILA
     expected <- mean(permDist, na.rm = T)
@@ -210,47 +213,32 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
       MoreOrLessThanRandom <- "LessThanRandom"
       alphaThreshold <- quantile(permDist, probs = 0.05, na.rm = T)[[1]]
     }
+
     if(permPval == 0) { permPval <- minPval }
 
     permTestResults_all <- new("permTest",
-                               alternative = MoreOrLessThanRandom,
-                               alphaThreshold = alphaThreshold,
-                               pval = permPval,
-                               observed = observed,
-                               expected = expected,
-                               log2obsexp = log2( (observed+1) / (expected+1) ),
-                               log2alpha  = log2( (alphaThreshold+1) / (expected+1) ),
-                               permDist = permDist,
-                               features = features,
-                               fam = "ATHILA",
-                               accession = acc[acc_idx],
-                               metric = metric_name,
-                               region = region_name)
+                             alternative = MoreOrLessThanRandom,
+                             alphaThreshold = alphaThreshold,
+                             pval = permPval,
+                             observed = observed,
+                             expected = expected,
+                             log2obsexp = log2( (observed+1) / (expected+1) ),
+                             log2alpha  = log2( (alphaThreshold+1) / (expected+1) ),
+                             permDist = permDist,
+                             features = features,
+                             fam = "ATHILA",
+                             accession = paste0(length(CENATHILA_CEN180_metrics_list), " accessions"),
+                             metric = metric_name,
+                             region = region_name)
 
-#    permTestDF_all <- data.frame(accession = permTestResults_all@accession,
-#                                 metric = permTestResults_all@metric,
-#                                 region = permTestResults_all@region,
-#                                 fam = permTestResults_all@fam,
-#                                 features = permTestResults_all@features,
-#                                 alternative = permTestResults_all@alternative,
-#                                 alphaThreshold = permTestResults_all@alphaThreshold,
-#                                 observed = permTestResults_all@observed,
-#                                 expected = permTestResults_all@expected,
-#                                 log2obsexp = permTestResults_all@log2obsexp,
-#                                 log2alpha = permTestResults_all@log2alpha,
-#                                 pval = permTestResults_all@pval)
-#
-#    permTestDF <- rbind(permTestDF_fam, permTestDF_all)
-    permTestResults <- c(permTestResults_fam, permTestResults_all)
+    permTestResults <- c(permTestResults_all, permTestResults_fam)
 
   } else {
 
-#    permTestDF <- permTestDF_fam
-    permTestResults <- permTestResults_fam
+    stop(paste0("No features with calculable ", metric_name))
 
   }
 
-#  permTestDF[ with(permTestDF, order(fam)) , ]
   permTestResults
 
 }
