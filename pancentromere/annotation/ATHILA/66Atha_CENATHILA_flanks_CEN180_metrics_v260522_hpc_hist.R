@@ -251,14 +251,12 @@ CENATHILA_list <- foreach(x = 1:length(acc), .inorder = T) %dopar% {
   tab
 }
 
-
 CENATHILA_DF_phylo <- dplyr::bind_rows(CENATHILA_list) 
 phylo <- sort(unique(CENATHILA_DF_phylo$phylo))
 
 phylo_colFun <- cols25(n = 18)[-c(7:16)][1:length(phylo)]
 stopifnot(length(phylo_colFun) == length(phylo))
 names(phylo_colFun) <- phylo
-
 
 CENATHILA_GR_list <- foreach(x = 1:length(acc), .inorder = T) %dopar% {
   GRanges(seqnames = as.character(CENATHILA_list[[x]]$chr),
@@ -267,7 +265,6 @@ CENATHILA_GR_list <- foreach(x = 1:length(acc), .inorder = T) %dopar% {
           strand = as.character(CENATHILA_list[[x]]$strand),
           phylo = as.character(CENATHILA_list[[x]]$phylo))
 }
-
 
 
 # Define function to select randomly positioned loci of the same

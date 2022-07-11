@@ -212,19 +212,19 @@ permTestHist <- function(acc_idx, CENATHILA_CEN180_metrics_list, CENranLoc_CEN18
     if(permPval == 0) { permPval <- minPval }
 
     permTestResults_all <- new("permTest",
-                           alternative = MoreOrLessThanRandom,
-                           alphaThreshold = alphaThreshold,
-                           pval = permPval,
-                           observed = observed,
-                           expected = expected,
-                           log2obsexp = log2( (observed+1) / (expected+1) ),
-                           log2alpha  = log2( (alphaThreshold+1) / (expected+1) ),
-                           permDist = permDist,
-                           features = features,
-                           fam = "ATHILA",
-                           accession = acc[acc_idx],
-                           metric = metric_name,
-                           region = region_name)
+                               alternative = MoreOrLessThanRandom,
+                               alphaThreshold = alphaThreshold,
+                               pval = permPval,
+                               observed = observed,
+                               expected = expected,
+                               log2obsexp = log2( (observed+1) / (expected+1) ),
+                               log2alpha  = log2( (alphaThreshold+1) / (expected+1) ),
+                               permDist = permDist,
+                               features = features,
+                               fam = "ATHILA",
+                               accession = acc[acc_idx],
+                               metric = metric_name,
+                               region = region_name)
 
 #    permTestDF_all <- data.frame(accession = permTestResults_all@accession,
 #                                 metric = permTestResults_all@metric,
