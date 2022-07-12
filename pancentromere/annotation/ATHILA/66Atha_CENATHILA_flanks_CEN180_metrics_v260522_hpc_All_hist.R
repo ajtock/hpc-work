@@ -723,6 +723,63 @@ permTestAllList_EditDistance_permDF <- data.frame(
 
 
 
+save(permTestAllList_HORlengthsSum,
+     file = paste0(plotDirAllMetrics,
+                   "CENATHILA_", flankName, "_regions_CEN180_HORlengthsSum_all_accessions_combined_",
+                   paste0(chrName, collapse = "_"), "_",
+                   perms, "perms_",
+                   regionName,
+                   "_permObject.RData"))
+load(file = paste0(plotDirAllMetrics,
+                   "CENATHILA_", flankName, "_regions_CEN180_HORlengthsSum_all_accessions_combined_",
+                   paste0(chrName, collapse = "_"), "_",
+                   perms, "perms_",
+                   regionName,
+                   "_permObject.RData"))
+
+save(permTestAllList_EditDistance,
+     file = paste0(plotDirAllMetrics,
+                   "CENATHILA_", flankName, "_regions_CEN180_EditDistance_all_accessions_combined_",
+                   paste0(chrName, collapse = "_"), "_",
+                   perms, "perms_",
+                   regionName,
+                   "_permObject.RData"))
+load(file = paste0(plotDirAllMetrics,
+                   "CENATHILA_", flankName, "_regions_CEN180_EditDistance_all_accessions_combined_",
+                   paste0(chrName, collapse = "_"), "_",
+                   perms, "perms_",
+                   regionName,
+                   "_permObject.RData"))
+
+#save(permTestAllList_HORcount,
+#     file = paste0(plotDirAllMetrics,
+#                   "CENATHILA_", flankName, "_regions_CEN180_HORcount_all_accessions_combined_",
+#                   paste0(chrName, collapse = "_"), "_",
+#                   perms, "perms_",
+#                   regionName,
+#                   "_permObject.RData"))
+#load(file = paste0(plotDirAllMetrics,
+#                   "CENATHILA_", flankName, "_regions_CEN180_HORcount_all_accessions_combined_",
+#                   paste0(chrName, collapse = "_"), "_",
+#                   perms, "perms_",
+#                   regionName,
+#                   "_permObject.RData"))
+#
+#save(permTestAllList_WeightedConsensusScore,
+#     file = paste0(plotDirAllMetrics,
+#                   "CENATHILA_", flankName, "_regions_CEN180_WeightedConsensusScore_all_accessions_combined_",
+#                   paste0(chrName, collapse = "_"), "_",
+#                   perms, "perms_",
+#                   regionName,
+#                   "_permObject.RData"))
+#load(file = paste0(plotDirAllMetrics,
+#                   "CENATHILA_", flankName, "_regions_CEN180_WeightedConsensusScore_all_accessions_combined_",
+#                   paste0(chrName, collapse = "_"), "_",
+#                   perms, "perms_",
+#                   regionName,
+#                   "_permObject.RData"))
+
+
 # Combine into one data.frame for plotting with ggplot2
 combined_permDistDF <- rbind(
                              permTestAllList_HORlengthsSum_permDistDF,
@@ -862,15 +919,15 @@ par(mar = c(3.1, 3.1, 4.1, 1.1),
 ## Disable scientific notation (e.g., 0.0001 rather than 1e-04)
 #options(scipen = 100)
 # Calculate max density
-maxDensityPlus <- max(density(permTestAllList_HORlengthsSum[[1]]@permDist)$y)*1.2
+maxDensityPlus <- max(density(permTestAllList_HORlengthsSum[[1]]@permDist)$y)*1.1
 if(permTestAllList_HORlengthsSum[[1]]@alternative == "MoreThanRandom") {
-  xlim <- c(pmin(0, min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.2),
-            pmax(permTestAllList_HORlengthsSum[[1]]@observed*1.2, permTestAllList_HORlengthsSum[[1]]@alphaThreshold*1.2))
+  xlim <- c(pmin(min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.1),
+            pmax(permTestAllList_HORlengthsSum[[1]]@observed*1.1, permTestAllList_HORlengthsSum[[1]]@alphaThreshold*1.1))
   textX1 <- quantile(xlim, 0.25)[[1]]
 #  textX1 <- min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.15
 } else {
-  xlim <- c(pmin(0, permTestAllList_HORlengthsSum[[1]]@observed/1.2),
-            max(permTestAllList_HORlengthsSum[[1]]@permDist)*1.2)
+  xlim <- c(pmin(permTestAllList_HORlengthsSum[[1]]@observed/1.1),
+            max(permTestAllList_HORlengthsSum[[1]]@permDist)*1.1)
   textX1 <- quantile(xlim, 0.75)[[1]]
 #  textX1 <- min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.15
 }
@@ -899,7 +956,7 @@ axis(side = 1,
 mtext(side = 1,
       text = bquote("Mean" ~ italic("CEN178") ~ "HORlengthsSum in" ~ .(flankNamePlot) ~ "flanking regions"),
       line = 1.85)
-titleText <- list(bquote(italic(.(permTestAllList_HORlengthsSum[[1]]@fam))),
+titleText <- list(bquote("Centromeric" ~ italic(.(permTestAllList_HORlengthsSum[[1]]@fam))),
                   bquote(italic("P")*" = "*
                          .(as.character(permTestAllList_HORlengthsSum[[1]]@pval))),
 #                         .(as.character(round(permTestAllList_HORlengthsSum[[1]]@pval,
@@ -908,9 +965,9 @@ titleText <- list(bquote(italic(.(permTestAllList_HORlengthsSum[[1]]@fam))),
                                                        big.mark = ",",
                                                        trim = T)) ~
                          "sets of randomly positioned centromeric loci"))
-mtext(do.call(expression, titleText), side = 3, line = 3:1, cex = c(1, 0.8, 0.8))
+mtext(do.call(expression, titleText), side = 3, line = 3:1, cex = c(1, 0.7, 0.7))
 lines(density(permTestAllList_HORlengthsSum[[1]]@permDist),
-      col = "black",
+      col = "grey70",
       lwd = 1.5)
 ablineclip(v = permTestAllList_HORlengthsSum[[1]]@expected,
            y1 = 0, y2 = maxDensityPlus*.92, lwd = 2)
@@ -951,15 +1008,15 @@ par(mar = c(3.1, 3.1, 4.1, 1.1),
 ## Disable scientific notation (e.g., 0.0001 rather than 1e-04)
 #options(scipen = 100)
 # Calculate max density
-maxDensityPlus <- max(density(permTestAllList_EditDistance[[1]]@permDist)$y)*1.2
+maxDensityPlus <- max(density(permTestAllList_EditDistance[[1]]@permDist)$y)*1.01
 if(permTestAllList_EditDistance[[1]]@alternative == "MoreThanRandom") {
-  xlim <- c(pmin(0, min(permTestAllList_EditDistance[[1]]@permDist)/1.2),
-            pmax(permTestAllList_EditDistance[[1]]@observed*1.2, permTestAllList_EditDistance[[1]]@alphaThreshold*1.2))
+  xlim <- c(pmin(min(permTestAllList_EditDistance[[1]]@permDist)/1.01),
+            pmax(permTestAllList_EditDistance[[1]]@observed*1.01, permTestAllList_EditDistance[[1]]@alphaThreshold*1.01))
   textX1 <- quantile(xlim, 0.25)[[1]]
 #  textX1 <- min(permTestAllList_EditDistance[[1]]@permDist)/1.15
 } else {
-  xlim <- c(pmin(0, permTestAllList_EditDistance[[1]]@observed/1.2),
-            max(permTestAllList_EditDistance[[1]]@permDist)*1.2)
+  xlim <- c(pmin(permTestAllList_EditDistance[[1]]@observed/1.01),
+            max(permTestAllList_EditDistance[[1]]@permDist)*1.01)
   textX1 <- quantile(xlim, 0.75)[[1]]
 #  textX1 <- min(permTestAllList_EditDistance[[1]]@permDist)/1.15
 }
@@ -988,7 +1045,7 @@ axis(side = 1,
 mtext(side = 1,
       text = bquote("Mean" ~ italic("CEN178") ~ "EditDistance in" ~ .(flankNamePlot) ~ "flanking regions"),
       line = 1.85)
-titleText <- list(bquote(italic(.(permTestAllList_EditDistance[[1]]@fam))),
+titleText <- list(bquote("Centromeric" ~ italic(.(permTestAllList_EditDistance[[1]]@fam))),
                   bquote(italic("P")*" = "*
                          .(as.character(permTestAllList_EditDistance[[1]]@pval))),
 #                         .(as.character(round(permTestAllList_EditDistance[[1]]@pval,
@@ -997,9 +1054,9 @@ titleText <- list(bquote(italic(.(permTestAllList_EditDistance[[1]]@fam))),
                                                        big.mark = ",",
                                                        trim = T)) ~
                          "sets of randomly positioned centromeric loci"))
-mtext(do.call(expression, titleText), side = 3, line = 3:1, cex = c(1, 0.8, 0.8))
+mtext(do.call(expression, titleText), side = 3, line = 3:1, cex = c(1, 0.7, 0.7))
 lines(density(permTestAllList_EditDistance[[1]]@permDist),
-      col = "black",
+      col = "grey70",
       lwd = 1.5)
 ablineclip(v = permTestAllList_EditDistance[[1]]@expected,
            y1 = 0, y2 = maxDensityPlus*.92, lwd = 2)
