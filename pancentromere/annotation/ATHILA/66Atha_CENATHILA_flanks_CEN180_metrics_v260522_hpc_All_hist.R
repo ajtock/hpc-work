@@ -65,6 +65,7 @@ suppressMessages(library(snow, quietly = T))
 suppressMessages(library(Rmpi, quietly = T))
 suppressMessages(library(doMPI, quietly = T))
 suppressMessages(library(iterators, quietly = T))
+suppressMessages(library(plotrix, quietly = T))
 
 #library(data.table)
 #library(GenomicRanges)
@@ -789,10 +790,10 @@ vp_all <- ggplot(data = combined_permDistDF,
                  mapping = aes(x = Family,
                                y = Permuted)) +
   xlab("Family") +
-  ylab(bquote(italic("CEN178") ~ "metric in" ~ .(flankNamePlot) ~ "flanking regions")) +
+  ylab(bquote("Mean" ~ italic("CEN178") ~ "metric in" ~ .(flankNamePlot) ~ "flanking regions")) +
   geom_violin(trim = F,
               scale = "count",
-              fill = "grey80") +
+              fill = "grey70") +
   geom_point(data = combined_permDF,
              mapping = aes(x = Family,
                            y = Observed),
@@ -846,134 +847,186 @@ ggsave(paste0(plotDirAllMetrics,
        width = 4*length(unique(combined_permDF$Metric)), height = 8, limitsize = F)
 
 
+# Plot histogram summaries
 
-combined$Accession <- factor(combined$Accession,
-                             levels = c(paste0(length(unique(combined$Accession))-1, " accessions"),
-                                        sort(unique(combined$Accession))[-grep(" accessions", sort(unique(combined$Accession)))]))
-combined$Metric <- factor(combined$Metric,
-                          levels = unique(combined$Metric))
-combined$Region <- factor(combined$Region,
-                          levels = unique(combined$Region))
-combined$Family <- factor(combined$Family,
-                          levels = sort(unique(combined$Family)))
+# HORlengthsSum
+pdf(paste0(plotDirAllMetrics,
+           "CENATHILA_", flankName, "_regions_CEN180_HORlengthsSum_ATHILA_all_accessions_histogram_",
+           paste0(chrName, collapse = "_"), "_",
+           perms, "perms_",
+           paste0(unique(as.vector(combined_permDF$Region)), collapse = "_"),
+           ".pdf"),
+    height = 4.5, width = 5.0)
+par(mar = c(3.1, 3.1, 4.1, 1.1),
+    mgp = c(1.85, 0.75, 0))
+## Disable scientific notation (e.g., 0.0001 rather than 1e-04)
+#options(scipen = 100)
+# Calculate max density
+maxDensityPlus <- max(density(permTestAllList_HORlengthsSum[[1]]@permDist)$y)*1.2
+if(permTestAllList_HORlengthsSum[[1]]@alternative == "MoreThanRandom") {
+  xlim <- c(pmin(0, min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.2),
+            pmax(permTestAllList_HORlengthsSum[[1]]@observed*1.2, permTestAllList_HORlengthsSum[[1]]@alphaThreshold*1.2))
+  textX1 <- quantile(xlim, 0.25)[[1]]
+#  textX1 <- min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.15
+} else {
+  xlim <- c(pmin(0, permTestAllList_HORlengthsSum[[1]]@observed/1.2),
+            max(permTestAllList_HORlengthsSum[[1]]@permDist)*1.2)
+  textX1 <- quantile(xlim, 0.75)[[1]]
+#  textX1 <- min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.15
+}
+hist(permTestAllList_HORlengthsSum[[1]]@permDist,
+     breaks = 50,
+     freq = FALSE,
+     col = "grey70",
+     border = NA,
+     lwd = 2,
+     xlim = c(pretty(xlim)[1],
+              pretty(xlim)[length(pretty(xlim))]),
+     ylim = c(0,
+              maxDensityPlus),
+     xaxt = "n", yaxt = "n",
+     xlab = "", ylab = "", main = "",
+     axes = FALSE)
+axis(side = 2,
+     at = pretty(density(permTestAllList_HORlengthsSum[[1]]@permDist)$y),
+     lwd = 2)
+mtext(side = 2,
+      text = "Density",
+      line = 1.85)
+axis(side = 1,
+     at = pretty(xlim),
+     lwd = 2)
+mtext(side = 1,
+      text = bquote("Mean" ~ italic("CEN178") ~ "HORlengthsSum in" ~ .(flankNamePlot) ~ "flanking regions"),
+      line = 1.85)
+titleText <- list(bquote(italic(.(permTestAllList_HORlengthsSum[[1]]@fam))),
+                  bquote(italic("P")*" = "*
+                         .(as.character(permTestAllList_HORlengthsSum[[1]]@pval))),
+#                         .(as.character(round(permTestAllList_HORlengthsSum[[1]]@pval,
+#                                              digits = 6)))),
+                  bquote("Permutations = "*.(prettyNum(length(permTestAllList_HORlengthsSum[[1]]@permDist),
+                                                       big.mark = ",",
+                                                       trim = T)) ~
+                         "sets of randomly positioned centromeric loci"))
+mtext(do.call(expression, titleText), side = 3, line = 3:1, cex = c(1, 0.8, 0.8))
+lines(density(permTestAllList_HORlengthsSum[[1]]@permDist),
+      col = "black",
+      lwd = 1.5)
+ablineclip(v = permTestAllList_HORlengthsSum[[1]]@expected,
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2)
+ablineclip(v = permTestAllList_HORlengthsSum[[1]]@observed,
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, col = "dodgerblue2")
+ablineclip(v = permTestAllList_HORlengthsSum[[1]]@alphaThreshold,
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, lty = 5, col = "darkorange1")
+text(x = c(textX1,
+           permTestAllList_HORlengthsSum[[1]]@expected,
+           permTestAllList_HORlengthsSum[[1]]@observed,
+           permTestAllList_HORlengthsSum[[1]]@alphaThreshold),
+     y = c(maxDensityPlus*.95,
+           maxDensityPlus,
+           maxDensityPlus,
+           maxDensityPlus*.95),
+     labels = c("Permuted",
+                "Expected",
+                "Observed",
+                expression(alpha*" = 0.05")),
+     col = c("grey70",
+             "black",
+             "dodgerblue2",
+             "darkorange1"),
+     cex = 0.8)
+dev.off()
 
 
-# Per-accession plots (including All accessions plot)
-bp_per <- ggplot(data = combined,
-                 mapping = aes(x = Family,
-                               y = log2obsexp,
-                               fill = Metric)) +
-  geom_bar(stat = "identity",
-           position = position_dodge()) +
-#  scale_fill_discrete(name = "") +
-  scale_fill_brewer(name = "",
-                    palette = "Dark2") +
-  geom_point(mapping = aes(x = Family,
-                           y = log2alpha),
-             position = position_dodge(0.9),
-             shape = "-", colour  = "grey70", size = 12) +
-  xlab(bquote(italic("CENATHILA") ~ .(flankNamePlot) ~ "flanking regions")) +
-  ylab(bquote("Log"[2] * "(observed/expected)" ~ italic("CEN178") ~ "metric")) +
-#  scale_y_continuous(limits = c(-4.0, 4.0)) +
-  scale_x_discrete(position = "bottom") +
-  guides(fill = guide_legend(direction = "vertical",
-                             label.position = "right",
-                             label.theme = element_text(size = 16, hjust = 0, vjust = 0.5, angle = 0),
-                             nrow = length(unique(combined$Family)),
-                             byrow = TRUE)) +
+# EditDistance
+pdf(paste0(plotDirAllMetrics,
+           "CENATHILA_", flankName, "_regions_CEN180_EditDistance_ATHILA_all_accessions_histogram_",
+           paste0(chrName, collapse = "_"), "_",
+           perms, "perms_",
+           paste0(unique(as.vector(combined_permDF$Region)), collapse = "_"),
+           ".pdf"),
+    height = 4.5, width = 5.0)
+par(mar = c(3.1, 3.1, 4.1, 1.1),
+    mgp = c(1.85, 0.75, 0))
+## Disable scientific notation (e.g., 0.0001 rather than 1e-04)
+#options(scipen = 100)
+# Calculate max density
+maxDensityPlus <- max(density(permTestAllList_EditDistance[[1]]@permDist)$y)*1.2
+if(permTestAllList_EditDistance[[1]]@alternative == "MoreThanRandom") {
+  xlim <- c(pmin(0, min(permTestAllList_EditDistance[[1]]@permDist)/1.2),
+            pmax(permTestAllList_EditDistance[[1]]@observed*1.2, permTestAllList_EditDistance[[1]]@alphaThreshold*1.2))
+  textX1 <- quantile(xlim, 0.25)[[1]]
+#  textX1 <- min(permTestAllList_EditDistance[[1]]@permDist)/1.15
+} else {
+  xlim <- c(pmin(0, permTestAllList_EditDistance[[1]]@observed/1.2),
+            max(permTestAllList_EditDistance[[1]]@permDist)*1.2)
+  textX1 <- quantile(xlim, 0.75)[[1]]
+#  textX1 <- min(permTestAllList_EditDistance[[1]]@permDist)/1.15
+}
+hist(permTestAllList_EditDistance[[1]]@permDist,
+     breaks = 50,
+     freq = FALSE,
+     col = "grey70",
+     border = NA,
+     lwd = 2,
+     xlim = c(pretty(xlim)[1],
+              pretty(xlim)[length(pretty(xlim))]),
+     ylim = c(0,
+              maxDensityPlus),
+     xaxt = "n", yaxt = "n",
+     xlab = "", ylab = "", main = "",
+     axes = FALSE)
+axis(side = 2,
+     at = pretty(density(permTestAllList_EditDistance[[1]]@permDist)$y),
+     lwd = 2)
+mtext(side = 2,
+      text = "Density",
+      line = 1.85)
+axis(side = 1,
+     at = pretty(xlim),
+     lwd = 2)
+mtext(side = 1,
+      text = bquote("Mean" ~ italic("CEN178") ~ "EditDistance in" ~ .(flankNamePlot) ~ "flanking regions"),
+      line = 1.85)
+titleText <- list(bquote(italic(.(permTestAllList_EditDistance[[1]]@fam))),
+                  bquote(italic("P")*" = "*
+                         .(as.character(permTestAllList_EditDistance[[1]]@pval))),
+#                         .(as.character(round(permTestAllList_EditDistance[[1]]@pval,
+#                                              digits = 6)))),
+                  bquote("Permutations = "*.(prettyNum(length(permTestAllList_EditDistance[[1]]@permDist),
+                                                       big.mark = ",",
+                                                       trim = T)) ~
+                         "sets of randomly positioned centromeric loci"))
+mtext(do.call(expression, titleText), side = 3, line = 3:1, cex = c(1, 0.8, 0.8))
+lines(density(permTestAllList_EditDistance[[1]]@permDist),
+      col = "black",
+      lwd = 1.5)
+ablineclip(v = permTestAllList_EditDistance[[1]]@expected,
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2)
+ablineclip(v = permTestAllList_EditDistance[[1]]@observed,
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, col = "dodgerblue2")
+ablineclip(v = permTestAllList_EditDistance[[1]]@alphaThreshold,
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, lty = 5, col = "darkorange1")
+text(x = c(textX1,
+           permTestAllList_EditDistance[[1]]@expected,
+           permTestAllList_EditDistance[[1]]@observed,
+           permTestAllList_EditDistance[[1]]@alphaThreshold),
+     y = c(maxDensityPlus*.95,
+           maxDensityPlus,
+           maxDensityPlus,
+           maxDensityPlus*.95),
+     labels = c("Permuted",
+                "Expected",
+                "Observed",
+                expression(alpha*" = 0.05")),
+     col = c("grey70",
+             "black",
+             "dodgerblue2",
+             "darkorange1"),
+     cex = 0.8)
+dev.off()
 
-  theme_bw() +
-  theme(axis.line.y = element_line(size = 0.5, colour = "black"),
-        axis.ticks.y = element_line(size = 0.5, colour = "black"),
-        axis.text.y = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 90),
-        axis.title.y = element_text(size = 20, colour = "black"),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 45),
-        axis.title.x = element_text(size = 20, colour = "black", margin = margin(t = 20)),
-        strip.text.x = element_text(size = 20, colour = "white"),
-        strip.text.y = element_text(size = 20, colour = "white"),
-        strip.background = element_rect(fill = "black", colour = "black"),
-#        panel.grid = element_blank(),
-#        panel.border = element_blank(),
-#        panel.background = element_blank(),
-        legend.background = element_rect(fill = "transparent"),
-        legend.key = element_rect(colour = "transparent",
-                                  fill = "transparent"),
-        plot.margin = unit(c(5.5, 5.5, 5.5, 5.5), "pt"),
-        plot.title = element_text(size = 20, colour = "black", hjust = 0.5)) +
-  ggtitle(bquote("Permutations =" ~
-                 .(prettyNum(perms,
-                             big.mark = ",",
-                             trim = T)) ~ "sets of randomly positioned centromeric loci"))
-bp_per <- bp_per +
-  facet_grid(cols = vars(Accession), rows = vars(Region), scales = "fixed")
-ggsave(paste0(plotDirAllMetrics,
-              "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_combined_bargraph_",
-              paste0(chrName, collapse = "_"), "_",
-              perms, "perms_",
-              paste0(unique(as.vector(combined$Region)), collapse = "_"),
-              ".pdf"),
-       plot = bp_per,
-       width = 10*length(unique(as.vector(combined$Accession))), height = 8, limitsize = F)
 
-# All accessions plot (excluding per-accession plots)
-all_accessions <- combined[grep(" accessions", combined$Accession),] 
-bp_all <- ggplot(data = all_accessions,
-                 mapping = aes(x = Family,
-                               y = log2obsexp,
-                               fill = Metric)) +
-  geom_bar(stat = "identity",
-           position = position_dodge()) +
-#  scale_fill_discrete(name = "") +
-  scale_fill_brewer(name = "",
-                    palette = "Dark2") +
-  geom_point(mapping = aes(x = Family,
-                           y = log2alpha),
-             position = position_dodge(0.9),
-             shape = "-", colour  = "grey70", size = 12) +
-  xlab(bquote(italic("CENATHILA") ~ .(flankNamePlot) ~ "flanking regions")) +
-  ylab(bquote("Log"[2] * "(observed/expected)" ~ italic("CEN178") ~ "metric")) +
-#  scale_y_continuous(limits = c(-4.0, 4.0)) +
-  scale_x_discrete(position = "bottom") +
-  guides(fill = guide_legend(direction = "vertical",
-                             label.position = "right",
-                             label.theme = element_text(size = 16, hjust = 0, vjust = 0.5, angle = 0),
-                             nrow = length(unique(all_accessions$Family)),
-                             byrow = TRUE)) +
-
-  theme_bw() +
-  theme(axis.line.y = element_line(size = 0.5, colour = "black"),
-        axis.ticks.y = element_line(size = 0.5, colour = "black"),
-        axis.text.y = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 90),
-        axis.title.y = element_text(size = 20, colour = "black"),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 45),
-        axis.title.x = element_text(size = 20, colour = "black", margin = margin(t = 20)),
-        strip.text.x = element_text(size = 20, colour = "white"),
-        strip.text.y = element_text(size = 20, colour = "white"),
-        strip.background = element_rect(fill = "black", colour = "black"),
-#        panel.grid = element_blank(),
-#        panel.border = element_blank(),
-#        panel.background = element_blank(),
-        legend.background = element_rect(fill = "transparent"),
-        legend.key = element_rect(colour = "transparent",
-                                  fill = "transparent"),
-        plot.margin = unit(c(5.5, 5.5, 5.5, 5.5), "pt"),
-        plot.title = element_text(size = 20, colour = "black", hjust = 0.5)) +
-  ggtitle(bquote("Permutations =" ~
-                 .(prettyNum(perms,
-                             big.mark = ",",
-                             trim = T)) ~ "sets of randomly positioned centromeric loci"))
-bp_all <- bp_all +
-  facet_grid(cols = vars(Accession), scales = "fixed")
-ggsave(paste0(plotDirAllMetrics,
-              "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_combined_all_accessions_bargraph_",
-              paste0(chrName, collapse = "_"), "_",
-              perms, "perms_",
-              paste0(unique(as.vector(all_accessions$Region)), collapse = "_"),
-              ".pdf"),
-       plot = bp_all,
-       width = 14*length(unique(as.vector(all_accessions$Accession))), height = 8, limitsize = F)
 
 print("warnings 1")
 print(warnings())
