@@ -449,8 +449,10 @@ CENranLoc_CEN180_metrics_list <- foreach(acc_idx = 1:length(acc), .inorder = T) 
 }
 
 
-# Do permutation test across all accessions
+# Do permutation tests across all accessions
 source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_function_hpc.R")
+
+# HORlengthsSum
 permTestAllList_HORlengthsSum <- permTestAllList(
                                                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
                                                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
@@ -458,27 +460,38 @@ permTestAllList_HORlengthsSum <- permTestAllList(
                                                  metric_name = "HORlengthsSum"
                                                 )
 permTestAllList_HORlengthsSum_permDistDF <- data.frame(
+                                                       Accession = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         rep(permTestAllList_HORlengthsSum[[y]]@accession,
+                                                             times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
+                                                       })),
                                                        Family = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
                                                          rep(permTestAllList_HORlengthsSum[[y]]@fam,
+                                                             times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
+                                                       })),
+                                                       Metric = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         rep(permTestAllList_HORlengthsSum[[y]]@metric,
+                                                             times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
+                                                       })),
+                                                       Region = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         rep(permTestAllList_HORlengthsSum[[y]]@region,
                                                              times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
                                                        })),
                                                        Permuted = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
                                                          permTestAllList_HORlengthsSum[[y]]@permDist
                                                        }))
                                                       ) 
-
 permTestAllList_HORlengthsSum_permDF <- data.frame(
+                                                   Accession = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                     permTestAllList_HORlengthsSum[[y]]@accession
+                                                   })),
                                                    Family = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
                                                      permTestAllList_HORlengthsSum[[y]]@fam
                                                    })),
-                                                   Alternative = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
-                                                     permTestAllList_HORlengthsSum[[y]]@alternative
+                                                   Metric = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                     permTestAllList_HORlengthsSum[[y]]@metric
                                                    })),
-                                                   Alpha = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
-                                                     permTestAllList_HORlengthsSum[[y]]@alphaThreshold
-                                                   })),
-                                                   Pvalue = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
-                                                     permTestAllList_HORlengthsSum[[y]]@pval
+                                                   Region = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                     permTestAllList_HORlengthsSum[[y]]@region
                                                    })),
                                                    Observed = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
                                                      permTestAllList_HORlengthsSum[[y]]@observed
@@ -486,281 +499,365 @@ permTestAllList_HORlengthsSum_permDF <- data.frame(
                                                    Expected = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
                                                      permTestAllList_HORlengthsSum[[y]]@expected
                                                    })),
+                                                   Alpha = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                     permTestAllList_HORlengthsSum[[y]]@alphaThreshold
+                                                   })),
+                                                   Pvalue = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                     permTestAllList_HORlengthsSum[[y]]@pval
+                                                   })),
+                                                   Alternative = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                     permTestAllList_HORlengthsSum[[y]]@alternative
+                                                   })),
+                                                   Features = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                     permTestAllList_HORlengthsSum[[y]]@features
+                                                   })),
                                                    Log2ObservedExpected = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
                                                      permTestAllList_HORlengthsSum[[y]]@log2obsexp
                                                    })),
                                                    Log2Alpha = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
                                                      permTestAllList_HORlengthsSum[[y]]@log2alpha
-                                                   })),
-                                                   Features = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
-                                                     permTestAllList_HORlengthsSum[[y]]@features
-                                                   })),
-                                                   Accession = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
-                                                     permTestAllList_HORlengthsSum[[y]]@accession
-                                                   })),
-                                                   Metric = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
-                                                     permTestAllList_HORlengthsSum[[y]]@metric
-                                                   })),
-                                                   Region = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
-                                                     permTestAllList_HORlengthsSum[[y]]@region
                                                    }))
                                                   ) 
 
-permTestAllList_HORlengthsSum_permDistDF$Family <- factor(permTestAllList_HORlengthsSum_permDistDF$Family,
-                                                          levels = sort(unique(permTestAllList_HORlengthsSum_permDistDF$Family)))
-permTestAllList_HORlengthsSum_permDF$Family <- factor(permTestAllList_HORlengthsSum_permDF$Family,
-                                                      levels = sort(unique(permTestAllList_HORlengthsSum_permDF$Family)))
+# EditDistance
+permTestAllList_EditDistance <- permTestAllList(
+                                                CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+                                                CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+                                                region_name = regionName,
+                                                metric_name = "EditDistance"
+                                               )
+permTestAllList_EditDistance_permDistDF <- data.frame(
+                                                      Family = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                        rep(permTestAllList_EditDistance[[y]]@fam,
+                                                            times = length(permTestAllList_EditDistance[[y]]@permDist))
+                                                      })),
+                                                      Accession = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                        rep(permTestAllList_EditDistance[[y]]@accession,
+                                                            times = length(permTestAllList_EditDistance[[y]]@permDist))
+                                                      })),
+                                                      Metric = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                        rep(permTestAllList_EditDistance[[y]]@metric,
+                                                            times = length(permTestAllList_EditDistance[[y]]@permDist))
+                                                      })),
+                                                      Region = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                        rep(permTestAllList_EditDistance[[y]]@region,
+                                                            times = length(permTestAllList_EditDistance[[y]]@permDist))
+                                                      })),
+                                                      Permuted = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                        permTestAllList_EditDistance[[y]]@permDist
+                                                      }))
+                                                     ) 
+permTestAllList_EditDistance_permDF <- data.frame(
+                                                  Family = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@fam
+                                                  })),
+                                                  Alternative = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@alternative
+                                                  })),
+                                                  Alpha = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@alphaThreshold
+                                                  })),
+                                                  Pvalue = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@pval
+                                                  })),
+                                                  Observed = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@observed
+                                                  })),
+                                                  Expected = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@expected
+                                                  })),
+                                                  Log2ObservedExpected = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@log2obsexp
+                                                  })),
+                                                  Log2Alpha = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@log2alpha
+                                                  })),
+                                                  Features = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@features
+                                                  })),
+                                                  Accession = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@accession
+                                                  })),
+                                                  Metric = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@metric
+                                                  })),
+                                                  Region = unlist(lapply(1:length(permTestAllList_EditDistance), function(y) {
+                                                    permTestAllList_EditDistance[[y]]@region
+                                                  }))
+                                                 ) 
 
-vp_all <- ggplot(data = permTestAllList_HORlengthsSum_permDistDF,
+## HORcount
+#permTestAllList_HORcount <- permTestAllList(
+#                                            CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+#                                            CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+#                                            region_name = regionName,
+#                                            metric_name = "HORcount"
+#                                           )
+#permTestAllList_HORcount_permDistDF <- data.frame(
+#                                                  Family = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    rep(permTestAllList_HORcount[[y]]@fam,
+#                                                        times = length(permTestAllList_HORcount[[y]]@permDist))
+#                                                  })),
+#                                                  Metric = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    rep(permTestAllList_HORcount[[y]]@metric,
+#                                                        times = length(permTestAllList_HORcount[[y]]@permDist))
+#                                                  })),
+#                                                  Permuted = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    permTestAllList_HORcount[[y]]@permDist
+#                                                  }))
+#                                                 ) 
+#permTestAllList_HORcount_permDistDF <- data.frame(
+#                                                  Family = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    rep(permTestAllList_HORcount[[y]]@fam,
+#                                                        times = length(permTestAllList_HORcount[[y]]@permDist))
+#                                                  })),
+#                                                  Accession = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    rep(permTestAllList_HORcount[[y]]@accession,
+#                                                        times = length(permTestAllList_HORcount[[y]]@permDist))
+#                                                  })),
+#                                                  Metric = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    rep(permTestAllList_HORcount[[y]]@metric,
+#                                                        times = length(permTestAllList_HORcount[[y]]@permDist))
+#                                                  })),
+#                                                  Region = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    rep(permTestAllList_HORcount[[y]]@region,
+#                                                        times = length(permTestAllList_HORcount[[y]]@permDist))
+#                                                  })),
+#                                                  Permuted = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                    permTestAllList_HORcount[[y]]@permDist
+#                                                  }))
+#                                                 ) 
+#permTestAllList_HORcount_permDF <- data.frame(
+#                                              Family = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@fam
+#                                              })),
+#                                              Alternative = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@alternative
+#                                              })),
+#                                              Alpha = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@alphaThreshold
+#                                              })),
+#                                              Pvalue = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@pval
+#                                              })),
+#                                              Observed = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@observed
+#                                              })),
+#                                              Expected = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@expected
+#                                              })),
+#                                              Log2ObservedExpected = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@log2obsexp
+#                                              })),
+#                                              Log2Alpha = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@log2alpha
+#                                              })),
+#                                              Features = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@features
+#                                              })),
+#                                              Accession = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@accession
+#                                              })),
+#                                              Metric = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@metric
+#                                              })),
+#                                              Region = unlist(lapply(1:length(permTestAllList_HORcount), function(y) {
+#                                                permTestAllList_HORcount[[y]]@region
+#                                              }))
+#                                             ) 
+#
+## WeightedConsensusScore
+#permTestAllList_WeightedConsensusScore <- permTestAllList(
+#                                                          CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+#                                                          CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+#                                                          region_name = regionName,
+#                                                          metric_name = "WeightedConsensusScore"
+#                                                         )
+#permTestAllList_WeightedConsensusScore_permDistDF <- data.frame(
+#                                                                Family = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                                  rep(permTestAllList_WeightedConsensusScore[[y]]@fam,
+#                                                                      times = length(permTestAllList_WeightedConsensusScore[[y]]@permDist))
+#                                                                })),
+#                                                                Accession = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                                  rep(permTestAllList_WeightedConsensusScore[[y]]@accession,
+#                                                                      times = length(permTestAllList_WeightedConsensusScore[[y]]@permDist))
+#                                                                })),
+#                                                                Metric = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                                  rep(permTestAllList_WeightedConsensusScore[[y]]@metric,
+#                                                                      times = length(permTestAllList_WeightedConsensusScore[[y]]@permDist))
+#                                                                })),
+#                                                                Region = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                                  rep(permTestAllList_WeightedConsensusScore[[y]]@region,
+#                                                                      times = length(permTestAllList_WeightedConsensusScore[[y]]@permDist))
+#                                                                })),
+#                                                                Permuted = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                                  permTestAllList_WeightedConsensusScore[[y]]@permDist
+#                                                                }))
+#                                                               ) 
+#permTestAllList_WeightedConsensusScore_permDF <- data.frame(
+#                                                            Family = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@fam
+#                                                            })),
+#                                                            Alternative = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@alternative
+#                                                            })),
+#                                                            Alpha = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@alphaThreshold
+#                                                            })),
+#                                                            Pvalue = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@pval
+#                                                            })),
+#                                                            Observed = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@observed
+#                                                            })),
+#                                                            Expected = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@expected
+#                                                            })),
+#                                                            Log2ObservedExpected = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@log2obsexp
+#                                                            })),
+#                                                            Log2Alpha = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@log2alpha
+#                                                            })),
+#                                                            Features = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@features
+#                                                            })),
+#                                                            Accession = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@accession
+#                                                            })),
+#                                                            Metric = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@metric
+#                                                            })),
+#                                                            Region = unlist(lapply(1:length(permTestAllList_WeightedConsensusScore), function(y) {
+#                                                              permTestAllList_WeightedConsensusScore[[y]]@region
+#                                                            }))
+#                                                           ) 
+
+
+# Combine into one data.frame for plotting with ggplot2
+combined_permDistDF <- rbind(
+                             permTestAllList_HORlengthsSum_permDistDF,
+                             permTestAllList_EditDistance_permDistDF
+#                             permTestAllList_HORcount_permDistDF,
+#                             permTestAllList_WeightedConsensusScore_permDistDF
+                            )
+combined_permDF <- rbind(
+                         permTestAllList_HORlengthsSum_permDF,
+                         permTestAllList_EditDistance_permDF
+#                         permTestAllList_HORcount_permDF,
+#                         permTestAllList_WeightedConsensusScore_permDF
+                        )
+
+write.table(combined_permDistDF,
+            file = paste0(plotDirAllMetrics,
+                          "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_all_accessions_combined_",
+                          paste0(chrName, collapse = "_"), "_",
+                          perms, "perms_",
+                          regionName,
+                          "_permDistDF.tsv"),
+            quote = F, sep = "\t", row.names = F, col.names = T)
+combined_permDistDF <- fread(file = paste0(plotDirAllMetrics,
+                                           "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_all_accessions_combined_",
+                                           paste0(chrName, collapse = "_"), "_",
+                                           perms, "perms_",
+                                           regionName,
+                                           "_permDistDF.tsv"),
+                             data.table = F)
+write.table(combined_permDF,
+            file = paste0(plotDirAllMetrics,
+                          "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_all_accessions_combined_",
+                          paste0(chrName, collapse = "_"), "_",
+                          perms, "perms_",
+                          regionName,
+                          "_permDF.tsv"),
+            quote = F, sep = "\t", row.names = F, col.names = T)
+combined_permDF <- fread(file = paste0(plotDirAllMetrics,
+                                       "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_all_accessions_combined_",
+                                       paste0(chrName, collapse = "_"), "_",
+                                       perms, "perms_",
+                                       regionName,
+                                       "_permDF.tsv"),
+                         data.table = F)
+
+combined_permDistDF$Family <- factor(combined_permDistDF$Family,
+                                     levels = rev(sort(unique(combined_permDistDF$Family))))
+combined_permDistDF$Accession <- factor(combined_permDistDF$Accession,
+                                        levels = sort(unique(combined_permDistDF$Accession)))
+combined_permDistDF$Metric <- factor(combined_permDistDF$Metric,
+                                     levels =  unique(combined_permDistDF$Metric))
+combined_permDistDF$Region <- factor(combined_permDistDF$Region,
+                                     levels = unique(combined_permDistDF$Region))
+combined_permDF$Family <- factor(combined_permDF$Family,
+                                 levels = rev(sort(unique(combined_permDF$Family))))
+combined_permDF$Accession <- factor(combined_permDF$Accession,
+                                    levels = sort(unique(combined_permDF$Accession)))
+combined_permDF$Metric <- factor(combined_permDF$Metric,
+                                 levels =  unique(combined_permDF$Metric))
+combined_permDF$Region <- factor(combined_permDF$Region,
+                                 levels = unique(combined_permDF$Region))
+
+
+vp_all <- ggplot(data = combined_permDistDF,
                  mapping = aes(x = Family,
                                y = Permuted)) +
+  xlab("Family") +
+  ylab(bquote(italic("CEN178") ~ "metric in" ~ .(flankNamePlot) ~ "flanking regions")) +
   geom_violin(trim = F,
+              scale = "count",
               fill = "grey80") +
-  geom_point(data = permTestAllList_HORlengthsSum_permDF,
+  geom_point(data = combined_permDF,
              mapping = aes(x = Family,
                            y = Observed),
-             shape = "-", colour = "dodgerblue1", size = 16) +
-  geom_point(data = permTestAllList_HORlengthsSum_permDF,
+             position = position_nudge(x = -0.04),
+             shape = "|", colour = "dodgerblue2", size = 12) +
+  geom_point(data = combined_permDF,
              mapping = aes(x = Family,
                            y = Expected),
-             shape = "-", colour = "black", size = 16) +
-  geom_point(data = permTestAllList_HORlengthsSum_permDF,
+             position = position_nudge(x = -0.04),
+             shape = "|", colour = "black", size = 12) +
+  geom_point(data = combined_permDF,
              mapping = aes(x = Family,
                            y = Alpha),
-             shape = "-", colour = "darkorange1", size = 16)
-ggsave(paste0(plotDirHORlengthsSum,
-              "CENATHILA_", flankName, "_regions_CEN180_HORlengthsSum_all_accessions_violin_",
-              paste0(chrName, collapse = "_"), "_",
-              perms, "perms_",
-              paste0(unique(as.vector(permTestAllList_HORlengthsSum_permDF$Region)), collapse = "_"),
-              ".pdf"),
-       plot = vp_all,
-       width = 8, height = 8, limitsize = F)
+             position = position_nudge(x = -0.04),
+             shape = "|", colour = "darkorange2", size = 12) +
 
-#  coord_flip() +
-
-#  geom_hline(data = permTestAllList_HORlengthsSum_permDF,
-#             aes(yintercept = c(Observed, Expected, Alpha) , colour = c(Observed, Expected, Alpha))) +
-#  facet_wrap(~ Family)
-  scale_fill_brewer(name = "",
-                    palette = "Dark2") +
-  geom_point(mapping = aes(x = Family,
-                           y = log2alpha),
-             position = position_dodge(0.9),
-             shape = "-", colour  = "grey70", size = 12) +
-  xlab(bquote(italic("CENATHILA") ~ .(flankNamePlot) ~ "flanking regions")) +
-  ylab(bquote("Log"[2] * "(observed/expected)" ~ italic("CEN178") ~ "metric")) +
-#  scale_y_continuous(limits = c(-4.0, 4.0)) +
-  scale_x_discrete(position = "bottom") +
-  guides(fill = guide_legend(direction = "vertical",
-                             label.position = "right",
-                             label.theme = element_text(size = 16, hjust = 0, vjust = 0.5, angle = 0),
-                             nrow = length(unique(all_accessions$Family)),
-                             byrow = TRUE)) +
-
+  coord_flip() +
   theme_bw() +
-  theme(axis.line.y = element_line(size = 0.5, colour = "black"),
+  theme(
+#        axis.line.y = element_line(size = 0.5, colour = "black"),
         axis.ticks.y = element_line(size = 0.5, colour = "black"),
-        axis.text.y = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 90),
+        axis.text.y = element_text(size = 20, colour = "black", face = "italic", hjust = 0.5, vjust = 0.5, angle = 0),
         axis.title.y = element_text(size = 20, colour = "black"),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 45),
+#        axis.line.x = element_line(size = 0.5, colour = "black"),
+        axis.ticks.x = element_line(size = 0.5, colour = "black"),
+        axis.text.x = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 0),
         axis.title.x = element_text(size = 20, colour = "black", margin = margin(t = 20)),
-        strip.text.x = element_text(size = 20, colour = "white"),
-        strip.text.y = element_text(size = 20, colour = "white"),
-        strip.background = element_rect(fill = "black", colour = "black"),
-#        panel.grid = element_blank(),
-#        panel.border = element_blank(),
-#        panel.background = element_blank(),
+        strip.text.x = element_text(size = 20, colour = "black"),
+        strip.text.y = element_text(size = 20, colour = "black"),
+        strip.background = element_rect(fill = "white", colour = "white"),
         legend.background = element_rect(fill = "transparent"),
         legend.key = element_rect(colour = "transparent",
                                   fill = "transparent"),
         plot.margin = unit(c(5.5, 5.5, 5.5, 5.5), "pt"),
-        plot.title = element_text(size = 20, colour = "black", hjust = 0.5)) +
+        plot.title = element_text(size = 15, colour = "black", hjust = 0.5)) +
   ggtitle(bquote("Permutations =" ~
                  .(prettyNum(perms,
                              big.mark = ",",
-                             trim = T)) ~ "sets of randomly positioned centromeric loci"))
+                             trim = T)) ~
+                 "sets of randomly positioned centromeric loci"))
 
-bp_all <- bp_all +
-  facet_grid(cols = vars(Accession), scales = "fixed")
+vp_all <- vp_all +
+  facet_grid(cols = vars(Metric), scales = "free_x")
 ggsave(paste0(plotDirAllMetrics,
-              "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_combined_all_accessions_bargraph_",
+              "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_all_accessions_violin_",
               paste0(chrName, collapse = "_"), "_",
               perms, "perms_",
-              paste0(unique(as.vector(all_accessions$Region)), collapse = "_"),
+              paste0(unique(as.vector(combined_permDF$Region)), collapse = "_"),
               ".pdf"),
        plot = vp_all,
-       width = 8, height 8, limitsize = F)
-
-       width = 14*length(unique(as.vector(all_accessions$Accession))), height = 8, limitsize = F)
+       width = 4*length(unique(combined_permDF$Metric)), height = 8, limitsize = F)
 
 
-
-
-
-
-
-
-
-# All accessions plot
-bp_all <- ggplot(data = all_accessions,
-                 mapping = aes(x = Family,
-                               y = log2obsexp,
-                               fill = Metric)) +
-
-# Plot histogram summary of permutation tests 
-
-permTestAllList_HORcount_list <- foreach(acc_idx = 1:length(acc),
-                                         .multicombine = T,
-                                         .inorder = T) %do% {
-  permTestAllList(acc_idx = acc_idx,
-                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-                  region_name = regionName,
-                  metric_name = "HORcount")
-}
-permTestAllList_WeightedConsensusScore_list <- foreach(acc_idx = 1:length(acc),
-                                                       .multicombine = T,
-                                                       .inorder = T) %do% {
-  permTestAllList(acc_idx = acc_idx,
-                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-                  region_name = regionName,
-                  metric_name = "WeightedConsensusScore")
-}
-permTestAllList_EditDistance_list <- foreach(acc_idx = 1:length(acc),
-                                             .multicombine = T,
-                                             .inorder = T) %do% {
-  permTestAllList(acc_idx = acc_idx,
-                  CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
-                  CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
-                  region_name = regionName,
-                  metric_name = "EditDistance")
-}
-
-# Calculate mean metrics across accessions
-# HORlengthsSum
-permTestAllList_HORlengthsSum <- dplyr::bind_rows(permTestAllList_HORlengthsSum_list)
-permTestAllList_HORlengthsSum_fam <- sort(unique(permTestAllList_HORlengthsSum$fam))
-permTestAllList_HORlengthsSum_all_acc_fam_list <- lapply(permTestAllList_HORlengthsSum_fam, function(x) {
-  data.frame(
-             accession = paste0(length(unique(permTestAllList_HORlengthsSum$accession)), " accessions"),
-             metric = permTestAllList_HORlengthsSum$metric[1],
-             region = permTestAllList_HORlengthsSum$region[1],
-             fam = x,
-             features = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$features, na.rm = T),
-             alternative = ".",
-             alphaThreshold = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAllList_HORlengthsSum[permTestAllList_HORlengthsSum$fam == x,]$pval, na.rm = T)
-            )
-})
-permTestAllList_HORlengthsSum_all_acc_fam <- dplyr::bind_rows(permTestAllList_HORlengthsSum_all_acc_fam_list)
-permTestAllList_HORlengthsSum <- rbind(permTestAllList_HORlengthsSum,
-                                       permTestAllList_HORlengthsSum_all_acc_fam)
-
-# HORcount
-permTestAllList_HORcount <- dplyr::bind_rows(permTestAllList_HORcount_list)
-permTestAllList_HORcount_fam <- sort(unique(permTestAllList_HORcount$fam))
-permTestAllList_HORcount_all_acc_fam_list <- lapply(permTestAllList_HORcount_fam, function(x) {
-  data.frame(
-             accession = paste0(length(unique(permTestAllList_HORcount$accession)), " accessions"),
-             metric = permTestAllList_HORcount$metric[1],
-             region = permTestAllList_HORcount$region[1],
-             fam = x,
-             features = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$features, na.rm = T),
-             alternative = ".",
-             alphaThreshold = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAllList_HORcount[permTestAllList_HORcount$fam == x,]$pval, na.rm = T)
-            )
-})
-permTestAllList_HORcount_all_acc_fam <- dplyr::bind_rows(permTestAllList_HORcount_all_acc_fam_list)
-permTestAllList_HORcount <- rbind(permTestAllList_HORcount,
-                                  permTestAllList_HORcount_all_acc_fam)
-
-# WeightedConsensusScore
-permTestAllList_WeightedConsensusScore <- dplyr::bind_rows(permTestAllList_WeightedConsensusScore_list)
-permTestAllList_WeightedConsensusScore_fam <- sort(unique(permTestAllList_WeightedConsensusScore$fam))
-permTestAllList_WeightedConsensusScore_all_acc_fam_list <- lapply(permTestAllList_WeightedConsensusScore_fam, function(x) {
-  data.frame(
-             accession = paste0(length(unique(permTestAllList_WeightedConsensusScore$accession)), " accessions"),
-             metric = permTestAllList_WeightedConsensusScore$metric[1],
-             region = permTestAllList_WeightedConsensusScore$region[1],
-             fam = x,
-             features = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$features, na.rm = T),
-             alternative = ".",
-             alphaThreshold = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAllList_WeightedConsensusScore[permTestAllList_WeightedConsensusScore$fam == x,]$pval, na.rm = T)
-            )
-})
-permTestAllList_WeightedConsensusScore_all_acc_fam <- dplyr::bind_rows(permTestAllList_WeightedConsensusScore_all_acc_fam_list)
-permTestAllList_WeightedConsensusScore <- rbind(permTestAllList_WeightedConsensusScore,
-                                                permTestAllList_WeightedConsensusScore_all_acc_fam)
-
-# EditDistance
-permTestAllList_EditDistance <- dplyr::bind_rows(permTestAllList_EditDistance_list)
-permTestAllList_EditDistance_fam <- sort(unique(permTestAllList_EditDistance$fam))
-permTestAllList_EditDistance_all_acc_fam_list <- lapply(permTestAllList_EditDistance_fam, function(x) {
-  data.frame(
-             accession = paste0(length(unique(permTestAllList_EditDistance$accession)), " accessions"),
-             metric = permTestAllList_EditDistance$metric[1],
-             region = permTestAllList_EditDistance$region[1],
-             fam = x,
-             features = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$features, na.rm = T),
-             alternative = ".",
-             alphaThreshold = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$alphaThreshold, na.rm = T),
-             observed = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$observed, na.rm = T),
-             expected = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$expected, na.rm = T),
-             log2obsexp = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$log2obsexp, na.rm = T),
-             log2alpha = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$log2alpha, na.rm = T),
-             pval = mean(permTestAllList_EditDistance[permTestAllList_EditDistance$fam == x,]$pval, na.rm = T)
-            )
-})
-permTestAllList_EditDistance_all_acc_fam <- dplyr::bind_rows(permTestAllList_EditDistance_all_acc_fam_list)
-permTestAllList_EditDistance <- rbind(permTestAllList_EditDistance,
-                                      permTestAllList_EditDistance_all_acc_fam)
-
-combined <- rbind(
-                  permTestAllList_HORlengthsSum,
-                  permTestAllList_HORcount,
-                  permTestAllList_WeightedConsensusScore,
-                  permTestAllList_EditDistance
-                 )
-
-colnames(combined)[which(colnames(combined) == "accession")] <- "Accession"
-colnames(combined)[which(colnames(combined) == "metric")] <- "Metric"
-colnames(combined)[which(colnames(combined) == "region")] <- "Region"
-colnames(combined)[which(colnames(combined) == "fam")] <- "Family"
-
-write.table(combined,
-            file = paste0(plotDirAllMetrics,
-                          "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_combined_",
-                          paste0(chrName, collapse = "_"), "_",
-                          perms, "perms_",
-                          regionName,
-#                          paste0(unique(as.vector(combined$Region)), collapse = "_"),
-                          ".tsv"),
-            quote = F, sep = "\t", row.names = F, col.names = T)
-
-combined <- fread(file = paste0(plotDirAllMetrics,
-                                "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_combined_",
-                                paste0(chrName, collapse = "_"), "_",
-                                perms, "perms_",
-                                regionName,
-                                ".tsv"),
-                  data.table = F)
 
 combined$Accession <- factor(combined$Accession,
                              levels = c(paste0(length(unique(combined$Accession))-1, " accessions"),
