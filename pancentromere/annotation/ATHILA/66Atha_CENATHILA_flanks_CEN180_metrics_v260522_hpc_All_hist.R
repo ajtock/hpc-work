@@ -506,12 +506,100 @@ permTestAllList_HORlengthsSum_permDF <- data.frame(
                                                    }))
                                                   ) 
 
-combined$Metric <- factor(combined$Metric,
-                          levels = unique(combined$Metric))
-combined$Region <- factor(combined$Region,
-                          levels = unique(combined$Region))
-combined$Family <- factor(combined$Family,
-                          levels = sort(unique(combined$Family)))
+permTestAllList_HORlengthsSum_permDistDF$Family <- factor(permTestAllList_HORlengthsSum_permDistDF$Family,
+                                                          levels = sort(unique(permTestAllList_HORlengthsSum_permDistDF$Family)))
+permTestAllList_HORlengthsSum_permDF$Family <- factor(permTestAllList_HORlengthsSum_permDF$Family,
+                                                      levels = sort(unique(permTestAllList_HORlengthsSum_permDF$Family)))
+
+vp_all <- ggplot(data = permTestAllList_HORlengthsSum_permDistDF,
+                 mapping = aes(x = Family,
+                               y = Permuted)) +
+  geom_violin(trim = F,
+              fill = "grey80") +
+  geom_point(data = permTestAllList_HORlengthsSum_permDF,
+             mapping = aes(x = Family,
+                           y = Observed),
+             shape = "-", colour = "dodgerblue1", size = 16) +
+  geom_point(data = permTestAllList_HORlengthsSum_permDF,
+             mapping = aes(x = Family,
+                           y = Expected),
+             shape = "-", colour = "black", size = 16) +
+  geom_point(data = permTestAllList_HORlengthsSum_permDF,
+             mapping = aes(x = Family,
+                           y = Alpha),
+             shape = "-", colour = "darkorange1", size = 16)
+ggsave(paste0(plotDirHORlengthsSum,
+              "CENATHILA_", flankName, "_regions_CEN180_HORlengthsSum_all_accessions_violin_",
+              paste0(chrName, collapse = "_"), "_",
+              perms, "perms_",
+              paste0(unique(as.vector(permTestAllList_HORlengthsSum_permDF$Region)), collapse = "_"),
+              ".pdf"),
+       plot = vp_all,
+       width = 8, height = 8, limitsize = F)
+
+#  coord_flip() +
+
+#  geom_hline(data = permTestAllList_HORlengthsSum_permDF,
+#             aes(yintercept = c(Observed, Expected, Alpha) , colour = c(Observed, Expected, Alpha))) +
+#  facet_wrap(~ Family)
+  scale_fill_brewer(name = "",
+                    palette = "Dark2") +
+  geom_point(mapping = aes(x = Family,
+                           y = log2alpha),
+             position = position_dodge(0.9),
+             shape = "-", colour  = "grey70", size = 12) +
+  xlab(bquote(italic("CENATHILA") ~ .(flankNamePlot) ~ "flanking regions")) +
+  ylab(bquote("Log"[2] * "(observed/expected)" ~ italic("CEN178") ~ "metric")) +
+#  scale_y_continuous(limits = c(-4.0, 4.0)) +
+  scale_x_discrete(position = "bottom") +
+  guides(fill = guide_legend(direction = "vertical",
+                             label.position = "right",
+                             label.theme = element_text(size = 16, hjust = 0, vjust = 0.5, angle = 0),
+                             nrow = length(unique(all_accessions$Family)),
+                             byrow = TRUE)) +
+
+  theme_bw() +
+  theme(axis.line.y = element_line(size = 0.5, colour = "black"),
+        axis.ticks.y = element_line(size = 0.5, colour = "black"),
+        axis.text.y = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 90),
+        axis.title.y = element_text(size = 20, colour = "black"),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_text(size = 20, colour = "black", hjust = 0.5, vjust = 0.5, angle = 45),
+        axis.title.x = element_text(size = 20, colour = "black", margin = margin(t = 20)),
+        strip.text.x = element_text(size = 20, colour = "white"),
+        strip.text.y = element_text(size = 20, colour = "white"),
+        strip.background = element_rect(fill = "black", colour = "black"),
+#        panel.grid = element_blank(),
+#        panel.border = element_blank(),
+#        panel.background = element_blank(),
+        legend.background = element_rect(fill = "transparent"),
+        legend.key = element_rect(colour = "transparent",
+                                  fill = "transparent"),
+        plot.margin = unit(c(5.5, 5.5, 5.5, 5.5), "pt"),
+        plot.title = element_text(size = 20, colour = "black", hjust = 0.5)) +
+  ggtitle(bquote("Permutations =" ~
+                 .(prettyNum(perms,
+                             big.mark = ",",
+                             trim = T)) ~ "sets of randomly positioned centromeric loci"))
+
+bp_all <- bp_all +
+  facet_grid(cols = vars(Accession), scales = "fixed")
+ggsave(paste0(plotDirAllMetrics,
+              "CENATHILA_", flankName, "_regions_CEN180_AllMetrics_combined_all_accessions_bargraph_",
+              paste0(chrName, collapse = "_"), "_",
+              perms, "perms_",
+              paste0(unique(as.vector(all_accessions$Region)), collapse = "_"),
+              ".pdf"),
+       plot = vp_all,
+       width = 8, height 8, limitsize = F)
+
+       width = 14*length(unique(as.vector(all_accessions$Accession))), height = 8, limitsize = F)
+
+
+
+
+
+
 
 
 
