@@ -10,7 +10,7 @@
 
 #! sbatch directives begin here ###############################
 #! Name of the job:
-#SBATCH -J CENATHILA_CEN180_metrics
+#SBATCH -J CENATHILA_CEN180_metrics_All_hist
 #! Which project should be charged:
 #SBATCH -A HENDERSON-SL3-CPU
 #SBATCH -p icelake-himem
@@ -32,9 +32,9 @@
 #! interrupted by node failure or system downtime):
 #SBATCH --no-requeue
 #! log file (NOTE: enclosing directory must exist)
-#SBATCH --output=logs/CENATHILA_CEN180_metrics_%A_%a.out
+#SBATCH --output=logs/CENATHILA_CEN180_metrics_All_hist_%A_%a.out
 #! error file (NOTE: enclosing directory must exist)
-#SBATCH --error=logs/CENATHILA_CEN180_metrics_%A_%a.err
+#SBATCH --error=logs/CENATHILA_CEN180_metrics_All_hist_%A_%a.err
 #! Array task IDs
 #SBATCH --array=1
 
