@@ -937,7 +937,8 @@ maxDensityPlus <- max(density(permTestAllList_HORlengthsSum[[1]]@permDist)$y)*1.
 if(permTestAllList_HORlengthsSum[[1]]@alternative == "MoreThanRandom") {
   xlim <- c(pmin(min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.1),
             pmax(permTestAllList_HORlengthsSum[[1]]@observed*1.1, permTestAllList_HORlengthsSum[[1]]@alphaThreshold*1.1))
-  textX1 <- quantile(xlim, 0.25)[[1]]
+  textX1 <- quantile(c(pretty(xlim)[1],
+                       pretty(xlim)[length(pretty(xlim))]), 0.10)[[1]]
 #  textX1 <- min(permTestAllList_HORlengthsSum[[1]]@permDist)/1.15
 } else {
   xlim <- c(pmin(permTestAllList_HORlengthsSum[[1]]@observed/1.1),
@@ -960,13 +961,13 @@ hist(permTestAllList_HORlengthsSum[[1]]@permDist,
      axes = FALSE)
 axis(side = 2,
      at = pretty(density(permTestAllList_HORlengthsSum[[1]]@permDist)$y),
-     lwd = 2)
+     lwd = 1)
 mtext(side = 2,
       text = "Density",
       line = 1.85)
 axis(side = 1,
      at = pretty(xlim),
-     lwd = 2)
+     lwd = 1)
 mtext(side = 1,
       text = bquote("Mean" ~ italic("CEN178") ~ "HORlengthsSum in" ~ .(flankNamePlot) ~ "flanking regions"),
       line = 1.85)
@@ -984,11 +985,11 @@ lines(density(permTestAllList_HORlengthsSum[[1]]@permDist),
       col = "grey70",
       lwd = 1.5)
 ablineclip(v = permTestAllList_HORlengthsSum[[1]]@expected,
-           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2)
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2.5)
 ablineclip(v = permTestAllList_HORlengthsSum[[1]]@observed,
-           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, col = "dodgerblue2")
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2.5, col = "dodgerblue2")
 ablineclip(v = permTestAllList_HORlengthsSum[[1]]@alphaThreshold,
-           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, lty = 5, col = "darkorange1")
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2.5, lty = 5, col = "darkorange1")
 text(x = c(textX1,
            permTestAllList_HORlengthsSum[[1]]@expected,
            permTestAllList_HORlengthsSum[[1]]@observed,
@@ -1050,13 +1051,13 @@ hist(permTestAllList_EditDistance[[1]]@permDist,
      axes = FALSE)
 axis(side = 2,
      at = pretty(density(permTestAllList_EditDistance[[1]]@permDist)$y),
-     lwd = 2)
+     lwd = 1)
 mtext(side = 2,
       text = "Density",
       line = 1.85)
 axis(side = 1,
      at = pretty(xlim),
-     lwd = 2)
+     lwd = 1)
 mtext(side = 1,
       text = bquote("Mean" ~ italic("CEN178") ~ "EditDistance in" ~ .(flankNamePlot) ~ "flanking regions"),
       line = 1.85)
@@ -1074,11 +1075,11 @@ lines(density(permTestAllList_EditDistance[[1]]@permDist),
       col = "grey70",
       lwd = 1.5)
 ablineclip(v = permTestAllList_EditDistance[[1]]@expected,
-           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2)
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2.5)
 ablineclip(v = permTestAllList_EditDistance[[1]]@observed,
-           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, col = "dodgerblue2")
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2.5, col = "dodgerblue2")
 ablineclip(v = permTestAllList_EditDistance[[1]]@alphaThreshold,
-           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2, lty = 5, col = "darkorange1")
+           y1 = 0, y2 = maxDensityPlus*.92, lwd = 2.5, lty = 5, col = "darkorange1")
 text(x = c(textX1,
            permTestAllList_EditDistance[[1]]@expected,
            permTestAllList_EditDistance[[1]]@observed,
