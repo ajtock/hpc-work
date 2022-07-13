@@ -5,7 +5,7 @@
 
 # Usage:
 # conda activate R-4.1.2
-# ./66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_hpc.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 1000 1e4 Flanks
+# ./66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_hpc_mpi.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 1000 1e4 Flanks
 # conda deactivate
 
 #chrName <- unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
@@ -44,7 +44,7 @@ flankNamePlot <- paste0(c(strsplit(flankName, split = "")[[1]][1:(length(strspli
                           collapse = "")
 
 options(stringsAsFactors = F)
-source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_hpc_function.R")
+source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_hpc_mpi_function.R")
 source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/TTSplus.R")
 suppressMessages(library(data.table, quietly = T))
 suppressMessages(library(GenomicRanges, quietly = T))
@@ -87,13 +87,13 @@ suppressMessages(library(plotrix, quietly = T))
 #library(doMPI)
 #library(iterators)
 
-# Create and register a doParallel parallel backend
-registerDoParallel()
-print("Currently registered parallel backend name, version and cores")
-print(getDoParName())
-print(getDoParVersion())
-print(getDoParWorkers())
-options(future.globals.maxSize = +Inf)
+## Create and register a doParallel parallel backend
+#registerDoParallel()
+#print("Currently registered parallel backend name, version and cores")
+#print(getDoParName())
+#print(getDoParVersion())
+#print(getDoParWorkers())
+#options(future.globals.maxSize = +Inf)
 
 ## Create and register a doFuture parallel backend
 #registerDoFuture()
@@ -105,21 +105,22 @@ options(future.globals.maxSize = +Inf)
 #options(future.globals.maxSize = +Inf)
 
 ## Create and register an MPI cluster
-#cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = F)
+cl <- startMPIcluster(verbose = T, logdir = "logs/", bcast = F)
 ##cl <- startMPIcluster(verbose = F, bcast = T)
-#registerDoMPI(cl)
+registerDoMPI(cl)
 ##registerDoFuture()
 ##cl <- snow::makeCluster(mpi.universe.size() - 1, type = "MPI", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
 ##plan(cluster, workers = cl)
 ###cl <- snow::makeMPIcluster(count = mpi.comm.size(0) - 1, outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_snow_mpi.log")
 ###cl <- parallel::makeCluster(cores, type = "FORK", outfile = "logs/alphabeta_per_cytosine_MA1_2_CpG_Chr2_parallel_fork.log")
 ###plan(multicore)
-#print("Currently registered parallel backend name, version and cores")
-#print(getDoParName())
-#print(getDoParVersion())
-#print(getDoParWorkers())
+print("Currently registered parallel backend name, version and cores")
+print(getDoParName())
+print(getDoParVersion())
+print(getDoParWorkers())
 
-#options(future.globals.maxSize = +Inf)
+options(future.globals.maxSize = +Inf)
+
 # Define chunkSize so that each cluster worker gets a single "task chunk"
 # (i.e. one task chunk covering multiple loop iterations (rows of binDF)),
 # which is faster than if each cluster worker gets multiple task chunks
@@ -128,7 +129,7 @@ chunkSize <- ceiling(perms / getDoParWorkers())
 #initWorkers <- function() options(scipen = 999, stringsAsFactors = F)
 mpiopts <- list(chunkSize = chunkSize)
 
-plotDir <- paste0("ATHILA/plots/")
+plotDir <- paste0("ATHILA/plots_mpi/")
 plotDirHORlengthsSum <- paste0(plotDir, "HORlengthsSum/")
 plotDirHORcount <- paste0(plotDir, "HORcount/")
 plotDirWeightedConsensusScore <- paste0(plotDir, "WeightedConsensusScore/")
@@ -136,12 +137,12 @@ plotDirEditDistance <- paste0(plotDir, "EditDistance/")
 plotDirAllMetrics <- paste0(plotDir, "AllMetrics/")
 plotDirAllAccessions <- paste0(plotDir, "AllAccessions/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
-system(paste0("[ -d ", plotDirHORlengthsSum, " ] || mkdir -p ", plotDirHORlengthsSum))
-system(paste0("[ -d ", plotDirHORcount, " ] || mkdir -p ", plotDirHORcount))
-system(paste0("[ -d ", plotDirWeightedConsensusScore, " ] || mkdir -p ", plotDirWeightedConsensusScore))
-system(paste0("[ -d ", plotDirEditDistance, " ] || mkdir -p ", plotDirEditDistance))
+#system(paste0("[ -d ", plotDirHORlengthsSum, " ] || mkdir -p ", plotDirHORlengthsSum))
+#system(paste0("[ -d ", plotDirHORcount, " ] || mkdir -p ", plotDirHORcount))
+#system(paste0("[ -d ", plotDirWeightedConsensusScore, " ] || mkdir -p ", plotDirWeightedConsensusScore))
+#system(paste0("[ -d ", plotDirEditDistance, " ] || mkdir -p ", plotDirEditDistance))
 system(paste0("[ -d ", plotDirAllMetrics, " ] || mkdir -p ", plotDirAllMetrics))
-system(paste0("[ -d ", plotDirAllAccessions, " ] || mkdir -p ", plotDirAllAccessions))
+#system(paste0("[ -d ", plotDirAllAccessions, " ] || mkdir -p ", plotDirAllAccessions))
 
 # Load and define accession names
 acc_full <- system("ls /home/ajt200/rds/hpc-work/pancentromere/annotation/CEN180/repeats/*.fa*", intern = T)
@@ -451,7 +452,7 @@ CENranLoc_CEN180_metrics_list <- foreach(acc_idx = 1:length(acc), .inorder = T) 
 
 
 # Do permutation tests across all accessions
-source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_hpc_function.R")
+source("/home/ajt200/rds/hpc-work/pancentromere/annotation/ATHILA/66Atha_CENATHILA_flanks_CEN180_metrics_v260522_permTestAllList_hpc_mpi_function.R")
 
 # HORlengthsSum
 permTestAllList_HORlengthsSum <- permTestAllList(
@@ -1102,11 +1103,10 @@ dev.off()
 print("warnings 1")
 print(warnings())
 
-## Shutdown the cluster and quit
-##stopCluster(cl) # use if cl made with makeCluster() (i.e., using doFuture package)
-#closeCluster(cl) # use if cl made with startMPIcluster() (i.e., using doMPI package - faster than doFuture)
-#mpi.quit()
-#
-#print("warnings 2")
-#print(warnings())
+# Shutdown the cluster and quit
+#stopCluster(cl) # use if cl made with makeCluster() (i.e., using doFuture package)
+closeCluster(cl) # use if cl made with startMPIcluster() (i.e., using doMPI package - faster than doFuture)
+mpi.quit()
 
+print("warnings 2")
+print(warnings())
