@@ -17,6 +17,7 @@
 import sys
 import os
 import argparse
+import pickle
 
 from time import time, sleep
 
@@ -98,11 +99,13 @@ def count_kmer_fa(k, fa_object):
         count_kmer(counter, k, "".join(seq).upper())
     return counter
 
-fa_object = open(parser.fasta)
 k_size = parser.kmerSize
-tic = time()
-kmer_count_dict = count_kmer_fa(k=k_size, fa_object=fa_object)
-print(f"Done in {time() - tic:.3f}s")
+with open(parser.fasta) as fa_object:
+  tic = time()
+  kmer_count_dict = count_kmer_fa(k=k_size, fa_object=fa_object)
+  print(f"Done in {time() - tic:.3f}s")
+
+with open(str() + "")
 
 
 
