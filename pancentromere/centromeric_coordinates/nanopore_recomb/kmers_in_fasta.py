@@ -7,7 +7,10 @@
 # Date: 08/08/2022
 
 # Usage:
-# ./kmers_in_fasta.py Col-0.ragtag_scaffolds_centromeres.fa 
+# ./kmers_in_fasta.py -f Col-0.ragtag_scaffolds_centromeres.fa -k 178
+# ./kmers_in_fasta.py -f Ler-0_110x.ragtag_scaffolds_centromeres.fa -k 178
+# ./kmers_in_fasta.py -f Col-0.ragtag_scaffolds_not_centromeres.fa -k 178
+# ./kmers_in_fasta.py -f Ler-0_110x.ragtag_scaffolds_not_centromeres.fa -k 178
 
 # Find and count all possible k-mers (substrings of length k)
 # in the centromeres of a given genome
@@ -20,6 +23,7 @@ import argparse
 import pickle
 
 from time import time, sleep
+
 
 # ==== Capture user input as command-line arguments
 # https://stackoverflow.com/questions/18160078/how-do-you-write-tests-for-the-argparse-portion-of-a-python-module
@@ -36,6 +40,7 @@ def create_parser():
 parser = create_parser().parse_args()
 print(parser)
 
+
 # Build a string translation table to enable
 # forward-strand sequence to be translated into
 # reverse-strand sequence
@@ -43,23 +48,6 @@ base_for = "ACGT"
 base_rev = "TGCA"
 comp_tab = str.maketrans(base_for, base_rev)
 
-#fa_object = open(parser.fasta)
-#lines = fa_object.readlines()
-#
-#faRead = fa_object.read()
-#faReadSplit = faRead.split()
-#
-#faReadSplitNoHeaders = []
-#
-#for i in range(len(faReadSplit)):
-#    print(i)
-#    if ">" not in faReadSplit[i]:
-#        faReadSplitNoHeaders.append(faReadSplit[i])
-#
-#
-#seq = faReadSplitNoHeaders[0]
-#k = 178
-#h = {}
 
 def count_kmer(h, k, seq):
     l = len(seq)
@@ -76,6 +64,7 @@ def count_kmer(h, k, seq):
             h[kmer] += 1
         else:
             h[kmer] = 1
+
 
 def count_kmer_fa(k, fa_object):
     counter = {}
@@ -99,21 +88,17 @@ def count_kmer_fa(k, fa_object):
         count_kmer(counter, k, "".join(seq).upper())
     return counter
 
-k_size = parser.kmerSize
-with open(parser.fasta) as fa_object:
-  tic = time()
-  kmer_count_dict = count_kmer_fa(k=k_size, fa_object=fa_object)
-  print(f"Done in {time() - tic:.3f}s")
-
-with open(str() + "")
-
-
-
-kfreq = {}
-kmers = []
-n_kmers = len(sequence) - ksize + 1
-
-
 
 if __name__ == "__main__":
-    count_kmer_fa(k=k_size, fa_object=fa_object) 
+    with open(parser.fasta, "r") as fa_object:
+        tic = time()
+        kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
+        print(f"Done in {time() - tic:.3f}s")
+
+    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "wb") as handle:
+        pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+        kmer_count_dict_test = pickle.load(handle)
+
+    print(kmer_count_dict == kmer_count_dict_test)
