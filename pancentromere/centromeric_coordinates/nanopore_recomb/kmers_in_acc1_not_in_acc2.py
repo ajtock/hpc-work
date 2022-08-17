@@ -17,6 +17,7 @@ import argparse
 import pickle
 
 from time import time, sleep
+import timeit
 
 
 # ==== Capture user input as command-line arguments
@@ -39,20 +40,48 @@ print(parser)
 with open(parser.acc1 + "_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
   acc1_cen = pickle.load(handle)
 
-with open(parser.acc1 + "_not_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
-  acc1_not_cen = pickle.load(handle)
-
-acc1_cen_list = list(acc1_cen.keys())
-acc1_not_cen_list = list(acc1_not_cen.keys())
-
-acc1_cen_not_not_cen = 
-
-
 with open(parser.acc2 + "_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
   acc2_cen = pickle.load(handle)
 
+with open(parser.acc1 + "_not_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+  acc1_not_cen = pickle.load(handle)
+
 with open(parser.acc2 + "_not_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
   acc2_not_cen = pickle.load(handle)
+
+
+acc1_cen_set = set(list(acc1_cen.keys()))
+acc2_cen_set = set(list(acc2_cen.keys()))
+
+
+dataScientist = set(['Python', 'R', 'SQL', 'Git', 'Tableau', 'SAS'])
+dataEngineer = set(['Python', 'Java', 'Scala', 'Git', 'SQL', 'Hadoop'])
+graphicDesigner = {'InDesign', 'Photoshop', 'Acrobat', 'Premiere', 'Bridge'}
+print(dataScientist)
+print(dataEngineer)
+print(graphicDesigner)
+graphicDesigner.add("Illustrator")
+print(graphicDesigner)
+
+graphicDesigner.discard("Premiere")
+print(graphicDesigner)
+
+for skill in dataScientist:
+    print(skill)
+
+print(type(sorted(dataScientist, reverse=True)))
+
+
+def remove_duplicates(original):
+    unique = []
+    [unique.append(n) for n in original if n not in unique]
+    return unique
+
+print(remove_duplicates([1, 2, 3, 1, 7]))
+
+print(timeit.timeit("list(set([1, 2, 3, 1, 7]))", number=10000))
+print(timeit.timeit("remove_duplicates([1, 2, 3, 1, 7])", globals=globals(), number=10000))
+
 
 if __name__ == "__main__":
     with open(parser.fasta, "r") as fa_object:
