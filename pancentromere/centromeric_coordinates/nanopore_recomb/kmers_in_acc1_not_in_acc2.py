@@ -37,6 +37,8 @@ def create_parser():
 parser = create_parser().parse_args()
 print(parser)
 
+
+# Load k-mer count dictionaries (saved as pickle files)
 with open(parser.acc1 + "_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
   acc1_cen = pickle.load(handle)
 
@@ -50,49 +52,61 @@ with open(parser.acc2 + "_not_centromeres.fa_" + str(parser.kmerSize) + "mers.pi
   acc2_not_cen = pickle.load(handle)
 
 
-acc1_cen_set = set(list(acc1_cen.keys()))
-acc2_cen_set = set(list(acc2_cen.keys()))
+# Make keys (k-mers) in each dictionary a set
+acc1cen = set(list(acc1_cen.keys()))
+acc2cen = set(list(acc2_cen.keys()))
+acc1notcen = set(list(acc1_not_cen.keys()))
+acc2notcen = set(list(acc2_not_cen.keys()))
+
+print(len(acc1cen))
+# 5376061
+print(len(acc2cen))
+# 5130730
+
+# Define union of acc1notcen, acc2cen and acc2notcen
+acc1notcen_acc2cen_acc2notcen_union = acc1notcen.union(acc2cen).union(acc2notcen)
+acc1notcen_acc2cen_union = acc1notcen.union(acc2cen)
+acc1notcen_acc2cen_acc2notcen_union2 = acc1notcen_acc2cen_union.union(acc2notcen)
+acc1notcen_acc2cen_acc2notcen_union == acc1notcen_acc2cen_acc2notcen_union2
+del acc1notcen_acc2cen_acc2notcen_union2
+
+# Get k-mers unique to acc1cen by computing difference between
+# acc1cen and the above-defined union
+# (i.e., acc1cen \ acc1notcen_acc2cen_acc2notcen_union): acc1in
+acc1in = acc1cen.difference(acc1notcen_acc2cen_acc2notcen_union)
+print(len(acc1in))
+# 5114056
+print(len(acc1cen) - len(acc1in))
+# 262005 
 
 
-dataScientist = set(['Python', 'R', 'SQL', 'Git', 'Tableau', 'SAS'])
-dataEngineer = set(['Python', 'Java', 'Scala', 'Git', 'SQL', 'Hadoop'])
-graphicDesigner = {'InDesign', 'Photoshop', 'Acrobat', 'Premiere', 'Bridge'}
-print(dataScientist)
-print(dataEngineer)
-print(graphicDesigner)
-graphicDesigner.add("Illustrator")
-print(graphicDesigner)
+# Define union of acc2notcen, acc1cen and acc1notcen
+acc2notcen_acc1cen_acc1notcen_union = acc2notcen.union(acc1cen).union(acc1notcen)
+acc2notcen_acc1cen_union = acc2notcen.union(acc1cen)
+acc2notcen_acc1cen_acc1notcen_union2 = acc2notcen_acc1cen_union.union(acc1notcen)
+acc2notcen_acc1cen_acc1notcen_union == acc2notcen_acc1cen_acc1notcen_union2
+del acc2notcen_acc1cen_acc1notcen_union2
 
-graphicDesigner.discard("Premiere")
-print(graphicDesigner)
-
-for skill in dataScientist:
-    print(skill)
-
-print(type(sorted(dataScientist, reverse=True)))
-
-
-def remove_duplicates(original):
-    unique = []
-    [unique.append(n) for n in original if n not in unique]
-    return unique
-
-print(remove_duplicates([1, 2, 3, 1, 7]))
-
-print(timeit.timeit("list(set([1, 2, 3, 1, 7]))", number=10000))
-print(timeit.timeit("remove_duplicates([1, 2, 3, 1, 7])", globals=globals(), number=10000))
+# Get k-mers unique to acc2cen by computing difference between
+# acc2cen and the second above-defined union
+# (i.e., acc2cen \ acc2notcen_acc1cen_acc1notcen_union): acc2in
+acc2in = acc2cen.difference(acc2notcen_acc1cen_acc1notcen_union)
+print(len(acc2in))
+# 4927462 
+print(len(acc2cen) - len(acc2in))
+# 203268 
 
 
-if __name__ == "__main__":
-    with open(parser.fasta, "r") as fa_object:
-        tic = time()
-        kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
-        print(f"Done in {time() - tic:.3f}s")
-
-    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "wb") as handle:
-        pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
-        kmer_count_dict_test = pickle.load(handle)
-
-    print(kmer_count_dict == kmer_count_dict_test)
+#if __name__ == "__main__":
+#    with open(parser.fasta, "r") as fa_object:
+#        tic = time()
+#        kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
+#        print(f"Done in {time() - tic:.3f}s")
+#
+#    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "wb") as handle:
+#        pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+#
+#    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+#        kmer_count_dict_test = pickle.load(handle)
+#
+#    print(kmer_count_dict == kmer_count_dict_test)
