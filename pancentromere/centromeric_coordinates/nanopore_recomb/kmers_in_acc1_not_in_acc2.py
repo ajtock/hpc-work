@@ -64,8 +64,8 @@ print(len(acc2cen))
 # 5130730
 
 
-# Function to define a list containing the union of elements in
-# an arbitrary number of lists 
+# Function to define a list containing the union of
+#  elements in an arbitrary number of lists 
 def union_lists(*lists):
     """
     Get the union of elements in an arbitrary number of lists
@@ -74,65 +74,54 @@ def union_lists(*lists):
 
 # Define union of acc1notcen, acc2cen and acc2notcen
 acc1notcen_acc2cen_acc2notcen_union = union_lists(acc1notcen, acc2cen, acc2notcen)
-acc1notcen_acc2cen_acc2notcen_union2 == set(acc1notcen_acc2cen_acc2notcen_union)
-
-
-acc1notcen_acc2cen_acc2notcen_union = acc1notcen.union(acc2cen).union(acc2notcen)
-acc1notcen_acc2cen_union = acc1notcen.union(acc2cen)
-acc1notcen_acc2cen_acc2notcen_union2 = acc1notcen_acc2cen_union.union(acc2notcen)
-acc1notcen_acc2cen_acc2notcen_union == acc1notcen_acc2cen_acc2notcen_union2
-del acc1notcen_acc2cen_acc2notcen_union2
 
 # Get k-mers unique to acc1cen by computing difference between
 # acc1cen and the above-defined union
 # (i.e., acc1cen \ acc1notcen_acc2cen_acc2notcen_union): acc1in
-acc1in = acc1cen.difference(acc1notcen_acc2cen_acc2notcen_union)
+acc1in = list(set(acc1cen).difference(set(acc1notcen_acc2cen_acc2notcen_union)))
+acc1in = sorted(acc1in)
 print(len(acc1in))
 # 5114056
 print(len(acc1cen) - len(acc1in))
-# 262005 
-assert(len(acc1in) == len(list(acc1in)))
+# 262005
+
+# Convert into dictionary
+acc1in_1tolen = list(range(1, len(acc1in)+1)) 
+acc1in_dict = dict(zip(acc1in_1tolen, acc1in))
 
 
-# Define union of acc2notcen, acc1cen and acc1notcen
-acc2notcen_acc1cen_acc1notcen_union = acc2notcen.union(acc1cen).union(acc1notcen)
-acc2notcen_acc1cen_union = acc2notcen.union(acc1cen)
-acc2notcen_acc1cen_acc1notcen_union2 = acc2notcen_acc1cen_union.union(acc1notcen)
-acc2notcen_acc1cen_acc1notcen_union == acc2notcen_acc1cen_acc1notcen_union2
-del acc2notcen_acc1cen_acc1notcen_union2
+# Define union of acc2notcen, acc1cen and acc1notcen 
+acc2notcen_acc1cen_acc1notcen_union = union_lists(acc2notcen, acc1cen, acc1notcen)
 
 # Get k-mers unique to acc2cen by computing difference between
 # acc2cen and the second above-defined union
 # (i.e., acc2cen \ acc2notcen_acc1cen_acc1notcen_union): acc2in
-acc2in = acc2cen.difference(acc2notcen_acc1cen_acc1notcen_union)
+acc2in = list(set(acc2cen).difference(set(acc2notcen_acc1cen_acc1notcen_union)))
+acc2in = sorted(acc2in)
 print(len(acc2in))
 # 4927462 
 print(len(acc2cen) - len(acc2in))
 # 203268
-assert(len(acc2in) == len(list(acc2in)))
 
-# Output as FASTA to supply to bbduk.sh as input k-mer database file
-acc1in_list = 
-
-
-def write_fasta(seq, outfile):
-    out_fasta = open(outfile, "w")
-
-    for s in 
+# Convert into dictionary
+acc2in_1tolen = list(range(1, len(acc2in)+1)) 
+acc2in_dict = dict(zip(acc2in_1tolen, acc2in))
 
 
+# Function to write dictionary of accession-specific centromeric k-mers
+# to FASTA to supply to bbduk.sh as input k-mer database file
+def write_fasta(kmer_dict, outfile):
+    """
+    Write dictionary of k-mers to FASTA
+    """
+    with open(outfile, "w") as fa_object:
+        for s in kmer_dict.keys():
+            fa_object.write(">" + str(s) + "\n")
+            fa_object.write(kmer_dict[s] + "\n")
 
-def write_fasta(seq, outfile):
-    out_fasta = open(outfile, "w")
-
-    # Look through sequence ids (sorted alphabetically so output file is
-    # reproducible).
-    for s in sorted(seq.keys()):
-        out_fasta.write(">" + s + "\n")
-        out_fasta.write(seq[s] + "\n")
-
-    out_fasta.close() 
-
+# Write to FASTA
+write_fasta(kmer_dict=acc1in_dict,
+            outfile=parser.acc1 + "_centromere_specific_" + str(parser.kmerSize) + "mers.fasta")
 
 
 
