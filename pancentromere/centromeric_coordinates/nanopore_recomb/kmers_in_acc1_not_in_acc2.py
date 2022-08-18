@@ -34,6 +34,28 @@ def create_parser():
     #### Create parser
     return parser
 
+
+# Function to define a list containing the union of
+#  elements in an arbitrary number of lists 
+def union_lists(*lists):
+    """
+    Get the union of elements in an arbitrary number of lists
+    """
+    return list(set.union(*map(set, lists)))
+
+
+# Function to write dictionary of accession-specific centromeric k-mers
+# to FASTA to supply to bbduk.sh as input k-mer database file
+def write_fasta(kmer_dict, outfile):
+    """
+    Write dictionary of k-mers to FASTA
+    """
+    with open(outfile, "w") as fa_object:
+        for s in kmer_dict.keys():
+            fa_object.write(">" + str(s) + "\n")
+            fa_object.write(kmer_dict[s] + "\n")
+
+
 parser = create_parser().parse_args()
 print(parser)
 
@@ -63,14 +85,6 @@ print(len(acc1cen))
 print(len(acc2cen))
 # 5130730
 
-
-# Function to define a list containing the union of
-#  elements in an arbitrary number of lists 
-def union_lists(*lists):
-    """
-    Get the union of elements in an arbitrary number of lists
-    """
-    return list(set.union(*map(set, lists)))
 
 # Define union of acc1notcen, acc2cen and acc2notcen
 acc1notcen_acc2cen_acc2notcen_union = union_lists(acc1notcen, acc2cen, acc2notcen)
@@ -108,33 +122,9 @@ acc2in_1tolen = list(range(1, len(acc2in)+1))
 acc2in_dict = dict(zip(acc2in_1tolen, acc2in))
 
 
-# Function to write dictionary of accession-specific centromeric k-mers
-# to FASTA to supply to bbduk.sh as input k-mer database file
-def write_fasta(kmer_dict, outfile):
-    """
-    Write dictionary of k-mers to FASTA
-    """
-    with open(outfile, "w") as fa_object:
-        for s in kmer_dict.keys():
-            fa_object.write(">" + str(s) + "\n")
-            fa_object.write(kmer_dict[s] + "\n")
-
 # Write to FASTA
 write_fasta(kmer_dict=acc1in_dict,
             outfile=parser.acc1 + "_centromere_specific_" + str(parser.kmerSize) + "mers.fasta")
 
-
-
-#if __name__ == "__main__":
-#    with open(parser.fasta, "r") as fa_object:
-#        tic = time()
-#        kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
-#        print(f"Done in {time() - tic:.3f}s")
-#
-#    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "wb") as handle:
-#        pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-#
-#    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
-#        kmer_count_dict_test = pickle.load(handle)
-#
-#    print(kmer_count_dict == kmer_count_dict_test)
+write_fasta(kmer_dict=acc2in_dict,
+            outfile=parser.acc2 + "_centromere_specific_" + str(parser.kmerSize) + "mers.fasta")
