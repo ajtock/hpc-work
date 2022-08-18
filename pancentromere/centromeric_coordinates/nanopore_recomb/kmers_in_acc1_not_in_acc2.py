@@ -78,6 +78,7 @@ print(len(acc1in))
 # 5114056
 print(len(acc1cen) - len(acc1in))
 # 262005 
+assert(len(acc1in) == len(list(acc1in)))
 
 
 # Define union of acc2notcen, acc1cen and acc1notcen
@@ -94,7 +95,32 @@ acc2in = acc2cen.difference(acc2notcen_acc1cen_acc1notcen_union)
 print(len(acc2in))
 # 4927462 
 print(len(acc2cen) - len(acc2in))
-# 203268 
+# 203268
+assert(len(acc2in) == len(list(acc2in)))
+
+# Output as FASTA to supply to bbduk.sh as input k-mer database file
+acc1in_list = 
+
+
+def write_fasta(seq, outfile):
+    out_fasta = open(outfile, "w")
+
+    for s in 
+
+
+
+def write_fasta(seq, outfile):
+    out_fasta = open(outfile, "w")
+
+    # Look through sequence ids (sorted alphabetically so output file is
+    # reproducible).
+    for s in sorted(seq.keys()):
+        out_fasta.write(">" + s + "\n")
+        out_fasta.write(seq[s] + "\n")
+
+    out_fasta.close() 
+
+
 
 
 #if __name__ == "__main__":
