@@ -4,7 +4,7 @@
 # Date: 08/08/2022
 
 # Usage:
-# ./kmers_in_acc1_not_in_acc2.py -a1 Col-0.ragtag_scaffolds -a2 Ler-0_110x.ragtag_scaffolds -k 178 
+# ./kmers_in_acc1_not_in_acc2.py -a1c Col-0.ragtag_scaffolds_centromeres -a2c Ler-0_110x.ragtag_scaffolds_centromeres -k 178 
 
 # Find and count all possible k-mers (substrings of length k)
 # in the centromeres of a given genome
@@ -25,11 +25,15 @@ import timeit
 def create_parser():
     parser = argparse.ArgumentParser(description="Fasta filename variables.")
     #### Define command-line arguments
-    parser.add_argument("-a1", "--acc1", type=str, default="Col-0.ragtag_scaffolds",
-                        help="The prefix of the first accession. Default: Col-0.ragtag_scaffolds")
-    parser.add_argument("-a2", "--acc2", type=str, default="Ler-0_110x.ragtag_scaffolds",
-                        help="The prefix of the second accession. Default: Ler-0_110x.ragtag_scaffolds")
-    parser.add_argument("-k", "--kmerSize", type=int, default="178",
+    parser.add_argument("-a1c", "--acc1c", type=str, default="Col-0.ragtag_scaffolds_centromeres",
+                        help="The prefix of the first accession's centromeric sequences. Default: Col-0.ragtag_scaffolds_centromeres")
+    parser.add_argument("-a2c", "--acc2c", type=str, default="Ler-0_110x.ragtag_scaffolds_centromeres",
+                        help="The prefix of the second accession's centromere sequences. Default: Ler-0_110x.ragtag_scaffolds_centromeres")
+    parser.add_argument("-a1nc", "--acc1nc", type=str, default="Col-0.ragtag_scaffolds_centromeres",
+                        help="The prefix of the first accession's non-centromeric sequences. Default: Col-0.ragtag_scaffolds_not_centromeres")
+    parser.add_argument("-a2nc", "--acc2nc", type=str, default="Ler-0_110x.ragtag_scaffolds_centromeres",
+                        help="The prefix of the second accession's non-centromeric sequences. Default: Ler-0_110x.ragtag_scaffolds_not_centromeres")
+    parser.add_argument("-k", "--kmerSize", type=int, default="25",
                         help="The size of the k-mers to be found and counted in the FASTA file.")
     #### Create parser
     return parser
@@ -61,16 +65,16 @@ print(parser)
 
 
 # Load k-mer count dictionaries (saved as pickle files)
-with open(parser.acc1 + "_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+with open(parser.acc1 + "_centromeres.fa_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
   acc1_cen = pickle.load(handle)
 
-with open(parser.acc2 + "_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+with open(parser.acc2 + "_centromeres.fa_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
   acc2_cen = pickle.load(handle)
 
-with open(parser.acc1 + "_not_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+with open(parser.acc1 + "_not_centromeres.fa_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
   acc1_not_cen = pickle.load(handle)
 
-with open(parser.acc2 + "_not_centromeres.fa_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+with open(parser.acc2 + "_not_centromeres.fa_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
   acc2_not_cen = pickle.load(handle)
 
 
@@ -124,7 +128,7 @@ acc2in_dict = dict(zip(acc2in_1tolen, acc2in))
 
 # Write to FASTA
 write_fasta(kmer_dict=acc1in_dict,
-            outfile=parser.acc1 + "_centromere_specific_" + str(parser.kmerSize) + "mers.fasta")
+            outfile=parser.acc1 + "_centromere_specific_k" + str(parser.kmerSize) + ".fa")
 
 write_fasta(kmer_dict=acc2in_dict,
-            outfile=parser.acc2 + "_centromere_specific_" + str(parser.kmerSize) + "mers.fasta")
+            outfile=parser.acc2 + "_centromere_specific_k" + str(parser.kmerSize) + ".fa")

@@ -95,10 +95,10 @@ if __name__ == "__main__":
         kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
         print(f"Done in {time() - tic:.3f}s")
 
-    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "wb") as handle:
+    with open(parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "wb") as handle:
         pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open(parser.fasta + "_" + str(parser.kmerSize) + "mers.pickle", "rb") as handle:
+    with open(parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
         kmer_count_dict_test = pickle.load(handle)
 
     print(kmer_count_dict == kmer_count_dict_test)
