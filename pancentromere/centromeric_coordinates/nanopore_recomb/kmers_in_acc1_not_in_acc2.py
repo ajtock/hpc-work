@@ -52,18 +52,31 @@ with open(parser.acc2 + "_not_centromeres.fa_" + str(parser.kmerSize) + "mers.pi
   acc2_not_cen = pickle.load(handle)
 
 
-# Make keys (k-mers) in each dictionary a set
-acc1cen = set(list(acc1_cen.keys()))
-acc2cen = set(list(acc2_cen.keys()))
-acc1notcen = set(list(acc1_not_cen.keys()))
-acc2notcen = set(list(acc2_not_cen.keys()))
+# Make keys (k-mers) in each dictionary a list
+acc1cen = list(acc1_cen.keys())
+acc2cen = list(acc2_cen.keys())
+acc1notcen = list(acc1_not_cen.keys())
+acc2notcen = list(acc2_not_cen.keys())
 
 print(len(acc1cen))
 # 5376061
 print(len(acc2cen))
 # 5130730
 
+
+# Function to define a list containing the union of elements in
+# an arbitrary number of lists 
+def union_lists(*lists):
+    """
+    Get the union of elements in an arbitrary number of lists
+    """
+    return list(set.union(*map(set, lists)))
+
 # Define union of acc1notcen, acc2cen and acc2notcen
+acc1notcen_acc2cen_acc2notcen_union = union_lists(acc1notcen, acc2cen, acc2notcen)
+acc1notcen_acc2cen_acc2notcen_union2 == set(acc1notcen_acc2cen_acc2notcen_union)
+
+
 acc1notcen_acc2cen_acc2notcen_union = acc1notcen.union(acc2cen).union(acc2notcen)
 acc1notcen_acc2cen_union = acc1notcen.union(acc2cen)
 acc1notcen_acc2cen_acc2notcen_union2 = acc1notcen_acc2cen_union.union(acc2notcen)
