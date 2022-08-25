@@ -20,6 +20,9 @@ chrName <- unlist(strsplit(args[2],
 
 options(stringsAsFactors = F)
 
+outDir <- "bed/"
+system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
+
 # Define chromosomes and chromosome lengths
 acc_chrs <- read.table(paste0("/home/ajt200/rds/hpc-work/pancentromere/assemblies/",
                               accName, ".fa.fai"),
@@ -30,12 +33,20 @@ acc_chrs <- gsub("SUPER_", "Chr", acc_chrs)
 acc_chrLens <- read.table(paste0("/home/ajt200/rds/hpc-work/pancentromere/assemblies/",
                                  accName, ".fa.fai"),
                           header = F)[,2]
+acc_ptgs <- acc_chrs[which(!acc_chrs %in% chrName)]
+acc_ptgLens <- acc_chrLens[which(!acc_chrs %in% chrName)]
 acc_chrLens <- acc_chrLens[which(acc_chrs %in% chrName)]
 acc_chrs <- acc_chrs[which(acc_chrs %in% chrName)]
+print(acc_ptgs)
+print(acc_ptgLens)
 print(acc_chrs)
 print(acc_chrLens)
+acc_ptgLens <- acc_ptgLens[sort.int(acc_ptgs, index.return = T)$ix]
+acc_ptgs <- acc_ptgs[sort.int(acc_ptgs, index.return = T)$ix]
 acc_chrLens <- acc_chrLens[sort.int(acc_chrs, index.return = T)$ix]
 acc_chrs <- acc_chrs[sort.int(acc_chrs, index.return = T)$ix]
+print(acc_ptgs)
+print(acc_ptgLens)
 print(acc_chrs)
 print(acc_chrLens)
 
@@ -59,23 +70,34 @@ for(i in 1:length(acc_chrs)) {
 acc_CEN <- acc_CEN_new 
 
 acc_nonCEN <- data.frame(chr = rep(acc_CEN$chr, 2),
-                         start = c(rep(1, 5), acc_CEN$end+1),
+                         start = c(rep(1, nrow(acc_CEN)), acc_CEN$end+1),
                          end = c(acc_CEN$start-1, acc_chrLens))
 
+acc_other <- data.frame(chr = acc_ptgs,
+                        start = rep(1, length(acc_ptgs)),
+                        end = acc_ptgLens)   
+
+ 
 # Order first by chromosome, then start, then end
 acc_CEN <- acc_CEN[ with(acc_CEN, order(chr, start, end)), ]
 acc_nonCEN <- acc_nonCEN[ with(acc_nonCEN, order(chr, start, end)), ]
+acc_other <- acc_other[ with(acc_other, order(chr, start, end)), ]
 
 # Substract 1 from start coordinates for output in BED format
 acc_CEN$start <- acc_CEN$start-1
 acc_nonCEN$start <- acc_nonCEN$start-1
+acc_other$start <- acc_other$start-1
 
 # Output in BED format
 write.table(acc_CEN,
-            file = paste0(accName,
+            file = paste0(outDir, accName,
                           "_centromeres.bed"),
             quote = F, sep = "\t", row.names = F, col.names = F)
 write.table(acc_nonCEN,
-            file = paste0(accName,
+            file = paste0(outDir, accName,
                           "_not_centromeres.bed"),
+            quote = F, sep = "\t", row.names = F, col.names = F)
+write.table(acc_other,
+            file = paste0(outDir, accName,
+                          "_other.bed"),
             quote = F, sep = "\t", row.names = F, col.names = F)

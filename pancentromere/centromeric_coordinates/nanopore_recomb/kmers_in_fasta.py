@@ -7,10 +7,13 @@
 # Date: 08/08/2022
 
 # Usage:
-# ./kmers_in_fasta.py -f Col-0.ragtag_scaffolds_centromeres.fa -k 178
-# ./kmers_in_fasta.py -f Ler-0_110x.ragtag_scaffolds_centromeres.fa -k 178
-# ./kmers_in_fasta.py -f Col-0.ragtag_scaffolds_not_centromeres.fa -k 178
-# ./kmers_in_fasta.py -f Ler-0_110x.ragtag_scaffolds_not_centromeres.fa -k 178
+# conda activate python_3.9.6
+# ./kmers_in_fasta.py -f Col-0.ragtag_scaffolds_centromeres.fa -k 24
+# ./kmers_in_fasta.py -f Ler-0_110x.ragtag_scaffolds_centromeres.fa -k 24
+# ./kmers_in_fasta.py -f Col-0.ragtag_scaffolds_not_centromeres.fa -k 24
+# ./kmers_in_fasta.py -f Ler-0_110x.ragtag_scaffolds_not_centromeres.fa -k 24
+# ./kmers_in_fasta.py -f t2t-col.20210610_ChrM_ChrC.fa -k 24
+# conda deactivate
 
 # Find and count all possible k-mers (substrings of length k)
 # in the centromeres of a given genome
@@ -23,6 +26,11 @@ import argparse
 import pickle
 
 from time import time, sleep
+
+outDir = "kmers_in_fasta_dict"
+
+if not os.path.exists(outDir):
+    os.makedirs(outDir)
 
 
 # ==== Capture user input as command-line arguments
@@ -90,15 +98,15 @@ def count_kmer_fa(k, fa_object):
 
 
 if __name__ == "__main__":
-    with open(parser.fasta, "r") as fa_object:
+    with open("fasta/" + parser.fasta, "r") as fa_object:
         tic = time()
         kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
         print(f"Done in {time() - tic:.3f}s")
 
-    with open(parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "wb") as handle:
+    with open(outDir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "wb") as handle:
         pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open(parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
+    with open(outDir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
         kmer_count_dict_test = pickle.load(handle)
 
     print(kmer_count_dict == kmer_count_dict_test)
