@@ -10,7 +10,7 @@
 
 #! sbatch directives begin here ###############################
 #! Name of the job:
-#SBATCH -J acc_specific_kmers_bbduk_icelake_slurm
+#SBATCH -J acc1_AND_acc2_specific_kmers_bbduk_icelake_slurm
 #! Which project should be charged:
 #SBATCH -A HENDERSON-SL3-CPU
 #SBATCH -p icelake-himem
@@ -32,9 +32,9 @@
 #! interrupted by node failure or system downtime):
 #SBATCH --no-requeue
 #! log file (NOTE: enclosing directory must exist)
-#SBATCH --output=logs/acc_specific_kmers_bbduk_icelake_slurm_%A_%a.out
+#SBATCH --output=logs/acc1_AND_acc2_specific_kmers_bbduk_icelake_slurm_%A_%a.out
 #! error file (NOTE: enclosing directory must exist)
-#SBATCH --error=logs/acc_specific_kmers_bbduk_icelake_slurm_%A_%a.err
+#SBATCH --error=logs/acc1_AND_acc2_specific_kmers_bbduk_icelake_slurm_%A_%a.err
 #! Array task IDs
 #SBATCH --array=1-2
 
@@ -66,7 +66,7 @@ module load rhel8/default-icl              # REQUIRED - loads the basic environm
 
 #! Insert additional module load commands after this line if needed:
 
-PARAMS=$(cat slurm_params/acc_specific_kmers_bbduk_slurm_params.tsv | head -n ${SLURM_ARRAY_TASK_ID} | tail -n 1)
+PARAMS=$(cat slurm_params/acc1_AND_acc2_specific_kmers_bbduk_slurm_params.tsv | head -n ${SLURM_ARRAY_TASK_ID} | tail -n 1)
 
 #! Get each parameter
 MEMORY=$(echo $PARAMS | cut -d ' ' -f 1)
