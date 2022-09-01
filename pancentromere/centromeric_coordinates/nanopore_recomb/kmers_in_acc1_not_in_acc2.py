@@ -6,9 +6,9 @@
 # Usage:
 # ./kmers_in_acc1_not_in_acc2.py -a1c Col-0.ragtag_scaffolds_centromeres -a2c Ler-0_110x.ragtag_scaffolds_centromeres -a1nc Col-0.ragtag_scaffolds_not_centromeres -a2nc Ler-0_110x.ragtag_scaffolds_not_centromeres -k 24 
 
-# Find and count all possible k-mers (substrings of length k)
-# in the centromeres of a given genome
-# The bigger the k, the longer it will take
+# Write accession-specific centromeric k-mers
+# to FASTA to supply as input file to bbduk.sh ("ref" parameter)
+# containing query sequences to be matched against the FASTQ of ONT reads 
 
 # ==== Import libraries
 import sys
@@ -33,7 +33,7 @@ def create_parser():
     parser.add_argument("-a1c", "--acc1c", type=str, default="Col-0.ragtag_scaffolds_centromeres",
                         help="The prefix of the first accession's centromeric sequences. Default: Col-0.ragtag_scaffolds_centromeres")
     parser.add_argument("-a2c", "--acc2c", type=str, default="Ler-0_110x.ragtag_scaffolds_centromeres",
-                        help="The prefix of the second accession's centromere sequences. Default: Ler-0_110x.ragtag_scaffolds_centromeres")
+                        help="The prefix of the second accession's centromeric sequences. Default: Ler-0_110x.ragtag_scaffolds_centromeres")
     parser.add_argument("-a1nc", "--acc1nc", type=str, default="Col-0.ragtag_scaffolds_not_centromeres",
                         help="The prefix of the first accession's non-centromeric sequences. Default: Col-0.ragtag_scaffolds_not_centromeres")
     parser.add_argument("-a2nc", "--acc2nc", type=str, default="Ler-0_110x.ragtag_scaffolds_not_centromeres",
