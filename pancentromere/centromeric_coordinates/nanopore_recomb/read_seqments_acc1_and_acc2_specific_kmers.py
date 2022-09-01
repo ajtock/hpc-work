@@ -88,7 +88,7 @@ reads = list(SeqIO.parse(input_fa, "fasta"))
 acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
 
 # Parse acc2-specific k-mers as FastaIterator
-acc2_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
+acc2_kmers = list(SeqIO.parse(acc2_fa, "fasta"))
 
 
 # Build a string translation table to enable
@@ -138,8 +138,14 @@ def get_kmer_loc(kmers, read):
 acc1_kmer_loc = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
 acc2_kmer_loc = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
 
+def flatten(lol):
+    return [item for sublist in lol for item in sublist]
+
+acc1_kmer_loc_values = sorted(flatten(list(acc1_kmer_loc.values())))
+acc2_kmer_loc_values = sorted(flatten(list(acc2_kmer_loc.values())))
 
 
+list(set.union(*map(set, lists)))
 sorted(acc1_kmer_for_matches, acc1_kmer_rev_matches)
 print([match.start() for match in re.finditer(pattern, string)])
 
