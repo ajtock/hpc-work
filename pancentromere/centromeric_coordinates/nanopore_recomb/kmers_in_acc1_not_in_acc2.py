@@ -45,7 +45,7 @@ def create_parser():
 
 
 # Function to define a list containing the union of
-#  elements in an arbitrary number of lists 
+# elements in an arbitrary number of lists 
 def union_lists(*lists):
     """
     Get the union of elements in an arbitrary number of lists

@@ -18,15 +18,16 @@
 # FASTQ format for alignment to the respective assemblies.
 
 # ==== Import libraries
-import sys
+#import sys
 import os
 import argparse
-import pickle
+#import pickle
 import re
 
 from Bio import SeqIO
-from time import time, sleep
-import timeit
+from pathlib import Path
+#from time import time, sleep
+#import timeit
 
 outDir = "segments_fastq"
 
@@ -45,7 +46,9 @@ def create_parser():
     parser.add_argument("-a2", "--acc2", type=str, default="Ler-0_110x.ragtag_scaffolds_centromeres",
                         help="The prefix of the second accession's sequences. Default: Ler-0_110x.ragtag_scaffolds_centromeres")
     parser.add_argument("-k", "--kmerSize", type=int, default="24",
-                        help="The size of the k-mers to be found and counted in the FASTA file.")
+                        help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
+    parser.add_argument("-mh", "--minhits", type=int, default="3",
+                        help="The minimum number of accession-specific k-mers found in a read. Default: 3")
     #### Create parser
     return parser
 
@@ -57,38 +60,35 @@ print(parser)
 input_fa = "fasta/" + parser.readsPrefix + \
     "_match_" + parser.acc1 + \
     "_specific_k" + str(parser.kmerSize) + \
+    "_hits" + str(parser.minhits) + \
     "_match_" + parser.acc2 + \
     "_specific_k" + str(parser.kmerSize) + \
+    "_hits" + str(parser.minhits) + \
     ".fa"
+Path(input_fa).resolve(strict=True)
 
 # Path to acc1-specific k-mers
 acc1_fa = "fasta/" + \
     parser.acc1 + \
     "_specific_k" + str(parser.kmerSize) + \
     ".fa"
+Path(acc1_fa).resolve(strict=True)
+
 # Path to acc2-specific k-mers
 acc2_fa = "fasta/" + \
     parser.acc2 + \
     "_specific_k" + str(parser.kmerSize) + \
     ".fa"
+Path(acc2_fa).resolve(strict=True)
 
 # Parse reads as FastaIterator
-reads = list(SeqIO.parse(input_fa, "fasta")
+reads = list(SeqIO.parse(input_fa, "fasta"))
 
-
+# Parse acc1-specific k-mers as FastaIterator
 acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
 
-
-            outfile=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + ".fa")
-
-
-# Find the 0-based start location in each read of all occurrences
-# of each k-mer
-print([match.start() for match in re.finditer(pattern, string)])
-
-with open(
-
-
+# Parse acc2-specific k-mers as FastaIterator
+acc2_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
 
 
 # Build a string translation table to enable
@@ -97,6 +97,52 @@ with open(
 base_for = "ACGT"
 base_rev = "TGCA"
 comp_tab = str.maketrans(base_for, base_rev)
+
+
+# Function to define a list containing the union of
+# elements in an arbitrary number of lists
+def union_lists(*lists):
+    """
+    Get the union of elements in an arbitrary number of lists
+    """
+    return list(set.union(*map(set, lists)))
+
+
+# Find the 0-based start location in each read of all occurrences
+# of each acc1-specific k-mer
+for i in range(len(reads)):
+read = str(reads[i].seq)
+
+
+def get_kmer_loc(kmers, read):
+    """
+    For a given read, get the within-read start locations of all k-mer matches
+    """
+    kmer_loc_dict = {}
+    for j in range(len(kmers)):
+        kmer_for = str(kmers[j].seq)
+        kmer_rev = kmer_for.translate(comp_tab)[::-1] 
+        kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read)]
+        kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read)]
+        #kmer_for_matches = [match.start() for match in re.finditer("ATGTGTA", read)]
+        #kmer_rev_matches = [match.start() for match in re.finditer("TACACAT", read)]
+        kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
+        if kmer_for < kmer_rev:
+            kmer = kmer_for
+        else:
+            kmer = kmer_rev
+        if kmer_matches:
+            kmer_loc_dict[kmer] = kmer_matches
+    return kmer_loc_dict
+
+acc1_kmer_loc = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
+acc2_kmer_loc = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
+
+
+
+sorted(acc1_kmer_for_matches, acc1_kmer_rev_matches)
+print([match.start() for match in re.finditer(pattern, string)])
+
 
 
 def count_kmer(h, k, seq):
