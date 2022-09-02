@@ -57,6 +57,8 @@ def create_parser():
 parser = create_parser().parse_args()
 print(parser)
 
+acc1 = parser.acc1.split(".")[0].split("_")[0]
+acc2 = parser.acc2.split(".")[0].split("_")[0]
 
 # Path to hybrid reads
 input_fa = "fasta/" + parser.readsPrefix + \
@@ -119,8 +121,7 @@ def get_kmer_loc(kmers, read):
     """
     For a given read, get the within-read 0-based start locations of all k-mer matches.
     """
-    kmer_loc_dict = {}
-    kmer_loc_df = pd.DataFrame()
+    kmer_loc_dict_list = []
     for j in range(len(kmers)):
         kmer_id = kmers[j].id
         kmer_acc = kmers[j].id.split("_", 1)[1]
@@ -135,22 +136,44 @@ def get_kmer_loc(kmers, read):
             kmer = kmer_rev
         if kmer not in kmer_loc_dict:
             if kmer_matches:
-                kmer_loc_dict[kmer] = kmer_matches
-                tmp_df = pd.DataFrame({
-                    "kmer": kmer,
-                    "kmer_id": kmer_id,
-                    "kmer_acc": kmer_acc,
-                    "hit_start": kmer_loc_dict[kmer]
-                }, index=[0])
-                kmer_loc_df = kmer_loc_df.append(tmp_df)
+                for k in range(len(kmer_matches)):
+                    kmer_loc_dict_list.append({"kmer": kmer,
+                                               "id": kmer_id,
+                                               "acc": kmer_acc,
+                                               "hit_start": kmer_matches[k]})
         else:
-            print("k-mer already present in k-mer locations dictionary")
+            print("k-mer already present in object")
     #
-    kmer_loc_df.reset_index(drop=True)
-    return kmer_loc_df
+    return pd.DataFrame(kmer_loc_dict_list)
 
+# Get the within-read start locations of accession-specific k-mer matches
 acc1_kmer_loc_df = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
-acc2_kmer_loc = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
+acc2_kmer_loc_df = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
+
+# Concatenate and sort by k-mer match start location in read
+acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
+                            axis=0,
+                            ignore_index=True)
+acc_kmer_loc_df_sort = acc_kmer_loc_df.sort_values(by="hit_start",
+                                                   axis=0,
+                                                   ascending=True,
+                                                   kind="quicksort",
+                                                   ignore_index=True)
+
+# Get rows that correspond to accession-specific read segments and
+# determine which segment from each accession is the largest
+acc1_segs_counter = 0
+acc2_segs_counter = 0
+acc1_segs_lol = []
+acc2_segs_lol = []
+for rowtup in acc_kmer_loc_df_sort.itertuples():
+
+rowtup = next(acc_kmer_loc_df_sort.itertuples())
+if rowtup.acc == acc1:
+    acc1_segs_lol.append(rowtup
+else:
+    rowtup_acc2 = rowtup
+
 
 acc1_kmer_loc_df = pd.DataFrame.from_dict(acc1_kmer_loc)
 
