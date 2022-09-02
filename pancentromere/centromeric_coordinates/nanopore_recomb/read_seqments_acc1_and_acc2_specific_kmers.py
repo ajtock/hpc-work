@@ -23,6 +23,8 @@ import os
 import argparse
 #import pickle
 import re
+import numpy as np
+import pandas as pd
 
 from Bio import SeqIO
 from pathlib import Path
@@ -65,6 +67,7 @@ input_fa = "fasta/" + parser.readsPrefix + \
     "_specific_k" + str(parser.kmerSize) + \
     "_hits" + str(parser.minhits) + \
     ".fa"
+# File exists sanity check
 Path(input_fa).resolve(strict=True)
 
 # Path to acc1-specific k-mers
@@ -72,6 +75,7 @@ acc1_fa = "fasta/" + \
     parser.acc1 + \
     "_specific_k" + str(parser.kmerSize) + \
     ".fa"
+# File exists sanity check
 Path(acc1_fa).resolve(strict=True)
 
 # Path to acc2-specific k-mers
@@ -79,6 +83,7 @@ acc2_fa = "fasta/" + \
     parser.acc2 + \
     "_specific_k" + str(parser.kmerSize) + \
     ".fa"
+# File exists sanity check
 Path(acc2_fa).resolve(strict=True)
 
 # Parse reads as FastaIterator
@@ -103,46 +108,64 @@ comp_tab = str.maketrans(base_for, base_rev)
 # elements in an arbitrary number of lists
 def union_lists(*lists):
     """
-    Get the union of elements in an arbitrary number of lists
+    Get the union of elements in an arbitrary number of lists.
     """
     return list(set.union(*map(set, lists)))
 
 
-# Find the 0-based start location in each read of all occurrences
-# of each acc1-specific k-mer
-for i in range(len(reads)):
-read = str(reads[i].seq)
-
-
+# Within a read, find the 0-based start location of all occurrences
+# of each accession-specific k-mer
 def get_kmer_loc(kmers, read):
     """
-    For a given read, get the within-read start locations of all k-mer matches
+    For a given read, get the within-read 0-based start locations of all k-mer matches.
     """
     kmer_loc_dict = {}
+    kmer_loc_df = pd.DataFrame()
     for j in range(len(kmers)):
+        kmer_id = kmers[j].id
+        kmer_acc = kmers[j].id.split("_", 1)[1]
         kmer_for = str(kmers[j].seq)
         kmer_rev = kmer_for.translate(comp_tab)[::-1] 
         kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read)]
         kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read)]
-        #kmer_for_matches = [match.start() for match in re.finditer("ATGTGTA", read)]
-        #kmer_rev_matches = [match.start() for match in re.finditer("TACACAT", read)]
         kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
         if kmer_for < kmer_rev:
             kmer = kmer_for
         else:
             kmer = kmer_rev
-        if kmer_matches:
-            kmer_loc_dict[kmer] = kmer_matches
-    return kmer_loc_dict
+        if kmer not in kmer_loc_dict:
+            if kmer_matches:
+                kmer_loc_dict[kmer] = kmer_matches
+                tmp_df = pd.DataFrame({
+                    "kmer": kmer,
+                    "kmer_id": kmer_id,
+                    "kmer_acc": kmer_acc,
+                    "hit_start": kmer_loc_dict[kmer]
+                }, index=[0])
+                kmer_loc_df = kmer_loc_df.append(tmp_df)
+        else:
+            print("k-mer already present in k-mer locations dictionary")
+    #
+    kmer_loc_df.reset_index(drop=True)
+    return kmer_loc_df
 
-acc1_kmer_loc = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
+acc1_kmer_loc_df = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
 acc2_kmer_loc = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
 
+acc1_kmer_loc_df = pd.DataFrame.from_dict(acc1_kmer_loc)
+
+
 def flatten(lol):
+    """
+    Use list comprehension to flatten a list of lists (lol) into a
+    single list composed of all the elements in each sublist.
+    """
     return [item for sublist in lol for item in sublist]
+
 
 acc1_kmer_loc_values = sorted(flatten(list(acc1_kmer_loc.values())))
 acc2_kmer_loc_values = sorted(flatten(list(acc2_kmer_loc.values())))
+
 
 
 list(set.union(*map(set, lists)))
