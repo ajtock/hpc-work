@@ -49,7 +49,7 @@ def create_parser():
                         help="The prefix of the second accession's sequences. Default: Ler-0_110x.ragtag_scaffolds_centromeres")
     parser.add_argument("-k", "--kmerSize", type=int, default="24",
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
-    parser.add_argument("-mh", "--minhits", type=int, default="3",
+    parser.add_argument("-mh", "--minHits", type=int, default="3",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 3")
     #### Create parser
     return parser
@@ -64,10 +64,10 @@ acc2 = parser.acc2.split(".")[0].split("_")[0]
 input_fa = "fasta/" + parser.readsPrefix + \
     "_match_" + parser.acc1 + \
     "_specific_k" + str(parser.kmerSize) + \
-    "_hits" + str(parser.minhits) + \
+    "_hits" + str(parser.minHits) + \
     "_match_" + parser.acc2 + \
     "_specific_k" + str(parser.kmerSize) + \
-    "_hits" + str(parser.minhits) + \
+    "_hits" + str(parser.minHits) + \
     ".fa"
 # File exists sanity check
 Path(input_fa).resolve(strict=True)
@@ -134,7 +134,7 @@ def get_kmer_loc(kmers, read):
             kmer = kmer_for
         else:
             kmer = kmer_rev
-        if kmer not in kmer_loc_dict:
+        if kmer not in kmer_loc_dict_list:
             if kmer_matches:
                 for k in range(len(kmer_matches)):
                     kmer_loc_dict_list.append({"kmer": kmer,
