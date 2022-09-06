@@ -31,11 +31,6 @@ from pathlib import Path
 #from time import time, sleep
 #import timeit
 
-outDir = "segments_fastq"
-
-if not os.path.exists(outDir):
-    os.makedirs(outDir)
-
 # ==== Capture user input as command-line arguments
 # https://stackoverflow.com/questions/18160078/how-do-you-write-tests-for-the-argparse-portion-of-a-python-module
 def create_parser():
@@ -59,6 +54,16 @@ print(parser)
 
 acc1_name = parser.acc1.split(".")[0].split("_")[0]
 acc2_name = parser.acc2.split(".")[0].split("_")[0]
+
+outDir_acc1 = "segments_fastq/" + acc1_name
+outDir_acc2 = "segments_fastq/" + acc2_name
+
+if not os.path.exists(outDir_acc1):
+    os.makedirs(outDir_acc1)
+
+if not os.path.exists(outDir_acc2):
+    os.makedirs(outDir_acc2)
+
 
 # Path to hybrid reads
 input_fa = "fasta/" + parser.readsPrefix + \
@@ -230,6 +235,15 @@ acc1_longest_segment_read_x = read_x[acc1_longest_read_segment["hit_start"][0] :
                                      acc1_longest_read_segment["hit_end"][len(acc1_longest_read_segment)-1]]
 acc2_longest_segment_read_x = read_x[acc2_longest_read_segment["hit_start"][0] :
                                      acc2_longest_read_segment["hit_end"][len(acc2_longest_read_segment)-1]]
+
+acc1_long_seg_read_x_fq = open(outDir_acc1 + "/" + acc1_name + "_" + acc1_longest_segment_read_x.name + ".fastq.gz", "w")
+SeqIO.write(acc1_longest_segment_read_x, acc1_long_seg_read_x_fq, "fastq")
+acc1_long_seg_read_x_fq.close()
+
+handle = open("interleave.fastq", "w")
+count = SeqIO.write(interleave(leftReads, rightReads), handle, "fastq")
+handle.close()
+print("{} records written to interleave.fastq".format(count))
 
 
 
