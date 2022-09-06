@@ -140,11 +140,13 @@ def get_kmer_loc(kmers, read):
                     kmer_loc_dict_list.append({"kmer": kmer,
                                                "id": kmer_id,
                                                "acc": kmer_acc,
-                                               "hit_start": kmer_matches[k]})
+                                               "hit_start": kmer_matches[k],
+                                               "hit_end": kmer_matches[k] + parser.kmerSize})
         else:
             print("k-mer already present in object")
     #
     return pd.DataFrame(kmer_loc_dict_list)
+
 
 # For a given read, get accession-specific read segments
 def get_read_segments(kmer_loc_df_sort):
@@ -155,7 +157,7 @@ def get_read_segments(kmer_loc_df_sort):
     This equates to extracting separate DataFrames where consecutive rows have the
     same value in the "acc" column.
     """
-    segment_list = []
+    segments_list = []
     segment = pd.DataFrame()
     for h in range(len(kmer_loc_df_sort)-1):
         if len(segment) == 0:
@@ -167,50 +169,12 @@ def get_read_segments(kmer_loc_df_sort):
                                 axis=0,
                                 ignore_index=True)
         else:
-            segment_list.append(segment)
+            segments_list.append(segment)
             segment = pd.DataFrame()
+    # Handle final segment in read
+    segments_list.append(segment)
     #
-
-        else:
-            if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
-                segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
-                                    axis=0,
-                                    ignore_index=True)
-            else:
-                segment = 
-        segment_list.append(segment)
-
-
-
-if h == 0:
-    segment = kmer_loc_df_sort.iloc[h:h+1,:]
-    if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
-        segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
-                            axis=0,
-                            ignore_index=True)
-else:
-    if segment
-
-a.loc[a.shift() != a]
-
-
- 
-        if counter == 0:
-            counter += 1
-            if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
-                segment = pd.concat(objs=[kmer_loc_df_sort.iloc[h:h+1,:], kmer_loc_df_sort.iloc[h+1:h+2,:]],
-                                    axis=0,
-                                    ignore_index=True)
- 
-    for h in range(len(kmer_loc_df_sort)-1):
-        segment = kmer_loc_df_sort.iloc[h:h+1, :] 
-        if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
-          segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
-                              axis=0,
-                              ignore_index=True)
-        segment_list.append(segment)
-    #
-    return segment_list
+    return segments_list
 
 
 # Get the within-read start locations of accession-specific k-mer matches
@@ -227,26 +191,52 @@ acc_kmer_loc_df_sort = acc_kmer_loc_df.sort_values(by="hit_start",
                                                    kind="quicksort",
                                                    ignore_index=True)
 
-# For a given read, get accession-specific read segment
+# For a given read, get accession-specific read segments
 acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
+acc1_read_segments_list = []
+acc2_read_segments_list = []
+for i in range(len(acc_read_segments_list)):
+    if acc_read_segments_list[i]["acc"][0] == acc1_name and len(acc_read_segments_list[i]) >= parser.minHits:
+        acc1_read_segments_list.append(acc_read_segments_list[i])
+    elif acc_read_segments_list[i]["acc"][0] == acc2_name and len(acc_read_segments_list[i]) >= parser.minHits:
+        acc2_read_segments_list.append(acc_read_segments_list[i])
 
 
-# Get rows that correspond to accession-specific read segments and
-# determine which segment from each accession is the largest
-acc1_segs_counter = 0
-acc2_segs_counter = 0
-acc1_segs_lol = []
-acc2_segs_lol = []
-for rowtup in acc_kmer_loc_df_sort.itertuples():
+# Get the longest accession-specific read segment
+def get_longest_read_segment(accspec_read_segments_list):
+    """
+    Get the longest accession-specific read segment from a list of
+    pandas DataFrames containing the within-read start coordinates of
+    accession-specific k-mer matches.
+    """
+    read_segments_length_dict = {}
+    for h in range(len(accspec_read_segments_list)):
+        read_segments_length_dict[h] = ( accspec_read_segments_list[h]["hit_start"][
+            len(accspec_read_segments_list[h]) - 1
+        ] + parser.kmerSize ) \
+        - accspec_read_segments_list[h]["hit_start"][0]
+    #
+    read_segments_length_vals_max = max(read_segments_length_dict.values())
+    for seg_key, seg_val in read_segments_length_dict.items():
+        if seg_val == read_segments_length_vals_max:
+            return accspec_read_segments_list[seg_key]
 
-rowtup = next(acc_kmer_loc_df_sort.itertuples())
-if rowtup.acc == acc1:
-    acc1_segs_lol.append(rowtup
-else:
-    rowtup_acc2 = rowtup
+# Get the longest accession-specific read segment for each accession 
+acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
+acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
+
+read_x = reads[0]
+acc1_longest_segment_read_x = read_x[acc1_longest_read_segment["hit_start"][0] :
+                                     acc1_longest_read_segment["hit_end"][len(acc1_longest_read_segment)-1]]
+acc2_longest_segment_read_x = read_x[acc2_longest_read_segment["hit_start"][0] :
+                                     acc2_longest_read_segment["hit_end"][len(acc2_longest_read_segment)-1]]
 
 
-acc1_kmer_loc_df = pd.DataFrame.from_dict(acc1_kmer_loc)
+
+acc1_read_segment_longest = pd.DataFrame()
+acc1_read_segment_longest = pd.DataFrame()
+
+
 
 
 def flatten(lol):
