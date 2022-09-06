@@ -57,8 +57,8 @@ def create_parser():
 parser = create_parser().parse_args()
 print(parser)
 
-acc1 = parser.acc1.split(".")[0].split("_")[0]
-acc2 = parser.acc2.split(".")[0].split("_")[0]
+acc1_name = parser.acc1.split(".")[0].split("_")[0]
+acc2_name = parser.acc2.split(".")[0].split("_")[0]
 
 # Path to hybrid reads
 input_fa = "fasta/" + parser.readsPrefix + \
@@ -122,10 +122,10 @@ def get_kmer_loc(kmers, read):
     For a given read, get the within-read 0-based start locations of all k-mer matches.
     """
     kmer_loc_dict_list = []
-    for j in range(len(kmers)):
-        kmer_id = kmers[j].id
-        kmer_acc = kmers[j].id.split("_", 1)[1]
-        kmer_for = str(kmers[j].seq)
+    for h in range(len(kmers)):
+        kmer_id = kmers[h].id
+        kmer_acc = kmers[h].id.split("_", 1)[1]
+        kmer_for = str(kmers[h].seq)
         kmer_rev = kmer_for.translate(comp_tab)[::-1] 
         kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read)]
         kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read)]
@@ -146,6 +146,73 @@ def get_kmer_loc(kmers, read):
     #
     return pd.DataFrame(kmer_loc_dict_list)
 
+# For a given read, get accession-specific read segments
+def get_read_segments(kmer_loc_df_sort):
+    """
+    For a given pandas DataFrame representing the sorted start locations of all
+    accession-specific k-mers in a read, make a list in which each element is
+    a subset of the DataFrame that represents an accession-specific read segment.
+    This equates to extracting separate DataFrames where consecutive rows have the
+    same value in the "acc" column.
+    """
+    segment_list = []
+    segment = pd.DataFrame()
+    for h in range(len(kmer_loc_df_sort)-1):
+        if len(segment) == 0:
+            segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h:h+1,:]],
+                                axis=0,
+                                ignore_index=True)
+        if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
+            segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
+                                axis=0,
+                                ignore_index=True)
+        else:
+            segment_list.append(segment)
+            segment = pd.DataFrame()
+    #
+
+        else:
+            if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
+                segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
+                                    axis=0,
+                                    ignore_index=True)
+            else:
+                segment = 
+        segment_list.append(segment)
+
+
+
+if h == 0:
+    segment = kmer_loc_df_sort.iloc[h:h+1,:]
+    if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
+        segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
+                            axis=0,
+                            ignore_index=True)
+else:
+    if segment
+
+a.loc[a.shift() != a]
+
+
+ 
+        if counter == 0:
+            counter += 1
+            if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
+                segment = pd.concat(objs=[kmer_loc_df_sort.iloc[h:h+1,:], kmer_loc_df_sort.iloc[h+1:h+2,:]],
+                                    axis=0,
+                                    ignore_index=True)
+ 
+    for h in range(len(kmer_loc_df_sort)-1):
+        segment = kmer_loc_df_sort.iloc[h:h+1, :] 
+        if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
+          segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
+                              axis=0,
+                              ignore_index=True)
+        segment_list.append(segment)
+    #
+    return segment_list
+
+
 # Get the within-read start locations of accession-specific k-mer matches
 acc1_kmer_loc_df = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
 acc2_kmer_loc_df = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
@@ -159,6 +226,10 @@ acc_kmer_loc_df_sort = acc_kmer_loc_df.sort_values(by="hit_start",
                                                    ascending=True,
                                                    kind="quicksort",
                                                    ignore_index=True)
+
+# For a given read, get accession-specific read segment
+acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
+
 
 # Get rows that correspond to accession-specific read segments and
 # determine which segment from each accession is the largest
