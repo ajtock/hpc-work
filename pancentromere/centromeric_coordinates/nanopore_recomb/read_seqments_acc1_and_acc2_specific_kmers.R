@@ -18,11 +18,11 @@
 # the read segments that span consecutive acc2-specific k-mers in
 # FASTQ format for alignment to the respective assemblies.
 
-readsPrefix <- "Col_ler_f1_pollen_500bp_minq99"
-acc1 <- "Col-0.ragtag_scaffolds_centromeres"
-acc2 <- "Ler-0_110x.ragtag_scaffolds_centromeres"
-kmerSize <- 24
-minHits <- 3
+#readsPrefix <- "Col_ler_f1_pollen_500bp_minq99"
+#acc1 <- "Col-0.ragtag_scaffolds_centromeres"
+#acc2 <- "Ler-0_110x.ragtag_scaffolds_centromeres"
+#kmerSize <- 24
+#minHits <- 3
 
 args <- commandArgs(trailingOnly = T)
 readsPrefix <- args[1]
@@ -98,10 +98,10 @@ stopifnot(file.exists(acc2_fa))
 reads <- readDNAStringSet(input_fa)
 
 # Parse acc1-specific k-mers as FastaIterator
-acc1_kmers <- readDNAStringSet(acc1_fa)
+acc1_kmers <- as.character(readDNAStringSet(acc1_fa))
 
 # Parse acc2-specific k-mers as FastaIterator
-acc2_kmers <- readDNAStringSet(acc2_fa)
+acc2_kmers <- as.character(readDNAStringSet(acc2_fa))
 
 
 # Function to define a vectors containing the union of
@@ -114,32 +114,45 @@ union_vectors <- function(vectors_list) {
 # Within a read, find the 1-based start location of all occurrences
 # of each accession-specific k-mer
 get_kmer_loc <- function(kmers, read) {
+#    kmers_for <- kmers
+#    kmers_rev <- reverseComplement(kmers)
     # For a given read, get the within-read 0-based start locations of all k-mer matches.
-    kmer_loc_dict_list <- list()
-    for j in 1:len(kmers) {
-        kmer_id <- names(kmers[j])
+    kmer_loc_dict_list <- foreach(i = iter(1:length(kmers)),
+                                  .combine = "list",
+                                  .multicombine = T,
+                                  .maxcombine = length(kmers)+1e1,
+                                  .inorder = F) %dopar% {
+        kmer_id <- names(kmers[i])
         kmer_acc <- sub("^\\d+_", "", kmer_id)
-        kmer_for <- kmers[j]
-        kmer_rev <- reverseComplement(kmer_for)
+        kmer_for <- kmers_for[i]
+        kmer_rev <- kmers_rev[i]
         kmer_for_matches <- stri_locate_all_fixed(str = read, pattern = kmer_for, omit_no_match = T) 
         kmer_rev_matches <- stri_locate_all_fixed(str = read, pattern = kmer_rev, omit_no_match = T) 
-        kmer_matches <- sorted(union_lists(kmer_for_matches, kmer_rev_matches))
-        if kmer_for < kmer_rev:
-            kmer <- kmer_for
-        else:
-            kmer <- kmer_rev
-        if kmer not in kmer_loc_dict_list:
-            if kmer_matches:
-                for k in range(len(kmer_matches)):
-                    kmer_loc_dict_list.append({"kmer": kmer,
-                                               "id": kmer_id,
-                                               "acc": kmer_acc,
-                                               "hit_start": kmer_matches[k]})
-        else:
-            print("k-mer already present in object")
+        if(nrow(kmer_for_matches[[1]]) > 0) {
+            kmer_for_matches
+        }
+#        kmer_matches <- sorted(union_lists(kmer_for_matches, kmer_rev_matches))
+#        if(kmer_for < kmer_rev) {
+#            kmer <- kmer_for
+#        } else {
+#            kmer <- kmer_rev
+#        }
+#        if(kmer not in kmer_loc_dict_list) {
+#            if(kmer_matches) {
+#                for(k in 1:length(kmer_matches)) {
+#                    kmer_loc_dict_list.append({"kmer": kmer,
+#                                               "id": kmer_id,
+#                                               "acc": kmer_acc,
+#                                               "hit_start": kmer_matches[k]})
+#                }
+#            }
+#        } else {
+#            print("k-mer already present in object")
+#        }
     }
     #
-    return(pd.DataFrame(kmer_loc_dict_list))
+#    return(pd.DataFrame(kmer_loc_dict_list))
+    return(kmer_loc_dict_list)
 }
 
 # Get the within-read start locations of accession-specific k-mer matches
