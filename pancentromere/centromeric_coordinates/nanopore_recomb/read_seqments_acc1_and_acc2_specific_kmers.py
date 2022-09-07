@@ -403,25 +403,28 @@ def align_read_segment_wm_ont(segment_fasta, genome):
     """
     aln_cmd = ["winnowmap"] + \
               ["-W", "index/" + genome + "_repetitive_k15.txt"] + \
-              ["-ax", "map-ont"] + \
+              ["-x", "map-ont"] + \
               ["-t", "32"] + \
               ["-p", "1.0"] + \
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outsam = re.sub(".fasta", "_wm_ont.sam", segment_fasta)
+    outpaf = re.sub(".fasta", "_wm_ont.paf", segment_fasta)
     outerr = re.sub(".fasta", "_wm_ont.err", segment_fasta)
-    with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle) 
     # Delete file(s) if unmapped
-    sam_view_cmd = ["samtools"] + \
-                   ["view", outsam]
-    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
-    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
-    sam_rm_cmd = ["rm"] + \
-                 [outsam, outerr]
-    if sam_flag == 4:
-        subprocess.run(sam_rm_cmd)
+    if os.stat(outpaf).st_size == 0:
+        subprocess.run(["rm", outpaf, outerr])
+#    # Delete file(s) if unmapped
+#    sam_view_cmd = ["samtools"] + \
+#                   ["view", outsam]
+#    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
+#    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
+#    sam_rm_cmd = ["rm"] + \
+#                 [outsam, outerr]
+#    if sam_flag == 4:
+#        subprocess.run(sam_rm_cmd)
 
 
 # Align accession-specific read segments to respective genome
@@ -436,19 +439,14 @@ def align_read_segment_mm_ont(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outsam = re.sub(".fasta", "_mm_ont.sam", segment_fasta)
+    outpaf = re.sub(".fasta", "_mm_ont.paf", segment_fasta)
     outerr = re.sub(".fasta", "_mm_ont.err", segment_fasta)
-    with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
+    with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
     # Delete file(s) if unmapped
-    sam_view_cmd = ["samtools"] + \
-                   ["view", outsam]
-    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
-    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
-    sam_rm_cmd = ["rm"] + \
-                 [outsam, outerr]
-    if sam_flag == 4:
-        subprocess.run(sam_rm_cmd)
+    if os.stat(outpaf).st_size == 0:
+        subprocess.run(["rm", outpaf, outerr])
+
 
 # Align accession-specific read segments to respective genome
 def align_read_segment_mm_sr(segment_fasta, genome):
@@ -462,19 +460,13 @@ def align_read_segment_mm_sr(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outsam = re.sub(".fasta", "_mm_sr.sam", segment_fasta)
+    outpaf = re.sub(".fasta", "_mm_sr.paf", segment_fasta)
     outerr = re.sub(".fasta", "_mm_sr.err", segment_fasta)
-    with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
+    with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
     # Delete file(s) if unmapped
-    sam_view_cmd = ["samtools"] + \
-                   ["view", outsam]
-    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
-    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
-    sam_rm_cmd = ["rm"] + \
-                 [outsam, outerr]
-    if sam_flag == 4:
-        subprocess.run(sam_rm_cmd)
+    if os.stat(outpaf).st_size == 0:
+        subprocess.run(["rm", outpaf, outerr])
 
 
 align_read_segment_wm_ont(segment_fasta=acc1_outfile,
