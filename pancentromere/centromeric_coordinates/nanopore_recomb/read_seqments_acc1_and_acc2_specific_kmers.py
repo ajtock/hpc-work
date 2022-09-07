@@ -56,22 +56,22 @@ print(parser)
 acc1_name = parser.acc1.split(".")[0].split("_")[0]
 acc2_name = parser.acc2.split(".")[0].split("_")[0]
 
-outDir_acc1_co = "segments/" + acc1_name + "/co"
-outDir_acc2_co = "segments/" + acc2_name + "/co"
-outDir_acc1_nco = "segments/" + acc1_name + "/nco"
-outDir_acc2_nco = "segments/" + acc2_name + "/nco"
+acc1_outdir_co = "segments/" + acc1_name + "/co"
+acc2_outdir_co = "segments/" + acc2_name + "/co"
+acc1_outdir_nco = "segments/" + acc1_name + "/nco"
+acc2_outdir_nco = "segments/" + acc2_name + "/nco"
 
-if not os.path.exists(outDir_acc1_co):
-    os.makedirs(outDir_acc1_co)
+if not os.path.exists(acc1_outdir_co):
+    os.makedirs(acc1_outdir_co)
 
-if not os.path.exists(outDir_acc2_co):
-    os.makedirs(outDir_acc2_co)
+if not os.path.exists(acc2_outdir_co):
+    os.makedirs(acc2_outdir_co)
 
-if not os.path.exists(outDir_acc1_nco):
-    os.makedirs(outDir_acc1_nco)
+if not os.path.exists(acc1_outdir_nco):
+    os.makedirs(acc1_outdir_nco)
 
-if not os.path.exists(outDir_acc2_nco):
-    os.makedirs(outDir_acc2_nco)
+if not os.path.exists(acc2_outdir_nco):
+    os.makedirs(acc2_outdir_nco)
 
 
 # Path to hybrid reads
@@ -105,6 +105,9 @@ Path(acc2_fa).resolve(strict=True)
 # Parse reads as FastaIterator
 reads = list(SeqIO.parse(input_fa, "fasta"))
 
+# TODO: make script iterate over each read in reads
+read=reads[0]
+
 # Parse acc1-specific k-mers as FastaIterator
 acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
 
@@ -120,13 +123,23 @@ base_rev = "TGCA"
 comp_tab = str.maketrans(base_for, base_rev)
 
 
-# Function to define a list containing the union of
+# Make a list containing the union of
 # elements in an arbitrary number of lists
 def union_lists(*lists):
     """
     Get the union of elements in an arbitrary number of lists.
     """
     return list(set.union(*map(set, lists)))
+
+
+# Make a single list that contains all
+# the elements of each sublist of a list
+def flatten(lol):
+    """
+    Use list comprehension to flatten a list of lists (lol) into a
+    single list composed of all the elements in each sublist.
+    """
+    return [item for sublist in lol for item in sublist]
 
 
 # Within a read, find the 0-based start location of all occurrences
@@ -163,8 +176,8 @@ def get_kmer_loc(kmers, read):
 
 
 # Get the within-read start locations of accession-specific k-mer matches
-acc1_kmer_loc_df_tmp = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
-acc2_kmer_loc_df_tmp = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
+acc1_kmer_loc_df_tmp = get_kmer_loc(kmers=acc1_kmers, read=str(read.seq)) 
+acc2_kmer_loc_df_tmp = get_kmer_loc(kmers=acc2_kmers, read=str(read.seq)) 
 
 
 # Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
@@ -325,11 +338,11 @@ for i in range(len(acc_read_segments_list)):
 
 # Determine whether hybrid read represents a putative crossover or noncrossover
 if len(acc1_read_segments_list) > 1 or len(acc2_read_segments_list) > 1:
-    outDir_acc1 = outDir_acc1_nco
-    outDir_acc2 = outDir_acc2_nco
+    acc1_outdir = acc1_outdir_nco
+    acc2_outdir = acc2_outdir_nco
 elif len(acc1_read_segments_list) == 1 and len(acc2_read_segments_list) == 1:
-    outDir_acc1 = outDir_acc1_co
-    outDir_acc2 = outDir_acc2_co
+    acc1_outdir = acc1_outdir_co
+    acc2_outdir = acc2_outdir_co
 
 
 # Get the longest accession-specific read segment
@@ -356,40 +369,64 @@ def get_longest_read_segment(accspec_read_segments_list):
 acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
 acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
 
+# Define output FASTA file names for writing read segments 
+acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fasta"  
+acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fasta"  
+
 
 # Write accession-specific read segment to FASTA
 # to supply to alignment software as input read
-def write_fasta_from_SeqRecord(read, segment, outDir):
+def write_fasta_from_SeqRecord(read, segment, outfile):
     """
     Extract read segment from read and write to FASTA.
     """
     record_segment = read[segment["hit_start"].iloc[0] :
                           segment["hit_end"].iloc[-1]]
-    outfile = outDir + "/" + read.id + "__" + segment["acc"][0] + ".fasta"
     with open(outfile, "w") as output_handle:
         SeqIO.write(record_segment, output_handle, "fasta")
 
 
 # Write accession-specific read segment to FASTA
 # to supply to alignment software as input read
-write_fasta_from_SeqRecord(read=reads[0],
+write_fasta_from_SeqRecord(read=read,
                            segment=acc1_longest_read_segment,
-                           outDir=outDir_acc1)
-write_fasta_from_SeqRecord(read=reads[0],
+                           outfile=acc1_outfile)
+write_fasta_from_SeqRecord(read=read,
                            segment=acc2_longest_read_segment,
-                           outDir=outDir_acc2)
+                           outfile=acc2_outfile)
 
 
-def write_fasta(kmer_dict, acc_name, outfile):
+# Align accession-specific read segments to respective genome
+def align_read_segment(segment_fasta, genome):
     """
-    Write dictionary of k-mers to FASTA
+    Align read in FASTA format to genome using winnowmap.
     """
-    with open(outfile, "w") as fa_object:
-        for s in kmer_dict.keys():
-            fa_object.write(">" + str(s) + "_" + acc_name + "\n")
-            fa_object.write(kmer_dict[s] + "\n")
+    subprocess.run(
+                   [
+                    "winnowmap",
+                    "-ax", "map-ont",
+                    "-W", "index/" + genome + "_repetitive_k15.txt",
+                    "-t", "32",
+                    "-p", "0.1",
+                    "index/" + genome + "__ont.wmi",
+                    segment_fasta,
+                    ">", re.sub(".fasta", "_wm_ont.sam", segment_fasta)
+                   ]
+                  )
+
+align_read_segment(segment_fasta=acc1_outfile,
+                   genome=re.sub("_centromeres", "", parser.acc1))
+align_read_segment(segment_fasta=acc2_outfile,
+                   genome=re.sub("_centromeres", "", parser.acc2))
 
 
+/home/ajt200/miniconda3/envs/python_3.9.6/bin/winnowmap \
+  -x map-ont \
+  -k ${K} \
+  -W ${GENOME}_repetitive_k${K}.txt \
+  -d ${GENOME}__ont.wmi \
+  -t ${THREADS} \
+  /home/ajt200/rds/hpc-work/pancentromere/assemblies/${GENOME}.fa
 
 
 read_x = reads[0]
@@ -398,7 +435,7 @@ acc1_longest_segment_read_x = read_x[acc1_longest_read_segment["hit_start"][0] :
 acc2_longest_segment_read_x = read_x[acc2_longest_read_segment["hit_start"][0] :
                                      acc2_longest_read_segment["hit_end"][len(acc2_longest_read_segment)-1]]
 
-acc1_long_seg_read_x_fq = open(outDir_acc1 + "/" + acc1_name + "_" + acc1_longest_segment_read_x.name + ".fastq.gz", "w")
+acc1_long_seg_read_x_fq = open(acc1_outdir + "/" + acc1_name + "_" + acc1_longest_segment_read_x.name + ".fastq.gz", "w")
 SeqIO.write(acc1_longest_segment_read_x, acc1_long_seg_read_x_fq, "fastq")
 acc1_long_seg_read_x_fq.close()
 
@@ -414,12 +451,6 @@ acc1_read_segment_longest = pd.DataFrame()
 
 
 
-def flatten(lol):
-    """
-    Use list comprehension to flatten a list of lists (lol) into a
-    single list composed of all the elements in each sublist.
-    """
-    return [item for sublist in lol for item in sublist]
 
 
 acc1_kmer_loc_values = sorted(flatten(list(acc1_kmer_loc.values())))
@@ -479,10 +510,10 @@ if __name__ == "__main__":
         kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
         print(f"Done in {time() - tic:.3f}s")
 
-    with open(outDir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "wb") as handle:
+    with open(outdir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "wb") as handle:
         pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open(outDir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
+    with open(outdir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
         kmer_count_dict_test = pickle.load(handle)
 
     print(kmer_count_dict == kmer_count_dict_test)
