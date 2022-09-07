@@ -397,27 +397,72 @@ write_fasta_from_SeqRecord(read=read,
 
 
 # Align accession-specific read segments to respective genome
-def align_read_segment(segment_fasta, genome):
+def align_read_segment_wm_ont(segment_fasta, genome):
     """
-    Align read in FASTA format to genome using winnowmap.
+    Align read in FASTA format to genome using winnowmap map-ont.
     """
-    subprocess.run(
-                   [
-                    "winnowmap",
-                    "-ax", "map-ont",
-                    "-W", "index/" + genome + "_repetitive_k15.txt",
-                    "-t", "32",
-                    "-p", "0.1",
-                    "index/" + genome + "__ont.wmi",
-                    segment_fasta,
-                    ">", re.sub(".fasta", "_wm_ont.sam", segment_fasta)
-                   ]
-                  )
+    aln_cmd = ["winnowmap"] + \
+              ["-W", "index/" + genome + "_repetitive_k15.txt"] + \
+              ["-ax", "map-ont"] + \
+              ["-t", "32"] + \
+              ["-p", "1.0"] + \
+              ["-N", "10"] + \
+              ["index/" + genome + ".fa"] + \
+              [segment_fasta]
+    outsam = re.sub(".fasta", "_wm_ont.sam", segment_fasta)
+    outerr = re.sub(".fasta", "_wm_ont.err", segment_fasta)
+    with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
 
-align_read_segment(segment_fasta=acc1_outfile,
-                   genome=re.sub("_centromeres", "", parser.acc1))
-align_read_segment(segment_fasta=acc2_outfile,
-                   genome=re.sub("_centromeres", "", parser.acc2))
+# Align accession-specific read segments to respective genome
+def align_read_segment_mm_ont(segment_fasta, genome):
+    """
+    Align read in FASTA format to genome using minimap2 map-ont.
+    """
+    aln_cmd = ["minimap2"] + \
+              ["-ax", "map-ont"] + \
+              ["-t", "32"] + \
+              ["-p", "1.0"] + \
+              ["-N", "10"] + \
+              ["index/" + genome + ".fa"] + \
+              [segment_fasta]
+    outsam = re.sub(".fasta", "_mm_ont.sam", segment_fasta)
+    outerr = re.sub(".fasta", "_mm_ont.err", segment_fasta)
+    with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+
+# Align accession-specific read segments to respective genome
+def align_read_segment_mm_sr(segment_fasta, genome):
+    """
+    Align read in FASTA format to genome using minimap2 sr.
+    """
+    aln_cmd = ["minimap2"] + \
+              ["-ax", "sr"] + \
+              ["-t", "32"] + \
+              ["-p", "1.0"] + \
+              ["-N", "10"] + \
+              ["index/" + genome + ".fa"] + \
+              [segment_fasta]
+    outsam = re.sub(".fasta", "_mm_sr.sam", segment_fasta)
+    outerr = re.sub(".fasta", "_mm_sr.err", segment_fasta)
+    with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+
+
+align_read_segment_wm_ont(segment_fasta=acc1_outfile,
+                          genome=re.sub("_centromeres", "", parser.acc1))
+align_read_segment_wm_ont(segment_fasta=acc2_outfile,
+                          genome=re.sub("_centromeres", "", parser.acc2))
+
+align_read_segment_mm_ont(segment_fasta=acc1_outfile,
+                          genome=re.sub("_centromeres", "", parser.acc1))
+align_read_segment_mm_ont(segment_fasta=acc2_outfile,
+                          genome=re.sub("_centromeres", "", parser.acc2))
+
+align_read_segment_mm_sr(segment_fasta=acc1_outfile,
+                         genome=re.sub("_centromeres", "", parser.acc1))
+align_read_segment_mm_sr(segment_fasta=acc2_outfile,
+                         genome=re.sub("_centromeres", "", parser.acc2))
 
 
 /home/ajt200/miniconda3/envs/python_3.9.6/bin/winnowmap \
