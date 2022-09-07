@@ -413,6 +413,16 @@ def align_read_segment_wm_ont(segment_fasta, genome):
     outerr = re.sub(".fasta", "_wm_ont.err", segment_fasta)
     with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    # Delete file(s) if unmapped
+    sam_view_cmd = ["samtools"] + \
+                   ["view", outsam]
+    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
+    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
+    sam_rm_cmd = ["rm"] + \
+                 [outsam, outerr]
+    if sam_flag == 4:
+        subprocess.run(sam_rm_cmd)
+
 
 # Align accession-specific read segments to respective genome
 def align_read_segment_mm_ont(segment_fasta, genome):
@@ -430,6 +440,15 @@ def align_read_segment_mm_ont(segment_fasta, genome):
     outerr = re.sub(".fasta", "_mm_ont.err", segment_fasta)
     with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    # Delete file(s) if unmapped
+    sam_view_cmd = ["samtools"] + \
+                   ["view", outsam]
+    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
+    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
+    sam_rm_cmd = ["rm"] + \
+                 [outsam, outerr]
+    if sam_flag == 4:
+        subprocess.run(sam_rm_cmd)
 
 # Align accession-specific read segments to respective genome
 def align_read_segment_mm_sr(segment_fasta, genome):
@@ -447,6 +466,15 @@ def align_read_segment_mm_sr(segment_fasta, genome):
     outerr = re.sub(".fasta", "_mm_sr.err", segment_fasta)
     with open(outsam, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    # Delete file(s) if unmapped
+    sam_view_cmd = ["samtools"] + \
+                   ["view", outsam]
+    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
+    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
+    sam_rm_cmd = ["rm"] + \
+                 [outsam, outerr]
+    if sam_flag == 4:
+        subprocess.run(sam_rm_cmd)
 
 
 align_read_segment_wm_ont(segment_fasta=acc1_outfile,
@@ -464,14 +492,6 @@ align_read_segment_mm_sr(segment_fasta=acc1_outfile,
 align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                          genome=re.sub("_centromeres", "", parser.acc2))
 
-
-/home/ajt200/miniconda3/envs/python_3.9.6/bin/winnowmap \
-  -x map-ont \
-  -k ${K} \
-  -W ${GENOME}_repetitive_k${K}.txt \
-  -d ${GENOME}__ont.wmi \
-  -t ${THREADS} \
-  /home/ajt200/rds/hpc-work/pancentromere/assemblies/${GENOME}.fa
 
 
 read_x = reads[0]
