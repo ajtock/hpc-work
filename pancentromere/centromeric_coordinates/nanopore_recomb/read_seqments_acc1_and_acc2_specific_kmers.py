@@ -501,4 +501,5 @@ def main(read):
 
 if __name__ == "__main__":
     for i in range(len(reads)):
+        print(i)
         main(read=reads[i])
