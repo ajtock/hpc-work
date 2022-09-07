@@ -105,9 +105,6 @@ Path(acc2_fa).resolve(strict=True)
 # Parse reads as FastaIterator
 reads = list(SeqIO.parse(input_fa, "fasta"))
 
-# TODO: make script iterate over each read in reads
-read=reads[0]
-
 # Parse acc1-specific k-mers as FastaIterator
 acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
 
@@ -175,11 +172,6 @@ def get_kmer_loc(kmers, read):
     return pd.DataFrame(kmer_loc_dict_list)
 
 
-# Get the within-read start locations of accession-specific k-mer matches
-acc1_kmer_loc_df_tmp = get_kmer_loc(kmers=acc1_kmers, read=str(read.seq)) 
-acc2_kmer_loc_df_tmp = get_kmer_loc(kmers=acc2_kmers, read=str(read.seq)) 
-
-
 # Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
 # overlap any of those in acc2_kmer_loc_df, and vice versa
 # NOTE: requires two reciprocal function calls
@@ -206,34 +198,6 @@ def remove_overlaps(DF1, DF2):
                                         ignore_index=True)
     #
     return DF1_no_overlaps
-
-
-# Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
-# overlap any of those in acc2_kmer_loc_df, and vice versa
-# NOTE: requires two reciprocal function calls
-acc1_kmer_loc_df = remove_overlaps(DF1=acc1_kmer_loc_df_tmp,
-                                   DF2=acc2_kmer_loc_df_tmp)
-acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
-                                   DF2=acc1_kmer_loc_df_tmp)
-del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
-
-# TODO: Use pyranges to remove rows in acc1_kmer_loc_df and acc2_kmer_loc_df
-# whose k-mer match coordinate ranges overlap between accessions
-# E.g.:
-# https://stackoverflow.com/questions/57032580/finding-overlaps-between-millions-of-ranges-intervals
-# https://stackoverflow.com/questions/49118347/pythonic-equivalent-to-reduce-in-r-granges-how-to-collapse-ranged-data
-# NOTE: Not needed given remove_overlaps() function using range() above
-
-
-# Concatenate and sort by k-mer match start location in read
-acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
-                            axis=0,
-                            ignore_index=True)
-acc_kmer_loc_df_sort_tmp = acc_kmer_loc_df.sort_values(by="hit_start",
-                                                       axis=0,
-                                                       ascending=True,
-                                                       kind="quicksort",
-                                                       ignore_index=True)
 
 
 # For a given read, get accession-specific read segments
@@ -302,49 +266,6 @@ def concat_DF_list(DF_list):
     return concat_DF_sort
 
 
-# For a given read, get accession-specific read segments
-# get_read_segments function call 1:
-# The first function call will exclude segments with < parser.minHits consecutive
-# accession-specific k-mers, and the resulting list elements (retained segments)
-# should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
-# separately (using concat_DF_list() on output), to be provided as the input to the second call
-acc_read_segments_list_tmp = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
-del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
-
-# Concatenate acc_read_segments_list_tmp into a single DataFrame,
-# sorted by k-mer hit_start location in read
-acc_kmer_loc_df_sort = concat_DF_list(DF_list=acc_read_segments_list_tmp)
-del acc_read_segments_list_tmp
-
-# For a given read, get accession-specific read segments
-# get_read_segments function call 2:
-# The second function call will be applied to the concatenated DataFrame consisting
-# of filtered segments, in order to extract each segment DataFrame as a list element
-# for segment length calculations. This second call will combine accession-specific
-# segments into one extended segment where, following the first function call,
-# there are no intervening short segments representing the other accession
-# (excluded segments with < parser.minHits consecutive accession-specific k-mers)
-acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
-
-# Get per-accession read segments lists
-acc1_read_segments_list = []
-acc2_read_segments_list = []
-for i in range(len(acc_read_segments_list)):
-    if acc_read_segments_list[i]["acc"][0] == acc1_name and len(acc_read_segments_list[i]) >= parser.minHits:
-        acc1_read_segments_list.append(acc_read_segments_list[i])
-    elif acc_read_segments_list[i]["acc"][0] == acc2_name and len(acc_read_segments_list[i]) >= parser.minHits:
-        acc2_read_segments_list.append(acc_read_segments_list[i])
-
-
-# Determine whether hybrid read represents a putative crossover or noncrossover
-if len(acc1_read_segments_list) > 1 or len(acc2_read_segments_list) > 1:
-    acc1_outdir = acc1_outdir_nco
-    acc2_outdir = acc2_outdir_nco
-elif len(acc1_read_segments_list) == 1 and len(acc2_read_segments_list) == 1:
-    acc1_outdir = acc1_outdir_co
-    acc2_outdir = acc2_outdir_co
-
-
 # Get the longest accession-specific read segment
 def get_longest_read_segment(accspec_read_segments_list):
     """
@@ -365,15 +286,6 @@ def get_longest_read_segment(accspec_read_segments_list):
             return accspec_read_segments_list[seg_key]
 
 
-# Get the longest accession-specific read segment for each accession 
-acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
-acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
-
-# Define output FASTA file names for writing read segments 
-acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fasta"  
-acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fasta"  
-
-
 # Write accession-specific read segment to FASTA
 # to supply to alignment software as input read
 def write_fasta_from_SeqRecord(read, segment, outfile):
@@ -384,16 +296,6 @@ def write_fasta_from_SeqRecord(read, segment, outfile):
                           segment["hit_end"].iloc[-1]]
     with open(outfile, "w") as output_handle:
         SeqIO.write(record_segment, output_handle, "fasta")
-
-
-# Write accession-specific read segment to FASTA
-# to supply to alignment software as input read
-write_fasta_from_SeqRecord(read=read,
-                           segment=acc1_longest_read_segment,
-                           outfile=acc1_outfile)
-write_fasta_from_SeqRecord(read=read,
-                           segment=acc2_longest_read_segment,
-                           outfile=acc2_outfile)
 
 
 # Align accession-specific read segments to respective genome
@@ -469,108 +371,134 @@ def align_read_segment_mm_sr(segment_fasta, genome):
         subprocess.run(["rm", outpaf, outerr])
 
 
-align_read_segment_wm_ont(segment_fasta=acc1_outfile,
-                          genome=re.sub("_centromeres", "", parser.acc1))
-align_read_segment_wm_ont(segment_fasta=acc2_outfile,
-                          genome=re.sub("_centromeres", "", parser.acc2))
+def main(read):
+    """
+    Execute functions on a given read to extract and map
+    the longest accession-specific read segment.
+    """
+    #
+    #
+    # Get the within-read start locations of accession-specific k-mer matches
+    acc1_kmer_loc_df_tmp = get_kmer_loc(kmers=acc1_kmers, read=str(read.seq)) 
+    acc2_kmer_loc_df_tmp = get_kmer_loc(kmers=acc2_kmers, read=str(read.seq)) 
+    #
+    #
+    # Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
+    # overlap any of those in acc2_kmer_loc_df, and vice versa
+    # NOTE: requires two reciprocal function calls
+    acc1_kmer_loc_df = remove_overlaps(DF1=acc1_kmer_loc_df_tmp,
+                                       DF2=acc2_kmer_loc_df_tmp)
+    acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
+                                       DF2=acc1_kmer_loc_df_tmp)
+    del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
+    #
+    #
+    # TODO: Use pyranges to remove rows in acc1_kmer_loc_df and acc2_kmer_loc_df
+    # whose k-mer match coordinate ranges overlap between accessions
+    # E.g.:
+    # https://stackoverflow.com/questions/57032580/finding-overlaps-between-millions-of-ranges-intervals
+    # https://stackoverflow.com/questions/49118347/pythonic-equivalent-to-reduce-in-r-granges-how-to-collapse-ranged-data
+    # NOTE: Not needed given remove_overlaps() function using range() above
+    #
+    #
+    # Concatenate and sort by k-mer match start location in read
+    acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
+                                axis=0,
+                                ignore_index=True)
+    acc_kmer_loc_df_sort_tmp = acc_kmer_loc_df.sort_values(by="hit_start",
+                                                           axis=0,
+                                                           ascending=True,
+                                                           kind="quicksort",
+                                                           ignore_index=True)
+    #
+    #
+    # For a given read, get accession-specific read segments
+    # get_read_segments function call 1:
+    # The first function call will exclude segments with < parser.minHits consecutive
+    # accession-specific k-mers, and the resulting list elements (retained segments)
+    # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
+    # separately (using concat_DF_list() on output), to be provided as the input to the second call
+    acc_read_segments_list_tmp = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
+    del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
+    #
+    #
+    # Concatenate acc_read_segments_list_tmp into a single DataFrame,
+    # sorted by k-mer hit_start location in read
+    acc_kmer_loc_df_sort = concat_DF_list(DF_list=acc_read_segments_list_tmp)
+    del acc_read_segments_list_tmp
+    #
+    #
+    # For a given read, get accession-specific read segments
+    # get_read_segments function call 2:
+    # The second function call will be applied to the concatenated DataFrame consisting
+    # of filtered segments, in order to extract each segment DataFrame as a list element
+    # for segment length calculations. This second call will combine accession-specific
+    # segments into one extended segment where, following the first function call,
+    # there are no intervening short segments representing the other accession
+    # (excluded segments with < parser.minHits consecutive accession-specific k-mers)
+    acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
+    #
+    #
+    # Get per-accession read segments lists
+    acc1_read_segments_list = []
+    acc2_read_segments_list = []
+    for i in range(len(acc_read_segments_list)):
+        if acc_read_segments_list[i]["acc"][0] == acc1_name and len(acc_read_segments_list[i]) >= parser.minHits:
+            acc1_read_segments_list.append(acc_read_segments_list[i])
+        elif acc_read_segments_list[i]["acc"][0] == acc2_name and len(acc_read_segments_list[i]) >= parser.minHits:
+            acc2_read_segments_list.append(acc_read_segments_list[i])
+    #
+    #
+    # Determine whether hybrid read represents a putative crossover or noncrossover
+    if len(acc1_read_segments_list) > 1 or len(acc2_read_segments_list) > 1:
+        acc1_outdir = acc1_outdir_nco
+        acc2_outdir = acc2_outdir_nco
+    elif len(acc1_read_segments_list) == 1 and len(acc2_read_segments_list) == 1:
+        acc1_outdir = acc1_outdir_co
+        acc2_outdir = acc2_outdir_co
+    #
+    #
+    # Get the longest accession-specific read segment for each accession 
+    acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
+    acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
+    #
+    #
+    # Define output FASTA file names for writing read segments 
+    acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fasta"  
+    acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fasta"  
+    #
+    #
+    # Write accession-specific read segment to FASTA
+    # to supply to alignment software as input read
+    write_fasta_from_SeqRecord(read=read,
+                               segment=acc1_longest_read_segment,
+                               outfile=acc1_outfile)
+    write_fasta_from_SeqRecord(read=read,
+                               segment=acc2_longest_read_segment,
+                               outfile=acc2_outfile)
+    #
+    #
+    # Align accession-specific read segments to respective genome
+    align_read_segment_wm_ont(segment_fasta=acc1_outfile,
+                              genome=re.sub("_centromeres", "", parser.acc1))
+    align_read_segment_wm_ont(segment_fasta=acc2_outfile,
+                              genome=re.sub("_centromeres", "", parser.acc2))
+    #
+    align_read_segment_mm_ont(segment_fasta=acc1_outfile,
+                              genome=re.sub("_centromeres", "", parser.acc1))
+    align_read_segment_mm_ont(segment_fasta=acc2_outfile,
+                              genome=re.sub("_centromeres", "", parser.acc2))
+    #
+    align_read_segment_mm_sr(segment_fasta=acc1_outfile,
+                             genome=re.sub("_centromeres", "", parser.acc1))
+    align_read_segment_mm_sr(segment_fasta=acc2_outfile,
+                             genome=re.sub("_centromeres", "", parser.acc2))
 
-align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                          genome=re.sub("_centromeres", "", parser.acc1))
-align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                          genome=re.sub("_centromeres", "", parser.acc2))
-
-align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                         genome=re.sub("_centromeres", "", parser.acc1))
-align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                         genome=re.sub("_centromeres", "", parser.acc2))
 
 
-
-read_x = reads[0]
-acc1_longest_segment_read_x = read_x[acc1_longest_read_segment["hit_start"][0] :
-                                     acc1_longest_read_segment["hit_end"][len(acc1_longest_read_segment)-1]]
-acc2_longest_segment_read_x = read_x[acc2_longest_read_segment["hit_start"][0] :
-                                     acc2_longest_read_segment["hit_end"][len(acc2_longest_read_segment)-1]]
-
-acc1_long_seg_read_x_fq = open(acc1_outdir + "/" + acc1_name + "_" + acc1_longest_segment_read_x.name + ".fastq.gz", "w")
-SeqIO.write(acc1_longest_segment_read_x, acc1_long_seg_read_x_fq, "fastq")
-acc1_long_seg_read_x_fq.close()
-
-handle = open("interleave.fastq", "w")
-count = SeqIO.write(interleave(leftReads, rightReads), handle, "fastq")
-handle.close()
-print("{} records written to interleave.fastq".format(count))
-
-
-
-acc1_read_segment_longest = pd.DataFrame()
-acc1_read_segment_longest = pd.DataFrame()
-
-
-
-
-
-acc1_kmer_loc_values = sorted(flatten(list(acc1_kmer_loc.values())))
-acc2_kmer_loc_values = sorted(flatten(list(acc2_kmer_loc.values())))
-
-
-
-list(set.union(*map(set, lists)))
-sorted(acc1_kmer_for_matches, acc1_kmer_rev_matches)
-print([match.start() for match in re.finditer(pattern, string)])
-
-
-
-def count_kmer(h, k, seq):
-    l = len(seq)
-    if l < k: return
-    for i in range(l - k + 1):
-        kmer_for = seq[i:(i + k)]
-        if "N" in kmer_for: continue
-        kmer_rev = kmer_for.translate(comp_tab)[::-1]
-        if kmer_for < kmer_rev:
-            kmer = kmer_for
-        else:
-            kmer = kmer_rev
-        if kmer in h:
-            h[kmer] += 1
-        else:
-            h[kmer] = 1
-
-
-def count_kmer_fa(k, fa_object):
-    counter = {}
-    seq = []
-    lines = fa_object.readlines()
-    for line in lines:
-        # If line is FASTA header and
-        # if seq contains sequence below previous FASTA header
-        if line[0] == ">":
-            if(len(seq) > 0):
-                # Count kmer occurrences in that sequence
-                count_kmer(counter, k, "".join(seq).upper())
-                # Make sequence empty again so that next line in FASTA
-                # can be processed in the same way
-                seq = []
-        # Add sequence under FASTA header to seq list
-        else:
-            seq.append(line[:-1])
-    # Process final line of sequence in FASTA
-    if len(seq) > 0:
-        count_kmer(counter, k, "".join(seq).upper())
-    return counter
+## TODO: make Slurm script to parallelise main function over reads
 
 
 if __name__ == "__main__":
-    with open("fasta/" + parser.fasta, "r") as fa_object:
-        tic = time()
-        kmer_count_dict = count_kmer_fa(k=parser.kmerSize, fa_object=fa_object)
-        print(f"Done in {time() - tic:.3f}s")
-
-    with open(outdir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "wb") as handle:
-        pickle.dump(kmer_count_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    with open(outdir + "/" + parser.fasta + "_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
-        kmer_count_dict_test = pickle.load(handle)
-
-    print(kmer_count_dict == kmer_count_dict_test)
+    for i in range(len(reads)):
+        main(read=reads[i])
