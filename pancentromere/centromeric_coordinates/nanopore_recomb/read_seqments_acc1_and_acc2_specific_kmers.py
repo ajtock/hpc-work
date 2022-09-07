@@ -433,7 +433,7 @@ def align_read_segment_mm_ont(segment_fasta, genome):
     Align read in FASTA format to genome using minimap2 map-ont.
     """
     aln_cmd = ["minimap2"] + \
-              ["-ax", "map-ont"] + \
+              ["-x", "map-ont"] + \
               ["-t", "32"] + \
               ["-p", "1.0"] + \
               ["-N", "10"] + \
@@ -454,7 +454,7 @@ def align_read_segment_mm_sr(segment_fasta, genome):
     Align read in FASTA format to genome using minimap2 sr.
     """
     aln_cmd = ["minimap2"] + \
-              ["-ax", "sr"] + \
+              ["-x", "sr"] + \
               ["-t", "32"] + \
               ["-p", "1.0"] + \
               ["-N", "10"] + \
