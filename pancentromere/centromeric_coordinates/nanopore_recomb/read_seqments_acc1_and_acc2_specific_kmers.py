@@ -153,6 +153,67 @@ def get_kmer_loc(kmers, read):
     return pd.DataFrame(kmer_loc_dict_list)
 
 
+# Get the within-read start locations of accession-specific k-mer matches
+acc1_kmer_loc_df_tmp = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
+acc2_kmer_loc_df_tmp = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
+
+
+# Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
+# overlap any of those in acc2_kmer_loc_df, and vice versa
+# NOTE: requires two reciprocal function calls
+def remove_overlaps(DF1, DF2):
+    """
+    Remove rows in DF1 whose k-mer match coordinate ranges
+    overlap any of those in DF2.
+    """
+    DF1_no_overlaps =  pd.DataFrame()
+    for h in range(len(DF1)):
+        range_h = range(DF1["hit_start"][h], DF1["hit_end"][h])
+        range_h_overlaps_counter = 0
+        for j in range(len(DF2)):
+            range_j = range(DF2["hit_start"][j], DF2["hit_end"][j])
+            overlap_range_hj = range(max(range_h[0], range_j[0]),
+                                     min(range_h[-1], range_j[-1])+1)
+            if len(overlap_range_hj) > 0:
+                range_h_overlaps_counter += 1
+        #
+        print(range_h_overlaps_counter)
+        if range_h_overlaps_counter == 0:
+            DF1_no_overlaps = pd.concat(objs=[DF1_no_overlaps, DF1.iloc[h:h+1,:]],
+                                        axis=0,
+                                        ignore_index=True)
+    #
+    return DF1_no_overlaps
+
+
+# Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
+# overlap any of those in acc2_kmer_loc_df, and vice versa
+# NOTE: requires two reciprocal function calls
+acc1_kmer_loc_df = remove_overlaps(DF1=acc1_kmer_loc_df_tmp,
+                                   DF2=acc2_kmer_loc_df_tmp)
+acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
+                                   DF2=acc1_kmer_loc_df_tmp)
+
+
+# TODO: Use pyranges to remove rows in acc1_kmer_loc_df and acc2_kmer_loc_df
+# whose k-mer match coordinate ranges overlap between accessions
+# E.g.:
+# https://stackoverflow.com/questions/57032580/finding-overlaps-between-millions-of-ranges-intervals
+# https://stackoverflow.com/questions/49118347/pythonic-equivalent-to-reduce-in-r-granges-how-to-collapse-ranged-data
+# NOTE: Not needed given remove_overlaps() function using range() above
+
+
+# Concatenate and sort by k-mer match start location in read
+acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
+                            axis=0,
+                            ignore_index=True)
+acc_kmer_loc_df_sort = acc_kmer_loc_df.sort_values(by="hit_start",
+                                                   axis=0,
+                                                   ascending=True,
+                                                   kind="quicksort",
+                                                   ignore_index=True)
+
+
 # For a given read, get accession-specific read segments
 def get_read_segments(kmer_loc_df_sort):
     """
@@ -161,6 +222,17 @@ def get_read_segments(kmer_loc_df_sort):
     a subset of the DataFrame that represents an accession-specific read segment.
     This equates to extracting separate DataFrames where consecutive rows have the
     same value in the "acc" column.
+    This function should be called twice:
+    1. The first function call will exclude segments with < parser.minHits consecutive
+       accession-specific k-mers, and the resulting list elements (retained segments)
+       should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
+       separately (not by this function call), to be provided as the input to the second call.
+    2. The second function call will be applied to the concatenated DataFrame consisting
+       of filtered segments, in order to extract each segment DataFrame as a list element
+       for segment length calculations. This second call will combine accession-specific
+       segments into one extended segment where, following the first function call,
+       there are no intervening short segments representing the other accession
+       (with < parser.minHits consecutive accession-specific k-mers).
     """
     segments_list = []
     segment = pd.DataFrame()
@@ -173,31 +245,20 @@ def get_read_segments(kmer_loc_df_sort):
             segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
                                 axis=0,
                                 ignore_index=True)
-        else:
+        elif len(segment) >= parser.minHits:
             segments_list.append(segment)
             segment = pd.DataFrame()
+        else:
+            segment = pd.DataFrame()
     # Handle final segment in read
-    segments_list.append(segment)
+    if len(segment) >= parser.minHits:
+        segments_list.append(segment)
     #
     return segments_list
 
 
-# Get the within-read start locations of accession-specific k-mer matches
-acc1_kmer_loc_df = get_kmer_loc(kmers=acc1_kmers, read=str(reads[0].seq)) 
-acc2_kmer_loc_df = get_kmer_loc(kmers=acc2_kmers, read=str(reads[0].seq)) 
-
-# Concatenate and sort by k-mer match start location in read
-acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
-                            axis=0,
-                            ignore_index=True)
-acc_kmer_loc_df_sort = acc_kmer_loc_df.sort_values(by="hit_start",
-                                                   axis=0,
-                                                   ascending=True,
-                                                   kind="quicksort",
-                                                   ignore_index=True)
-
 # For a given read, get accession-specific read segments
-acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
+acc_read_segments_list1 = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
 acc1_read_segments_list = []
 acc2_read_segments_list = []
 for i in range(len(acc_read_segments_list)):
@@ -251,7 +312,8 @@ acc1_read_segment_longest = pd.DataFrame()
 acc1_read_segment_longest = pd.DataFrame()
 
 
-
+def concat_loDF(loDF):
+  
 
 def flatten(lol):
     """
