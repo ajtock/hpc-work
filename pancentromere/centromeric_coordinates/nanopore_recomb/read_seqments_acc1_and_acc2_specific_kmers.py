@@ -399,7 +399,7 @@ def main(read):
     #
     # Stop main execution if acc1_kmer_loc_df or acc2_kmer_loc_df have < parser.minHits
     if len(acc1_kmer_loc_df) < parser.minHits or len(acc2_kmer_loc_df) < parser.minHits:
-        print("Stopping for read " + read.id + " because\n" +
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
               "acc1_kmer_loc_df or acc2_kmer_loc_df has < " + str(parser.minHits) + " accession-specific k-mers")
         return
     #
@@ -450,6 +450,14 @@ def main(read):
     acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
     #
     #
+    # Stop main execution if acc_read_segments_list has < 2 elements
+    # (accession-specific segments)
+    if len(acc_read_segments_list) < 2:
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc_read_segments_list has < 2 elements (accession-specific segments)")
+        return
+    #
+    #
     # Get per-accession read segments lists
     acc1_read_segments_list = []
     acc2_read_segments_list = []
@@ -458,6 +466,14 @@ def main(read):
             acc1_read_segments_list.append(acc_read_segments_list[i])
         elif acc_read_segments_list[i]["acc"][0] == acc2_name and len(acc_read_segments_list[i]) >= parser.minHits:
             acc2_read_segments_list.append(acc_read_segments_list[i])
+    #
+    #
+    # Stop main execution if acc1_read_segments_list or acc2_read_segments_list
+    # is empty (without accession-specific segments)
+    if not acc1_read_segments_list or not acc2_read_segments_list:
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc1_read_segments_list or acc2_read_segments_list is empty (without accession-specific segments)")
+        return
     #
     #
     # Determine whether hybrid read represents a putative crossover or noncrossover
@@ -469,9 +485,24 @@ def main(read):
         acc2_outdir = acc2_outdir_co
     #
     #
+    # Stop main execution if acc1_outdir or acc2_outdir is not defined
+    if not "acc1_outdir" in locals() or not "acc2_outdir" in locals():
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc1_outdir or acc2_outdir is not defined")
+        return
+    #
+    #
     # Get the longest accession-specific read segment for each accession 
     acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
     acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
+    #
+    #
+    # Stop main execution if acc1_longest_read_segment or acc2_longest_read_segment
+    # is not defined
+    if not "acc1_longest_read_segment" in locals() or not "acc2_longest_read_segment" in locals():
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc1_longest_read_segment or acc2_longest_read_segment is not defined")
+        return
     #
     #
     # Define output FASTA file names for writing read segments 
