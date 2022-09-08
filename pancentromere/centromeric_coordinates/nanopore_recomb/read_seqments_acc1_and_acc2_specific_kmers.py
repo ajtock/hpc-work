@@ -23,6 +23,7 @@
 # ==== Import libraries
 #import sys
 import os
+import glob
 import argparse
 #import pickle
 import re
@@ -50,8 +51,8 @@ def create_parser():
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
     parser.add_argument("-mh", "--minHits", type=int, default="3",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 3")
-    parser.add_argument("-hr", "--hybReadNo", type=int, default="2",
-                        help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 2")
+    parser.add_argument("-hr", "--hybReadNo", type=int, default="0",
+                        help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 0")
     return parser
 
 parser = create_parser().parse_args()
@@ -108,6 +109,8 @@ Path(acc2_fa).resolve(strict=True)
 
 # Parse reads as FastaIterator
 reads = list(SeqIO.parse(input_fa, "fasta"))
+read=reads[parser.hybReadNo]
+print("Hybrid read number: " + str(parser.hybReadNo))
 
 # Parse acc1-specific k-mers as FastaIterator
 acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
@@ -375,7 +378,24 @@ def align_read_segment_mm_sr(segment_fasta, genome):
         subprocess.run(["rm", outpaf, outerr])
 
 
-def main(read):
+# Delete accession-specific segment alignment file if the equivalent
+# file for the other accession doesn't exist (indicating an unmapped segment)
+def delete_alignment(alignment_prefix1, alignment_prefix2):
+    """
+    Delete accession-specific segment alignment file if the equivalent
+    file for the other accession doesn't exist (indicating an unmapped segment).
+    """
+    if not glob.glob(alignment_prefix2 + "*"):
+        file_list = glob.glob(alignment_prefix1 + "*", recursive=True)
+        for file_path in file_list:
+            try:
+                os.remove(file_path)
+            except OSError:
+                print("Error while deleting file " + file_path)
+
+
+
+def main():
     """
     Execute functions on a given read to extract and map
     the longest accession-specific read segment.
@@ -398,7 +418,7 @@ def main(read):
     #
     #
     # Stop main execution if acc1_kmer_loc_df or acc2_kmer_loc_df have < parser.minHits
-    if len(acc1_kmer_loc_df) < parser.minHits or len(acc2_kmer_loc_df) < parser.minHits:
+    if len(acc1_kmer_loc_df) < parser.minHits or len(acc2_kmer_loc_df) < parser.minHits or not "acc1_kmer_loc_df" in locals() or not "acc1_kmer_loc_df" in locals():
         print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
               "acc1_kmer_loc_df or acc2_kmer_loc_df has < " + str(parser.minHits) + " accession-specific k-mers")
         return
@@ -506,8 +526,8 @@ def main(read):
     #
     #
     # Define output FASTA file names for writing read segments 
-    acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fasta"  
-    acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fasta"  
+    acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fasta"
+    acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fasta"
     #
     #
     # Write accession-specific read segment to FASTA
@@ -535,6 +555,17 @@ def main(read):
                              genome=re.sub("_centromeres", "", parser.acc1))
     align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                              genome=re.sub("_centromeres", "", parser.acc2))
+    #
+    #
+    # Delete accession-specific segment alignment file if the equivalent
+    # file for the other accession doesn't exist (indicating an unmapped segment)
+    acc1_alignment_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_"
+    acc2_alignment_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_"
+    
+    delete_alignment(alignment_prefix1=acc1_alignment_prefix,
+                     alignment_prefix2=acc2_alignment_prefix)
+    delete_alignment(alignment_prefix1=acc2_alignment_prefix,
+                     alignment_prefix2=acc1_alignment_prefix)
 
 
 
@@ -542,5 +573,4 @@ def main(read):
 
 
 if __name__ == "__main__":
-    print("Hybrid read number: " + str(parser.hybReadNo))
-    main(read=reads[parser.hybReadNo])
+    main()
