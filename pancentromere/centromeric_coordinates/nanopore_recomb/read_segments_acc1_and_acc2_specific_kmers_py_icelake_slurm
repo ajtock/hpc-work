@@ -94,7 +94,7 @@ application="./read_segments_acc1_and_acc2_specific_kmers.py"
 
 
 #! Run options for the application:
-options="$READS_PREFIX $ACC1 $ACC2 $KMER_SIZE $MIN_HITS $SLURM_ARRAY_TASK_ID"
+options="-r $READS_PREFIX -a1 $ACC1 -a2 $ACC2 -k $KMER_SIZE -mh $MIN_HITS -hr $SLURM_ARRAY_TASK_ID"
 
 
 #! Work directory (i.e. where the job will run):
