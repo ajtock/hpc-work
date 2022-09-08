@@ -313,7 +313,7 @@ def align_read_segment_wm_ont(segment_fasta, genome):
     aln_cmd = ["winnowmap"] + \
               ["-W", "index/" + genome + "_repetitive_k15.txt"] + \
               ["-x", "map-ont"] + \
-              ["-t", "32"] + \
+              ["-t", "76"] + \
               ["-p", "1.0"] + \
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
@@ -343,7 +343,7 @@ def align_read_segment_mm_ont(segment_fasta, genome):
     """
     aln_cmd = ["minimap2"] + \
               ["-x", "map-ont"] + \
-              ["-t", "32"] + \
+              ["-t", "76"] + \
               ["-p", "1.0"] + \
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
@@ -364,7 +364,7 @@ def align_read_segment_mm_sr(segment_fasta, genome):
     """
     aln_cmd = ["minimap2"] + \
               ["-x", "sr"] + \
-              ["-t", "32"] + \
+              ["-t", "76"] + \
               ["-p", "1.0"] + \
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
