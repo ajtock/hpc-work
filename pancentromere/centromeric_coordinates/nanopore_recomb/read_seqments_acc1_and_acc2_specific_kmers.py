@@ -10,7 +10,8 @@
 #  -a1 Col-0.ragtag_scaffolds_centromeres \
 #  -a2 Ler-0_110x.ragtag_scaffolds_centromeres \ 
 #  -k 24 \
-#  -mh 3
+#  -mh 3 \
+#  -hr 2
 # conda deactivate
 
 # For each "hybrid" read containing acc1- AND acc2-specific k-mers,
@@ -49,7 +50,8 @@ def create_parser():
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
     parser.add_argument("-mh", "--minHits", type=int, default="3",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 3")
-    #### Create parser
+    parser.add_argument("-hr", "--hybReadNo", type=int, default="2",
+                        help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 2")
     return parser
 
 parser = create_parser().parse_args()
@@ -395,6 +397,13 @@ def main(read):
     del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
     #
     #
+    # Stop main execution if acc1_kmer_loc_df or acc2_kmer_loc_df have < parser.minHits
+    if len(acc1_kmer_loc_df) < parser.minHits or len(acc2_kmer_loc_df) < parser.minHits:
+        print("Stopping for read " + read.id + " because\n" +
+              "acc1_kmer_loc_df or acc2_kmer_loc_df has < " + str(parser.minHits) + " accession-specific k-mers")
+        return
+    #
+    #
     # TODO: Use pyranges to remove rows in acc1_kmer_loc_df and acc2_kmer_loc_df
     # whose k-mer match coordinate ranges overlap between accessions
     # E.g.:
@@ -502,6 +511,5 @@ def main(read):
 
 
 if __name__ == "__main__":
-    for i in range(len(reads)):
-        print(i)
-        main(read=reads[i])
+    print("Hybrid read number: " + str(parser.hybReadNo))
+    main(read=reads[parser.hybReadNo])
