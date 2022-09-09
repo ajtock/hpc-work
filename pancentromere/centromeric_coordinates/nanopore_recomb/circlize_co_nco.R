@@ -57,8 +57,8 @@ acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
                        split="_" )[[1]][1]
 
 # Directories containing read segment alignment files
-acc1_indir = paste0("segments/", acc1_name, "/", recombType, "/")
-acc2_indir = paste0("segments/", acc2_name, "/", recombType, "/")
+acc1_indir = paste0("segments_old/", acc1_name, "/", recombType, "/")
+acc2_indir = paste0("segments_old/", acc2_name, "/", recombType, "/")
 
 # CEN coordinates
 CEN = read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
@@ -88,7 +88,7 @@ for(i in 1:length(acc1_chrs)) {
 acc1_CEN = acc1_CEN_new
 acc1_CENstart = acc1_CEN$start
 acc1_CENend = acc1_CEN$end
-acc1_chrs <- paste0(acc1_chrs, "_", acc1_name)
+acc1_chrs = paste0(acc1_chrs, "_", acc1_name)
 
 #acc2
 acc2_fai = read.table(paste0("index/", acc2, ".fa.fai"), header=F)
@@ -110,7 +110,7 @@ for(i in 1:length(acc2_chrs)) {
 acc2_CEN = acc2_CEN_new
 acc2_CENstart = acc2_CEN$start
 acc2_CENend = acc2_CEN$end
-acc2_chrs <- paste0(acc2_chrs, "_", acc2_name)
+acc2_chrs = paste0(acc2_chrs, "_", acc2_name)
 
 
 # Load read segment alignment files as a combined data.frame
@@ -122,28 +122,29 @@ load_pafs = function(indir, acc_name, suffix) {
                 header=F, sep="\t", data.table=F)[,1:13]
     aln_DF = rbind(aln_DF, aln)
   }
-  colnames(aln_DF) <- c("qname", "qlen", "qstart0", "qend0",
-                        "strand", "tname", "tlen", "tstart", "tend",
-                        "nmatch", "alen", "mapq", "atype")
+  colnames(aln_DF) = c("qname", "qlen", "qstart0", "qend0",
+                       "strand", "tname", "tlen", "tstart", "tend",
+                       "nmatch", "alen", "mapq", "atype")
 
   return(aln_DF)
 }
 
 
 # wm_ont alignments
-acc1_wm_ont <- load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_wm_ont.paf")
-acc2_wm_ont <- load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_wm_ont.paf")
+acc1_wm_ont = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_wm_ont.paf")
+acc2_wm_ont = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_wm_ont.paf")
 
 # mm_ont alignments
-acc1_mm_ont <- load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_ont.paf")
-acc2_mm_ont <- load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_ont.paf")
+acc1_mm_ont = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_ont.paf")
+acc2_mm_ont = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_ont.paf")
 
 # mm_sr alignments
-acc1_mm_sr <- load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_sr.paf")
-acc2_mm_sr <- load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_sr.paf")
+acc1_mm_sr = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_sr.paf")
+acc2_mm_sr = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_sr.paf")
 
 
 # Get best pair of acc1 and acc2 read segment alignments 
+aln_best_pair = function(acc1_aln_DF, acc2_aln_DF) {
 
  
 bed1=generateRandomBed(nr=100)
@@ -158,9 +159,9 @@ head(bed1)
 
 # Define genome data.frame for circlize
 
-genome_DF <- data.frame(chr = c(acc1_chrs, acc2_chrs),
-                        start = rep(1, length(c(acc1_chrs, acc2_chrs))),
-                        end = c(acc1_chrLens, acc2_chrLens))
+genome_DF = data.frame(chr = c(acc1_chrs, acc2_chrs),
+                       start = rep(1, length(c(acc1_chrs, acc2_chrs))),
+                       end = c(acc1_chrLens, acc2_chrLens))
 
 
 
@@ -172,8 +173,8 @@ genome_DF <- data.frame(chr = c(acc1_chrs, acc2_chrs),
 
 
 # Initialize circular layout
-circlize_plot <- function() {
-  gapDegree <- 6
+circlize_plot = function() {
+  gapDegree = 6
   circos.par(track.height = 0.15,
              canvas.xlim = c(-1.1, 1.1),
              canvas.ylim = c(-1.1, 1.1),
@@ -202,4 +203,119 @@ circlize_plot <- function() {
                 col = "black",
                 font = 4)
   })
+
+  # Gypsy heatmap
+  circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(chrs), function(x) {
+    Gypsy_bed[Gypsy_bed$chr == chrs[x] &
+              Gypsy_bed$start >= genomeDF$start[x] &
+              Gypsy_bed$end <= genomeDF$end[x],] } )),
+    col = Gypsy_col_fun,
+    border = NA,
+    side = "inside",
+    heatmap_height = 0.05,
+    connection_height = NULL)
+  # CEN180 heatmap
+  circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(chrs), function(x) {
+    CEN180freq_bed[CEN180freq_bed$chr == chrs[x] &
+                   CEN180freq_bed$start >= genomeDF$start[x] &
+                   CEN180freq_bed$end <= genomeDF$end[x],] } )),
+    col = CEN180freq_col_fun,
+    border = NA,
+    side = "inside",
+    heatmap_height = 0.05,
+    connection_height = NULL)
+  # CENAthila rainfall plot
+  circos.genomicRainfall(data = do.call(rbind, lapply(seq_along(chrs), function(x) {
+    CENAthila_bed[CENAthila_bed$chr == chrs[x] &
+                  CENAthila_bed$start >= genomeDF$start[x] &
+                  CENAthila_bed$end <= genomeDF$end[x],] } )),
+                         bg.border = NA,
+                         track.height = 0.05,
+                         pch = 16,
+                         cex = 0.4,
+                         col = c("#0000FF80"))
+
+  set_track_gap(gap = 0.005)
+
+  # Plot windowed CEN180 frequency for each quantile
+  circos.genomicTrack(data = do.call(rbind, lapply(seq_along(chrs), function(x) {
+    CENH3_in_bodies_CEN180_bed[CENH3_in_bodies_CEN180_bed$chr == chrs[x] &                                                                    
+                               CENH3_in_bodies_CEN180_bed$start >= genomeDF$start[x] &                                                        
+                               CENH3_in_bodies_CEN180_bed$end <= genomeDF$end[x],] } )),                                                      
+                      panel.fun = function(region, value, ...) {
+                        circos.genomicLines(region,
+                                            value,
+                                            col = quantileColours,
+                                            lwd = 1.5,
+                                            lty = 1,
+                                            area = FALSE,
+                                            ...)
+                      }, bg.border = NA)
+  circos.yaxis(side = "left", sector.index = get.all.sector.index()[1], labels.cex = 0.3, tick.length = convert_x(0.5, "mm"), lwd = 0.5)      
+
+  set_track_gap(gap = 0.005)
+
+  circos.genomicTrack(data = do.call(rbind, lapply(seq_along(chrs), function(x) {                                                             
+    HORlengthsSum_CEN180_bed[HORlengthsSum_CEN180_bed$chr == chrs[x] &
+                             HORlengthsSum_CEN180_bed$start >= genomeDF$start[x] &                                                            
+                             HORlengthsSum_CEN180_bed$end <= genomeDF$end[x],] } )),                                                          
+                      panel.fun = function(region, value, ...) {
+                        circos.genomicLines(region,
+                                            value,
+                                            col = quantileColours,
+                                            lwd = 1.5,
+                                            lty = 1,
+                                            area = FALSE,
+                                            ...)
+                      }, bg.border = NA)
+  circos.yaxis(side = "left", sector.index = get.all.sector.index()[1], labels.cex = 0.3, tick.length = convert_x(0.5, "mm"), lwd = 0.5)      
+
+  set_track_gap(gap = 0.005)
+
+  circos.genomicTrack(data = do.call(rbind, lapply(seq_along(chrs), function(x) {
+    wSNV_CEN180_bed[wSNV_CEN180_bed$chr == chrs[x] &
+                    wSNV_CEN180_bed$start >= genomeDF$start[x] &
+                    wSNV_CEN180_bed$end <= genomeDF$end[x],] } )),
+                      panel.fun = function(region, value, ...) {
+                        circos.genomicLines(region,
+                                            value,
+                                            col = quantileColours,
+                                            lwd = 1.5,
+                                            lty = 1,
+                                            area = FALSE,
+                                            ...)
+                      }, bg.border = NA)
+  circos.yaxis(side = "left", sector.index = get.all.sector.index()[1], labels.cex = 0.3, tick.length = convert_x(0.5, "mm"), lwd = 0.5)
+
+  set_track_gap(gap = 0.005)
+
+  circos.genomicTrack(data = do.call(rbind, lapply(seq_along(chrs), function(x) {
+    CENH3_bed[CENH3_bed$chr == chrs[x] &
+              CENH3_bed$start >= genomeDF$start[x] &
+              CENH3_bed$end <= genomeDF$end[x],] } )),
+                      panel.fun = function(region, value, ...) {
+                        circos.genomicLines(region,
+                                            value,
+                                            col = "purple",
+                                            area = TRUE,
+                                            baseline = 0,
+                                            border = NA,
+                                            ...)
+                      }, bg.border = NA)
+  circos.yaxis(side = "left", at = seq(0, 4, by = 2), sector.index = get.all.sector.index()[1], labels.cex = 0.3, tick.length = convert_x(0.5, "mm"), lwd = 0.5)
+
+  # Reset graphic parameters and internal variables
+  circos.clear()
+}
+
+
+pdf(paste0(plotDir,
+           "CEN180_frequency_per_", genomeBinName,
+           "_", quantileDef, "_", quantiles, "quantiles",
+           "_of_CEN180_in_t2t-col.20210610_",
+           paste0(chrName, collapse = "_"), "_circlize_zoom_v", date, ".pdf"))                                                                
+circlize_plot()
+draw(lgd_list2, x = unit(4, "mm"), y = unit(4, "mm"), just = c("left", "bottom"))                                                             
+draw(lgd_list1, x = unit(1, "npc") - unit(2, "mm"), y = unit(4, "mm"), just = c("right", "bottom"))                                           
+dev.off()
 
