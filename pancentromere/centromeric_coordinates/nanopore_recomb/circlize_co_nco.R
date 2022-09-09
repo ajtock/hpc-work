@@ -45,6 +45,9 @@ library(ComplexHeatmap)
 library(gridBase)
 library(viridis)
 
+plotDir <- paste0("plots/")
+system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
+
 # CEN coordinates
 CEN <- read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
                        "centromere_manual_EDTA4_fa.csv"),
@@ -95,26 +98,28 @@ acc2_CEN <- acc2_CEN_new
 acc2_CENstart <- acc2_CEN$start
 acc2_CENend <- acc2_CEN$end
 
+# Accession names
+acc1_name <- strsplit( strsplit(acc1, split = "\\.")[[1]][1],
+                       split = "_")[[1]][1]
+acc2_name <- strsplit( strsplit(acc2, split = "\\.")[[1]][1],
+                       split = "_")[[1]][1]
 
-acc1_name = parser.acc1.split(".")[0].split("_")[0]
-acc2_name = parser.acc2.split(".")[0].split("_")[0]
+# Directories containing read segment alignment files
+acc1_indir <- paste0("segments/", acc1_name, "/", recombType, "/")
+acc2_indir <- paste0("segments/", acc2_name, "/", recombType, "/")
 
-acc1_outdir_co = "segments/" + acc1_name + "/co"
-acc2_outdir_co = "segments/" + acc2_name + "/co"
-acc1_outdir_nco = "segments/" + acc1_name + "/nco"
-acc2_outdir_nco = "segments/" + acc2_name + "/nco"
+# Load read segments
+load_pafs <- function(acc_name=acc1_name, indir=acc1_indir suffix="_wm_ont.paf") {
 
-if not os.path.exists(acc1_outdir_co):
-    os.makedirs(acc1_outdir_co)
+system(paste0("ls -1 *", 
+read.table(paste0(acc1_indir
+system(
 
-if not os.path.exists(acc2_outdir_co):
-    os.makedirs(acc2_outdir_co)
+bed1 = generateRandomBed(nr = 100)
+head(bed1)
+bed1 = bed1[sample(nrow(bed1), 20),]
+head(bed1)
 
-if not os.path.exists(acc1_outdir_nco):
-    os.makedirs(acc1_outdir_nco)
-
-if not os.path.exists(acc2_outdir_nco):
-    os.makedirs(acc2_outdir_nco)
 
 
 
