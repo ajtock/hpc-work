@@ -10,33 +10,33 @@
 # Usage:
 # ./circlize_co_nco.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 10000 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds co 090922
 
-#chrName <- unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
-#                           split = ","))
-#genomeBinSize <- 10000
-#acc1 <- "Col-0.ragtag_scaffolds"
-#acc2 <- "Ler-0_110x.ragtag_scaffolds"
-#recombType <- "co"
-#date <- "090922"
+#chrName = unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
+#                           split=","))
+#genomeBinSize = 10000
+#acc1 = "Col-0.ragtag_scaffolds"
+#acc2 = "Ler-0_110x.ragtag_scaffolds"
+#recombType = "co"
+#date = "090922"
 
-args <- commandArgs(trailingOnly = T)
-chrName <- unlist(strsplit(args[1],
-                           split = ","))
-genomeBinSize <- as.integer(args[2])
-acc1 <- args[3]
-acc2 <- args[4]
-recombType <- args[5]
-date <- as.character(args[6])
+args = commandArgs(trailingOnly=T)
+chrName = unlist(strsplit(args[1],
+                           split=","))
+genomeBinSize = as.integer(args[2])
+acc1 = args[3]
+acc2 = args[4]
+recombType = args[5]
+date = as.character(args[6])
 
 if(floor(log10(genomeBinSize)) + 1 < 4) {
-  genomeBinName <- paste0(genomeBinSize, "bp")
+  genomeBinName = paste0(genomeBinSize, "bp")
 } else if(floor(log10(genomeBinSize)) + 1 >= 4 &
           floor(log10(genomeBinSize)) + 1 <= 6) {
-  genomeBinName <- paste0(genomeBinSize/1e3, "kb")
+  genomeBinName = paste0(genomeBinSize/1e3, "kb")
 } else if(floor(log10(genomeBinSize)) + 1 >= 7) {
-  genomeBinName <- paste0(genomeBinSize/1e6, "Mb")
+  genomeBinName = paste0(genomeBinSize/1e6, "Mb")
 }
 
-options(stringsAsFactors = F)
+options(stringsAsFactors=F)
 options(scipen=999)
 library(parallel)
 library(GenomicRanges)
@@ -44,102 +44,162 @@ library(circlize)
 library(ComplexHeatmap)
 library(gridBase)
 library(viridis)
+library(data.table)
+library(dplyr)
 
-plotDir <- paste0("plots/")
+plotDir = paste0("plots/")
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
+# Accession names
+acc1_name = strsplit( strsplit(acc1, split="\\.")[[1]][1],
+                       split="_" )[[1]][1]
+acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
+                       split="_" )[[1]][1]
+
+# Directories containing read segment alignment files
+acc1_indir = paste0("segments/", acc1_name, "/", recombType, "/")
+acc2_indir = paste0("segments/", acc2_name, "/", recombType, "/")
+
 # CEN coordinates
-CEN <- read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
+CEN = read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
                        "centromere_manual_EDTA4_fa.csv"),
-                header = T)
-CEN$fasta.name <- gsub(".fa", "", CEN$fasta.name)
+                header=T)
+CEN$fasta.name = gsub(".fa", "", CEN$fasta.name)
 
 # Genomic definitions
 
 #acc1
-acc1_fai <- read.table(paste0("index/", acc1, ".fa.fai"), header = F)
-acc1_chrs <- acc1_fai[which(acc1_fai$V1 %in% chrName),]$V1
-acc1_chrLens <- acc1_fai[which(acc1_fai$V1 %in% chrName),]$V2
+acc1_fai = read.table(paste0("index/", acc1, ".fa.fai"), header=F)
+acc1_chrs = acc1_fai[which(acc1_fai$V1 %in% chrName),]$V1
+acc1_chrLens = acc1_fai[which(acc1_fai$V1 %in% chrName),]$V2
 
-acc1_CEN <- CEN[grep(acc1, CEN$fasta.name),]
-acc1_CEN <- acc1_CEN[,which(colnames(acc1_CEN) %in% c("chr", "start", "end"))]
-acc1_CEN_new <- data.frame()
+acc1_CEN = CEN[grep(acc1, CEN$fasta.name),]
+acc1_CEN = acc1_CEN[,which(colnames(acc1_CEN) %in% c("chr", "start", "end"))]
+acc1_CEN_new = data.frame()
 for(i in 1:length(acc1_chrs)) {
-  acc1_CEN_chr <- acc1_CEN[which(acc1_CEN$chr == acc1_chrs[i]),]
+  acc1_CEN_chr = acc1_CEN[which(acc1_CEN$chr == acc1_chrs[i]),]
   if(nrow(acc1_CEN_chr) > 1) {
-    acc1_CEN_chr <- data.frame(chr = acc1_CEN_chr$chr[1],
-                               start = acc1_CEN_chr$start[1],
-                               end = acc1_CEN_chr$end[nrow(acc1_CEN_chr)])
+    acc1_CEN_chr = data.frame(chr=acc1_CEN_chr$chr[1],
+                              start=acc1_CEN_chr$start[1],
+                              end=acc1_CEN_chr$end[nrow(acc1_CEN_chr)])
   }
-  acc1_CEN_new <- rbind(acc1_CEN_new, acc1_CEN_chr)
+  acc1_CEN_new = rbind(acc1_CEN_new, acc1_CEN_chr)
 }
-acc1_CEN <- acc1_CEN_new
-acc1_CENstart <- acc1_CEN$start
-acc1_CENend <- acc1_CEN$end
+acc1_CEN = acc1_CEN_new
+acc1_CENstart = acc1_CEN$start
+acc1_CENend = acc1_CEN$end
+acc1_chrs <- paste0(acc1_chrs, "_", acc1_name)
 
 #acc2
-acc2_fai <- read.table(paste0("index/", acc2, ".fa.fai"), header = F)
-acc2_chrs <- acc2_fai[which(acc2_fai$V1 %in% chrName),]$V1
-acc2_chrLens <- acc2_fai[which(acc2_fai$V1 %in% chrName),]$V2
+acc2_fai = read.table(paste0("index/", acc2, ".fa.fai"), header=F)
+acc2_chrs = acc2_fai[which(acc2_fai$V1 %in% chrName),]$V1
+acc2_chrLens = acc2_fai[which(acc2_fai$V1 %in% chrName),]$V2
 
-acc2_CEN <- CEN[grep(acc2, CEN$fasta.name),]
-acc2_CEN <- acc2_CEN[,which(colnames(acc2_CEN) %in% c("chr", "start", "end"))]
-acc2_CEN_new <- data.frame()
+acc2_CEN = CEN[grep(acc2, CEN$fasta.name),]
+acc2_CEN = acc2_CEN[,which(colnames(acc2_CEN) %in% c("chr", "start", "end"))]
+acc2_CEN_new = data.frame()
 for(i in 1:length(acc2_chrs)) {
-  acc2_CEN_chr <- acc2_CEN[which(acc2_CEN$chr == acc2_chrs[i]),]
+  acc2_CEN_chr = acc2_CEN[which(acc2_CEN$chr == acc2_chrs[i]),]
   if(nrow(acc2_CEN_chr) > 1) {
-    acc2_CEN_chr <- data.frame(chr = acc2_CEN_chr$chr[1],
-                               start = acc2_CEN_chr$start[1],
-                               end = acc2_CEN_chr$end[nrow(acc2_CEN_chr)])
+    acc2_CEN_chr = data.frame(chr=acc2_CEN_chr$chr[1],
+                              start=acc2_CEN_chr$start[1],
+                              end=acc2_CEN_chr$end[nrow(acc2_CEN_chr)])
   }
-  acc2_CEN_new <- rbind(acc2_CEN_new, acc2_CEN_chr)
+  acc2_CEN_new = rbind(acc2_CEN_new, acc2_CEN_chr)
 }
-acc2_CEN <- acc2_CEN_new
-acc2_CENstart <- acc2_CEN$start
-acc2_CENend <- acc2_CEN$end
+acc2_CEN = acc2_CEN_new
+acc2_CENstart = acc2_CEN$start
+acc2_CENend = acc2_CEN$end
+acc2_chrs <- paste0(acc2_chrs, "_", acc2_name)
 
-# Accession names
-acc1_name <- strsplit( strsplit(acc1, split = "\\.")[[1]][1],
-                       split = "_")[[1]][1]
-acc2_name <- strsplit( strsplit(acc2, split = "\\.")[[1]][1],
-                       split = "_")[[1]][1]
 
-# Directories containing read segment alignment files
-acc1_indir <- paste0("segments/", acc1_name, "/", recombType, "/")
-acc2_indir <- paste0("segments/", acc2_name, "/", recombType, "/")
+# Load read segment alignment files as a combined data.frame
+load_pafs = function(indir, acc_name, suffix) {
+  files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
+  aln_DF = data.frame()
+  for(h in 1:length(files)) {
+    aln = fread(files[h],
+                header=F, sep="\t", data.table=F)[,1:13]
+    aln_DF = rbind(aln_DF, aln)
+  }
+  colnames(aln_DF) <- c("qname", "qlen", "qstart0", "qend0",
+                        "strand", "tname", "tlen", "tstart", "tend",
+                        "nmatch", "alen", "mapq", "atype")
 
-# Load read segments
-load_pafs <- function(acc_name=acc1_name, indir=acc1_indir suffix="_wm_ont.paf") {
+  return(aln_DF)
+}
 
-system(paste0("ls -1 *", 
-read.table(paste0(acc1_indir
-system(
 
-bed1 = generateRandomBed(nr = 100)
+# wm_ont alignments
+acc1_wm_ont <- load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_wm_ont.paf")
+acc2_wm_ont <- load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_wm_ont.paf")
+
+# mm_ont alignments
+acc1_mm_ont <- load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_ont.paf")
+acc2_mm_ont <- load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_ont.paf")
+
+# mm_sr alignments
+acc1_mm_sr <- load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_sr.paf")
+acc2_mm_sr <- load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_sr.paf")
+
+
+# Get best pair of acc1 and acc2 read segment alignments 
+
+ 
+bed1=generateRandomBed(nr=100)
 head(bed1)
-bed1 = bed1[sample(nrow(bed1), 20),]
+bed1=bed1[sample(nrow(bed1), 20),]
 head(bed1)
 
 
 
 
+# circlize
+
+# Define genome data.frame for circlize
+
+genome_DF <- data.frame(chr = c(acc1_chrs, acc2_chrs),
+                        start = rep(1, length(c(acc1_chrs, acc2_chrs))),
+                        end = c(acc1_chrLens, acc2_chrLens))
 
 
 
-# Genomic definitions
-fai <- read.table("/home/ajt200/analysis/nanopore/t2t-col.20210610/t2t-col.20210610.fa.fai", header = F)                                      
-chrs <- fai$V1[which(fai$V1 %in% chrName)]
-chrLens <- fai$V2[which(fai$V1 %in% chrName)]
-regionGR <- GRanges(seqnames = chrs,
-                    ranges = IRanges(start = 1,
-                                     end = chrLens),
-                    strand = "*")
-CENstart <- c(14840750, 3724530, 13597090, 4203495, 11783990)[which(fai$V1 %in% chrName)]                                                     
-CENend <- c(17558182, 5946091, 15733029, 6977107, 14551874)[which(fai$V1 %in% chrName)]                                                       
-CENGR <- GRanges(seqnames = chrs,
-                 ranges = IRanges(start = CENstart,
-                                  end = CENend),
-                 strand = "*")
 
 
+
+
+
+
+
+# Initialize circular layout
+circlize_plot <- function() {
+  gapDegree <- 6
+  circos.par(track.height = 0.15,
+             canvas.xlim = c(-1.1, 1.1),
+             canvas.ylim = c(-1.1, 1.1),
+             gap.degree = c(rep(1, length(chrs)-1), gapDegree),
+             start.degree = 90-(gapDegree/2))
+  circos.genomicInitialize(data = genome_DF,
+                           plotType = NULL,
+                           tickLabelsStartFromZero = FALSE)
+  circos.track(ylim = c(0, 1),
+               bg.col = "grey70",
+               bg.border = NA,
+               track.height = 0.05,
+               panel.fun = function(x, y) {
+                 circos.genomicAxis(h = "top",
+                                    labels.facing = "clockwise",
+                                    tickLabelsStartFromZero = FALSE)
+               })
+  sapply(seq_along(chrs), function(x) {
+    circos.text(x = (CENstart[x]+CENend[x])/2,
+                y = 0.5,
+                sector.index = chrs[x],
+                track.index = 1,
+                labels = paste0("CEN", x),
+                niceFacing = TRUE,
+                cex = 0.8,
+                col = "black",
+                font = 4)
+  })
 

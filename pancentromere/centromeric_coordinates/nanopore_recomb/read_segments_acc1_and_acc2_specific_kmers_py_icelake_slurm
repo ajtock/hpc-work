@@ -19,10 +19,10 @@
 #! How many (MPI) tasks will there be in total? (<= nodes*76)
 #! The icelake/icelake-himem nodes have 76 CPUs (cores) each and
 #! 3380 MB/6760 MB of memory per CPU.
-#SBATCH --ntasks=1
-#SBATCH --ntasks-per-node=1
+#! SBATCH --ntasks=1
+#SBATCH --ntasks-per-node=76
 #! Number of CPUs per task. Default: 1
-#SBATCH --cpus-per-task=76
+#SBATCH --cpus-per-task=1
 #! How much wallclock time will be required?
 #SBATCH --time=12:00:00
 #! What types of email messages do you wish to receive?
