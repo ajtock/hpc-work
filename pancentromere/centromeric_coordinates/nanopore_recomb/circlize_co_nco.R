@@ -160,62 +160,120 @@ names(acc2_aln_list) = c("wm", "mm", "sr")
 # 4. The alignment mapq score (mapq)
 # 5. The alignment length (alen)
 # 6. The alignment number of matching bases (nmatch)
-aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
-#    acc1_aln_DF_list = acc1_aln_list
-#    acc2_aln_DF_list = acc2_aln_list
 
-    placeholder = lapply(1:length(acc1_aln_DF_list), function(l) {
+aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
+
+    aligner_list = lapply(1:length(acc1_aln_DF_list), function(l) {
 
         acc1_aln_DF_list_l = acc1_aln_DF_list[[l]]
 
+        acc1_aln_DF = data.frame()
+        acc2_aln_DF = data.frame()
         for(m in 1:nrow(acc1_aln_DF_list_l)) {
 
-            acc1_aln_m = acc1_aln_DF_list_l[m,]
+            print(m)
+            acc1_aln_m = acc1_aln_DF_list_l[m, ]
+            acc1_aln_DF = rbind(acc1_aln_DF, acc1_aln_m)
 
             qname_match_acc2_aln_DF_list = lapply(1:length(acc2_aln_DF_list), function(x) {
 
                 tmp = acc2_aln_DF_list[[x]] %>%
                     dplyr::filter(qname == acc1_aln_m$qname)
+                tmp = tmp[ with(tmp,
+                                order(mapq, alen, nmatch, decreasing=T)), ]
                 tmp_chr = tmp[which(tmp$tname == acc1_aln_m$tname),]
                 if(nrow(tmp_chr) > 0) {
                     if("tp:A:P" %in% tmp_chr$atype) {
-                        tmp_select = tmp_chr[ which(tmp_chr$atype == "tp:A:P"), ]
+                        tmp_select = tmp_chr[ which(tmp_chr$atype == "tp:A:P"), ][1, ]
                     } else {
-                        tmp_select = tmp_chr[ with(tmp_chr,
-                                                   order(mapq, alen, nmatch, decreasing=T)), ][1,]
+                        tmp_select = tmp_chr[1, ]
                     }
                 } else if(nrow(tmp) > 0) {
                     if("tp:A:P" %in% tmp$atype) {
-                        tmp_select = tmp[ which(tmp$atype == "tp:A:P"), ]
+                        tmp_select = tmp[ which(tmp$atype == "tp:A:P"), ][1, ]
                     } else {
-                        tmp_select = tmp[ with(tmp,
-                                               order(mapq, alen, nmatch, decreasing=T)), ][1,]
+                        tmp_select = tmp[1, ]
                     }
                 } else {
                     tmp_select = tmp
                 }
  
-                return(tmp_select)
+                tmp_select
 
             })
             
             acc2_aln_m_DF = dplyr::bind_rows(qname_match_acc2_aln_DF_list)
+            acc2_aln_m_DF = acc2_aln_m_DF[ with(acc2_aln_m_DF,
+                                                order(mapq, alen, nmatch, decreasing=T)), ]
 
             if(acc1_aln_m$tname %in% acc2_aln_m_DF$tname) {
-                acc2_aln_m_DF_tmp = acc2_aln_m_DF[ which(acc2_aln_m_DF$tname == acc1_aln_m$tname) , ]
+                acc2_aln_m_DF = acc2_aln_m_DF[ which(acc2_aln_m_DF$tname == acc1_aln_m$tname), ]
+            }
+
+            if("wm" %in% acc2_aln_m_DF$aligner) {
+                acc2_aln_m = acc2_aln_m_DF[ which(acc2_aln_m_DF$aligner == "wm"), ][1, ]
+            } else if("mm" %in% acc2_aln_m_DF$aligner) {
+                acc2_aln_m = acc2_aln_m_DF[ which(acc2_aln_m_DF$aligner == "mm"), ][1, ]
             } else {
-
-            #acc2_aln_m_wm = qname_match_acc2_aln_DF_list[["wm"]]
-            #acc2_aln_m_mm = qname_match_acc2_aln_DF_list[["mm"]]
-            #acc2_aln_m_sr = qname_match_acc2_aln_DF_list[["sr"]]
-
-
-            
-                
-  
-            })            
+                acc2_aln_m = acc2_aln_m_DF[ which(acc2_aln_m_DF$aligner == "sr"), ][1, ]
+            }
  
+            acc2_aln_DF = rbind(acc2_aln_DF, acc2_aln_m)
+
+        }
+
+        # Get best alignment from acc1_aln_DF and corresponding row from acc2_aln_DF
+        acc1_aln_DF_best = data.frame()
+        acc2_aln_DF_best = data.frame()
+        for(read_id in unique(acc1_aln_DF$qname)) {
+
+            acc1_aln_DF_read_id = acc1_aln_DF[ which(acc1_aln_DF$qname == read_id), ]
+            acc2_aln_DF_read_id = acc2_aln_DF[ which(acc2_aln_DF$qname == read_id), ]
+
+            acc1_aln_DF_read_id_order =  with(acc1_aln_DF_read_id,
+                                              order(mapq, alen, nmatch, decreasing=T))
+
+            acc1_aln_DF_read_id = acc1_aln_DF_read_id[acc1_aln_DF_read_id_order, ]
+            acc2_aln_DF_read_id = acc2_aln_DF_read_id[acc1_aln_DF_read_id_order, ]
+
+            tname_match_row_idx = which(acc1_aln_DF_read_id$tname %in%
+                                        acc2_aln_DF_read_id$tname)
+            if(length(tname_match_row_idx) > 0) {
+                acc1_aln_DF_read_id = acc1_aln_DF_read_id[ tname_match_row_idx, ]
+                acc2_aln_DF_read_id = acc2_aln_DF_read_id[ tname_match_row_idx, ]
+            }
+
+            atype_match_row_idx = which(acc1_aln_DF_read_id$atype == "tp:A:P")
+            if(length(atype_match_row_idx) > 0) {
+                acc1_aln_DF_read_id = acc1_aln_DF_read_id[ atype_match_row_idx, ][1, ]
+                acc2_aln_DF_read_id = acc2_aln_DF_read_id[ atype_match_row_idx, ][1, ]
+            } else {
+                acc1_aln_DF_read_id = acc1_aln_DF_read_id[1, ]
+                acc2_aln_DF_read_id = acc2_aln_DF_read_id[1, ]
+            }
+
+            acc1_aln_DF_best = rbind(acc1_aln_DF_best, acc1_aln_DF_read_id)
+            acc2_aln_DF_best = rbind(acc2_aln_DF_best, acc2_aln_DF_read_id)
+
+        }
+
+        stopifnot(identical(acc1_aln_DF_best$qname, acc2_aln_DF_best$qname))
+
+        list(acc1_aln_DF_best, acc2_aln_DF_best)
+
+    })
+
+    return(aligner_list)
+
+}
+
+
+
+aln_best_pair_aligner_list = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_list=acc2_aln_list)
  
+
+
+
 bed1=generateRandomBed(nr=100)
 head(bed1)
 bed1=bed1[sample(nrow(bed1), 20),]
