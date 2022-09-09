@@ -28,12 +28,12 @@ recombType = args[5]
 date = as.character(args[6])
 
 if(floor(log10(genomeBinSize)) + 1 < 4) {
-  genomeBinName = paste0(genomeBinSize, "bp")
+    genomeBinName = paste0(genomeBinSize, "bp")
 } else if(floor(log10(genomeBinSize)) + 1 >= 4 &
           floor(log10(genomeBinSize)) + 1 <= 6) {
-  genomeBinName = paste0(genomeBinSize/1e3, "kb")
+    genomeBinName = paste0(genomeBinSize/1e3, "kb")
 } else if(floor(log10(genomeBinSize)) + 1 >= 7) {
-  genomeBinName = paste0(genomeBinSize/1e6, "Mb")
+    genomeBinName = paste0(genomeBinSize/1e6, "Mb")
 }
 
 options(stringsAsFactors=F)
@@ -52,18 +52,18 @@ system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
 # Accession names
 acc1_name = strsplit( strsplit(acc1, split="\\.")[[1]][1],
-                       split="_" )[[1]][1]
+                      split="_" )[[1]][1]
 acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
-                       split="_" )[[1]][1]
+                      split="_" )[[1]][1]
 
 # Directories containing read segment alignment files
-acc1_indir = paste0("segments_old/", acc1_name, "/", recombType, "/")
-acc2_indir = paste0("segments_old/", acc2_name, "/", recombType, "/")
+acc1_indir = paste0("segments/", acc1_name, "/", recombType, "/")
+acc2_indir = paste0("segments/", acc2_name, "/", recombType, "/")
 
 # CEN coordinates
 CEN = read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
-                       "centromere_manual_EDTA4_fa.csv"),
-                header=T)
+                      "centromere_manual_EDTA4_fa.csv"),
+               header=T)
 CEN$fasta.name = gsub(".fa", "", CEN$fasta.name)
 
 # Genomic definitions
@@ -77,13 +77,13 @@ acc1_CEN = CEN[grep(acc1, CEN$fasta.name),]
 acc1_CEN = acc1_CEN[,which(colnames(acc1_CEN) %in% c("chr", "start", "end"))]
 acc1_CEN_new = data.frame()
 for(i in 1:length(acc1_chrs)) {
-  acc1_CEN_chr = acc1_CEN[which(acc1_CEN$chr == acc1_chrs[i]),]
-  if(nrow(acc1_CEN_chr) > 1) {
-    acc1_CEN_chr = data.frame(chr=acc1_CEN_chr$chr[1],
-                              start=acc1_CEN_chr$start[1],
-                              end=acc1_CEN_chr$end[nrow(acc1_CEN_chr)])
-  }
-  acc1_CEN_new = rbind(acc1_CEN_new, acc1_CEN_chr)
+    acc1_CEN_chr = acc1_CEN[which(acc1_CEN$chr == acc1_chrs[i]),]
+    if(nrow(acc1_CEN_chr) > 1) {
+        acc1_CEN_chr = data.frame(chr=acc1_CEN_chr$chr[1],
+                                  start=acc1_CEN_chr$start[1],
+                                  end=acc1_CEN_chr$end[nrow(acc1_CEN_chr)])
+    }
+    acc1_CEN_new = rbind(acc1_CEN_new, acc1_CEN_chr)
 }
 acc1_CEN = acc1_CEN_new
 acc1_CENstart = acc1_CEN$start
@@ -99,13 +99,13 @@ acc2_CEN = CEN[grep(acc2, CEN$fasta.name),]
 acc2_CEN = acc2_CEN[,which(colnames(acc2_CEN) %in% c("chr", "start", "end"))]
 acc2_CEN_new = data.frame()
 for(i in 1:length(acc2_chrs)) {
-  acc2_CEN_chr = acc2_CEN[which(acc2_CEN$chr == acc2_chrs[i]),]
-  if(nrow(acc2_CEN_chr) > 1) {
-    acc2_CEN_chr = data.frame(chr=acc2_CEN_chr$chr[1],
-                              start=acc2_CEN_chr$start[1],
-                              end=acc2_CEN_chr$end[nrow(acc2_CEN_chr)])
-  }
-  acc2_CEN_new = rbind(acc2_CEN_new, acc2_CEN_chr)
+    acc2_CEN_chr = acc2_CEN[which(acc2_CEN$chr == acc2_chrs[i]),]
+    if(nrow(acc2_CEN_chr) > 1) {
+        acc2_CEN_chr = data.frame(chr=acc2_CEN_chr$chr[1],
+                                  start=acc2_CEN_chr$start[1],
+                                  end=acc2_CEN_chr$end[nrow(acc2_CEN_chr)])
+    }
+    acc2_CEN_new = rbind(acc2_CEN_new, acc2_CEN_chr)
 }
 acc2_CEN = acc2_CEN_new
 acc2_CENstart = acc2_CEN$start
@@ -114,38 +114,107 @@ acc2_chrs = paste0(acc2_chrs, "_", acc2_name)
 
 
 # Load read segment alignment files as a combined data.frame
-load_pafs = function(indir, acc_name, suffix) {
-  files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
-  aln_DF = data.frame()
-  for(h in 1:length(files)) {
-    aln = fread(files[h],
-                header=F, sep="\t", data.table=F)[,1:13]
-    aln_DF = rbind(aln_DF, aln)
-  }
-  colnames(aln_DF) = c("qname", "qlen", "qstart0", "qend0",
-                       "strand", "tname", "tlen", "tstart", "tend",
-                       "nmatch", "alen", "mapq", "atype")
-
-  return(aln_DF)
+load_pafs = function(indir, acc_name, suffix, aligner) {
+    files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
+    aln_DF = data.frame()
+    for(h in 1:length(files)) {
+        aln = fread(files[h],
+                    header=F, fill=T, sep="\t", data.table=F)[,1:13]
+        aln_DF = rbind(aln_DF, aln)
+    }
+    aln_DF$aligner = aligner
+    colnames(aln_DF) = c("qname", "qlen", "qstart0", "qend0",
+                         "strand", "tname", "tlen", "tstart", "tend",
+                         "nmatch", "alen", "mapq", "atype", "aligner")
+  
+    return(aln_DF)
 }
 
 
-# wm_ont alignments
-acc1_wm_ont = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_wm_ont.paf")
-acc2_wm_ont = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_wm_ont.paf")
+# wm alignments
+acc1_wm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_wm_ont.paf", aligner="wm")
+acc2_wm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_wm_ont.paf", aligner="wm")
 
-# mm_ont alignments
-acc1_mm_ont = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_ont.paf")
-acc2_mm_ont = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_ont.paf")
+# mm alignments
+acc1_mm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_ont.paf", aligner="mm")
+acc2_mm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_ont.paf", aligner="mm")
 
-# mm_sr alignments
-acc1_mm_sr = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_sr.paf")
-acc2_mm_sr = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_sr.paf")
+# sr alignments
+acc1_sr = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_sr.paf", aligner="sr")
+acc2_sr = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_sr.paf", aligner="sr")
+
+# acc1 alignments list
+acc1_aln_list = list(acc1_wm, acc1_mm, acc1_sr)
+acc2_aln_list = list(acc2_wm, acc2_mm, acc2_sr)
+names(acc1_aln_list) = c("wm", "mm", "sr")
+names(acc2_aln_list) = c("wm", "mm", "sr")
+
+# Get best pair of acc1 and acc2 read segment alignments, based on:
+# 1. The alignment chromosome
+# 2. The aligner:
+#   Prioritise:
+#     1. acc1_wm : acc2_wm, 2. acc1_wm : acc2_mm, 3. acc1_mm : acc2_wm,
+#     4. acc1_wm : acc2_sr, 5. acc1_sr : acc2_wm, 6. acc1_mm : acc2_mm,
+#     7. acc1_mm : acc2_sr, 8. acc1_sr : acc2_mm, 9. acc1_sr : acc2_sr
+# 3. The alignment type (atype)
+# 4. The alignment mapq score (mapq)
+# 5. The alignment length (alen)
+# 6. The alignment number of matching bases (nmatch)
+aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
+#    acc1_aln_DF_list = acc1_aln_list
+#    acc2_aln_DF_list = acc2_aln_list
+
+    placeholder = lapply(1:length(acc1_aln_DF_list), function(l) {
+
+        acc1_aln_DF_list_l = acc1_aln_DF_list[[l]]
+
+        for(m in 1:nrow(acc1_aln_DF_list_l)) {
+
+            acc1_aln_m = acc1_aln_DF_list_l[m,]
+
+            qname_match_acc2_aln_DF_list = lapply(1:length(acc2_aln_DF_list), function(x) {
+
+                tmp = acc2_aln_DF_list[[x]] %>%
+                    dplyr::filter(qname == acc1_aln_m$qname)
+                tmp_chr = tmp[which(tmp$tname == acc1_aln_m$tname),]
+                if(nrow(tmp_chr) > 0) {
+                    if("tp:A:P" %in% tmp_chr$atype) {
+                        tmp_select = tmp_chr[ which(tmp_chr$atype == "tp:A:P"), ]
+                    } else {
+                        tmp_select = tmp_chr[ with(tmp_chr,
+                                                   order(mapq, alen, nmatch, decreasing=T)), ][1,]
+                    }
+                } else if(nrow(tmp) > 0) {
+                    if("tp:A:P" %in% tmp$atype) {
+                        tmp_select = tmp[ which(tmp$atype == "tp:A:P"), ]
+                    } else {
+                        tmp_select = tmp[ with(tmp,
+                                               order(mapq, alen, nmatch, decreasing=T)), ][1,]
+                    }
+                } else {
+                    tmp_select = tmp
+                }
+ 
+                return(tmp_select)
+
+            })
+            
+            acc2_aln_m_DF = dplyr::bind_rows(qname_match_acc2_aln_DF_list)
+
+            if(acc1_aln_m$tname %in% acc2_aln_m_DF$tname) {
+                acc2_aln_m_DF_tmp = acc2_aln_m_DF[ which(acc2_aln_m_DF$tname == acc1_aln_m$tname) , ]
+            } else {
+
+            #acc2_aln_m_wm = qname_match_acc2_aln_DF_list[["wm"]]
+            #acc2_aln_m_mm = qname_match_acc2_aln_DF_list[["mm"]]
+            #acc2_aln_m_sr = qname_match_acc2_aln_DF_list[["sr"]]
 
 
-# Get best pair of acc1 and acc2 read segment alignments 
-aln_best_pair = function(acc1_aln_DF, acc2_aln_DF) {
-
+            
+                
+  
+            })            
+ 
  
 bed1=generateRandomBed(nr=100)
 head(bed1)
