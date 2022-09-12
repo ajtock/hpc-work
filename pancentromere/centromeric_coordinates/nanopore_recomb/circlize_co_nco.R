@@ -350,17 +350,19 @@ aln_best_pair_DF = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_lis
 stopifnot(identical(aln_best_pair_DF$acc1_qname, aln_best_pair_DF$acc2_qname))
 
 print(paste0(nrow(aln_best_pair_DF), " putative ", recombType, " events"))
-# "213 putative co events"
+#[1] "213 putative co events"
+#[1] "966 putative nco events"
 
 # Filter to retain putative recombination events between homologous chromosomes only
 aln_best_pair_hom_DF = aln_best_pair_DF[ which(aln_best_pair_DF$acc1_tname == aln_best_pair_DF$acc2_tname), ]
 
 print(paste0(nrow(aln_best_pair_hom_DF), " putative ", recombType, " events between homologous chromosomes"))
-# "135 putative co events between homologous chromosomes"
+#[1] "135 putative co events between homologous chromosomes"
+#[1] "559 putative nco events between homologous chromosomes"
 
 print(paste0( round( ( nrow(aln_best_pair_hom_DF) / nrow(aln_best_pair_DF) ), 2 ) * 100, "% of putative ", recombType, " events between homologous chromosomes"))
-# "63% of putative co events between homologous chromosomes"
-
+#[1] "63% of putative co events between homologous chromosomes"
+#[1] "58% of putative nco events between homologous chromosomes"
 
 
 # circlize
