@@ -163,10 +163,17 @@ names(acc2_aln_list) = c("wm", "mm", "sr")
 
 aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
 
+    # Each of the 3 list elements in acc1_aln_DF_list is a
+    # a data.frame of alignments done by wm_ont, mm_ont or mm_sr.
     aligner_list = lapply(1:length(acc1_aln_DF_list), function(l) {
 
         acc1_aln_DF_list_l = acc1_aln_DF_list[[l]]
 
+        # For each read segment alignment in data.frame acc1_aln_DF_list_l,
+        # get the best read segment alignment from acc2 corresponding to
+        # the same read
+        # For many read IDs, this will give more than 1 pair of
+        # read segment alignments to subsequently select 1 from in the next loop
         acc1_aln_DF = data.frame()
         acc2_aln_DF = data.frame()
         for(m in 1:nrow(acc1_aln_DF_list_l)) {
@@ -222,7 +229,7 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
 
         }
 
-        # Get best alignment from acc1_aln_DF and corresponding row from acc2_aln_DF
+        # Get the best alignment from acc1_aln_DF and corresponding row from acc2_aln_DF
         acc1_aln_DF_best = data.frame()
         acc2_aln_DF_best = data.frame()
         for(read_id in unique(acc1_aln_DF$qname)) {
@@ -257,12 +264,84 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
 
         }
 
-        stopifnot(identical(acc1_aln_DF_best$qname, acc2_aln_DF_best$qname))
+        colnames(acc1_aln_DF_best) = paste0("acc1_", colnames(acc1_aln_DF_best))
+        colnames(acc2_aln_DF_best) = paste0("acc2_", colnames(acc2_aln_DF_best))
+        stopifnot(identical(acc1_aln_DF_best$acc1_qname, acc2_aln_DF_best$acc2_qname))
 
-        list(acc1_aln_DF_best, acc2_aln_DF_best)
+        cbind(acc1_aln_DF_best, acc2_aln_DF_best)
 
     })
 
+    names(aligner_list) = c("wm", "mm", "sr")
+
+    aligner_bind_rows = dplyr::bind_rows(aligner_list, .id="id")
+    stopifnot(identical(aligner_bind_rows$id, aligner_bind_rows$acc1_aligner))
+
+    # Up to 3 read segment alignment pairs have been selected for each read
+    # (potentially one pair for each of the 3 aligners used to align the acc1 segment)
+    # Select the best pair based on the criteria described at the top of the function definition
+    aln_best_pair_DF = data.frame()
+    for(uniq_qname in unique(aligner_bind_rows$acc1_qname)) {
+
+        tmp = aligner_bind_rows %>%
+            dplyr::filter(acc1_qname == uniq_qname)
+        tmp = tmp[ with(tmp,
+                        order(acc1_mapq, acc2_mapq,
+                              acc1_alen, acc2_alen,
+                              acc1_nmatch, acc2_nmatch,
+                              decreasing=T)), ]
+
+        # Prioritise alignment pairs where both read segments align to the same chromosome
+        tmp_chr = tmp[ which(tmp$acc1_tname == tmp$acc2_tname), ]
+        if(nrow(tmp_chr) > 0) {
+            tmp_chr_wm_wm = tmp_chr[ which(tmp_chr$acc1_aligner == "wm" &
+                                           tmp_chr$acc2_aligner == "wm"), ]
+            tmp_chr_wm = tmp_chr[ which(tmp_chr$acc1_aligner == "wm" |
+                                        tmp_chr$acc2_aligner == "wm"), ]
+            tmp_chr_mm_mm = tmp_chr[ which(tmp_chr$acc1_aligner == "mm" &
+                                           tmp_chr$acc2_aligner == "mm"), ]
+            tmp_chr_mm = tmp_chr[ which(tmp_chr$acc1_aligner == "mm" |
+                                        tmp_chr$acc2_aligner == "mm"), ]
+            if(nrow(tmp_chr_wm_wm) > 0) {
+                tmp = tmp_chr_wm_wm[1, ]
+            } else if(nrow(tmp_chr_wm) > 0) {
+                tmp = tmp_chr_wm[1, ]
+            } else if(nrow(tmp_chr_mm_mm) > 0) {
+                tmp = tmp_chr_mm_mm[1, ]
+            } else if(nrow(tmp_chr_mm) > 0) {
+                tmp = tmp_chr_mm[1, ]
+            } else {
+                tmp = tmp_chr[1, ]
+            }
+        } else {
+            tmp_wm_wm = tmp[ which(tmp$acc1_aligner == "wm" &
+                                   tmp$acc2_aligner == "wm"), ]
+            tmp_wm = tmp[ which(tmp$acc1_aligner == "wm" |
+                                tmp$acc2_aligner == "wm"), ]
+            tmp_mm_mm = tmp[ which(tmp$acc1_aligner == "mm" &
+                                   tmp$acc2_aligner == "mm"), ]
+            tmp_mm = tmp[ which(tmp$acc1_aligner == "mm" |
+                                tmp$acc2_aligner == "mm"), ]
+            if(nrow(tmp_wm_wm) > 0) {
+                tmp = tmp_wm_wm[1, ]
+            } else if(nrow(tmp_wm) > 0) {
+                tmp = tmp_wm[1, ]
+            } else if(nrow(tmp_mm_mm) > 0) {
+                tmp = tmp_mm_mm[1, ]
+            } else if(nrow(tmp_mm) > 0) {
+                tmp = tmp_mm[1, ]
+            } else {
+                tmp = tmp[1, ]
+            }
+        }
+
+
+            if("wm" %in% c(tmp_chr$acc1_aligner, tmp_chr$acc2_aligner)
+
+        if(
+    
+    
+      
     return(aligner_list)
 
 }
@@ -270,6 +349,38 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
 
 
 aln_best_pair_aligner_list = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_list=acc2_aln_list)
+            print(m)
+            acc1_aln_m = acc1_aln_DF_list_l[m, ]
+            acc1_aln_DF = rbind(acc1_aln_DF, acc1_aln_m)
+
+            qname_match_acc2_aln_DF_list = lapply(1:length(acc2_aln_DF_list), function(x) {
+
+                tmp = acc2_aln_DF_list[[x]] %>%
+                    dplyr::filter(qname == acc1_aln_m$qname)
+                tmp = tmp[ with(tmp,
+                                order(mapq, alen, nmatch, decreasing=T)), ]
+                tmp_chr = tmp[which(tmp$tname == acc1_aln_m$tname),]
+                if(nrow(tmp_chr) > 0) {
+                    if("tp:A:P" %in% tmp_chr$atype) {
+                        tmp_select = tmp_chr[ which(tmp_chr$atype == "tp:A:P"), ][1, ]
+                    } else {
+                        tmp_select = tmp_chr[1, ]
+                    }
+                } else if(nrow(tmp) > 0) {
+                    if("tp:A:P" %in% tmp$atype) {
+                        tmp_select = tmp[ which(tmp$atype == "tp:A:P"), ][1, ]
+                    } else {
+                        tmp_select = tmp[1, ]
+                    }
+                } else {
+                    tmp_select = tmp
+                }
+ 
+                tmp_select
+
+            })
+
+
  
 
 
