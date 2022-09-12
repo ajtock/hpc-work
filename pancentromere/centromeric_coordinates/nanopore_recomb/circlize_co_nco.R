@@ -335,20 +335,18 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
             }
         }
 
+        aln_best_pair_DF = rbind(aln_best_pair_DF, tmp)
 
-            if("wm" %in% c(tmp_chr$acc1_aligner, tmp_chr$acc2_aligner)
+    }
 
-        if(
-    
-    
+    return(aln_best_pair_DF)
+
+}    
       
-    return(aligner_list)
-
-}
 
 
+aln_best_pair_DF = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_list=acc2_aln_list)
 
-aln_best_pair_aligner_list = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_list=acc2_aln_list)
             print(m)
             acc1_aln_m = acc1_aln_DF_list_l[m, ]
             acc1_aln_DF = rbind(acc1_aln_DF, acc1_aln_m)
