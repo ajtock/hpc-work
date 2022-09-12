@@ -88,7 +88,7 @@ for(i in 1:length(acc1_chrs)) {
 acc1_CEN = acc1_CEN_new
 acc1_CENstart = acc1_CEN$start
 acc1_CENend = acc1_CEN$end
-acc1_chrs = paste0(acc1_chrs, "_", acc1_name)
+acc1_chrs = paste0(acc1_name, "_", acc1_chrs)
 
 #acc2
 acc2_fai = read.table(paste0("index/", acc2, ".fa.fai"), header=F)
@@ -110,11 +110,7 @@ for(i in 1:length(acc2_chrs)) {
 acc2_CEN = acc2_CEN_new
 acc2_CENstart = acc2_CEN$start
 acc2_CENend = acc2_CEN$end
-acc2_chrs = paste0(acc2_chrs, "_", acc2_name)
-
-
-CENstart = c(acc1_CENstart, acc2_CENstart)
-CENend = c(acc1_CENend, acc2_CENend)
+acc2_chrs = paste0(acc2_name, "_", acc2_chrs)
 
 
 # Load read segment alignment files as a combined data.frame
@@ -353,7 +349,13 @@ aln_best_pair_DF = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_lis
 stopifnot(identical(aln_best_pair_DF$acc1_qname, aln_best_pair_DF$acc2_qname))
 
 
-acc1_bed = data.frame(chr = paste0("Col-0_", aln_best_pair_DF$acc1_tname),
+
+# circlize
+
+# Define "links" between the two accessions' chromosomes to represent
+# recombination events in circlize plot
+
+acc1_bed = data.frame(chr = paste0(acc1_name, "_", aln_best_pair_DF$acc1_tname),
                       start = aln_best_pair_DF$acc1_qstart0,
                       end = aln_best_pair_DF$acc1_qend0,
                       value1 = aln_best_pair_DF$acc1_aligner,
@@ -362,23 +364,17 @@ acc1_bed = data.frame(chr = paste0("Col-0_", aln_best_pair_DF$acc1_tname),
                       value4 = aln_best_pair_DF$acc1_alen,
                       value5 = aln_best_pair_DF$acc1_nmatch)
 
-acc2_bed = data.frame(chr = paste0("Ler-0_", aln_best_pair_DF$acc2_tname),
+acc2_bed = data.frame(chr = paste0(acc2_name, "_", aln_best_pair_DF$acc2_tname),
                       start = aln_best_pair_DF$acc2_qstart0,
                       end = aln_best_pair_DF$acc2_qend0,
                       value1 = aln_best_pair_DF$acc2_aligner,
                       value2 = aln_best_pair_DF$acc2_atype,
                       value3 = aln_best_pair_DF$acc2_mapq,
                       value4 = aln_best_pair_DF$acc2_alen,
-                      value5 = aln_best_pair_DF$acc1_nmatch)
+                      value5 = aln_best_pair_DF$acc2_nmatch)
 
-
-
-
-
-# circlize
 
 # Define genome data.frame for circlize
-
 acc1_genome_DF = data.frame(chr = acc1_chrs,
                             start = rep(0, length(acc1_chrs)),
                             end = acc1_chrLens)
@@ -386,31 +382,37 @@ acc2_genome_DF = data.frame(chr = acc2_chrs,
                             start = rep(0, length(acc2_chrs)),
                             end = acc2_chrLens)
 genome_DF = rbind(acc1_genome_DF, acc2_genome_DF)
-
 chr_index = c(acc1_chrs, rev(acc2_chrs))
+genome_DF[, 1] = factor(genome_DF[, 1],, levels = chr_index)
 
-
-
-
-
-
-
+chrs = c(acc1_chrs, acc2_chrs)
+CENstart = c(acc1_CENstart, acc2_CENstart)
+CENend = c(acc1_CENend, acc2_CENend)
 
 
 # Initialize circular layout
 circlize_plot = function() {
-  gapDegree = 6
+
+#  gapDegree = 6
   circos.par(
-             gap.after = c(rep(1, length(acc1_chrs)), 5, rep(1, length(acc2_chrs))),
-             track.height = 0.15,
-             canvas.xlim = c(-1.1, 1.1),
-             canvas.ylim = c(-1.1, 1.1),
-             gap.degree = c(rep(1, length(chrs)-1), gapDegree),
-             start.degree = 90-(gapDegree/2)
+             gap.after = c(rep(1, length(acc1_chrs)-1), 5, rep(1, length(acc2_chrs)-1), 5),
+             track.height = 0.15
+#             canvas.xlim = c(-1.1, 1.1),
+#             canvas.ylim = c(-1.1, 1.1),
+#             gap.degree = c(rep(1, length(chrs)-1), gapDegree),
+#             start.degree = 90-(gapDegree/2)
              )
+
   circos.genomicInitialize(data = genome_DF,
                            plotType = NULL,
-                           tickLabelsStartFromZero = FALSE)
+                           tickLabelsStartFromZero = True)
+  circos.track(ylim = c(0, 1), panel.fun = function(x, y) {
+      circos.text(CELL_META$xcenter,
+                  CELL_META$ylim[2] + mm_y(2),
+                  gsub(".*Chr", "", CELL_META$sector.index), cex = 0.6, niceFacing = T)
+  }, track.height = mm_h(1), cell.padding = c(0, 0 , 0, 0), bg.border = NA)
+  highlight.chromosome(acc1_chrs, col = "dodgerblue3", track.index = 1)
+  highlight.chromosome(acc2_chrs, col = "darkgoldenrod", track.index = 1)
   circos.track(ylim = c(0, 1),
                bg.col = "grey70",
                bg.border = NA,
@@ -424,13 +426,34 @@ circlize_plot = function() {
     circos.text(x = (CENstart[x]+CENend[x])/2,
                 y = 0.5,
                 sector.index = chrs[x],
-                track.index = 1,
-                labels = paste0("CEN", x),
+                track.index = 2,
+                labels = paste0("CEN", gsub(".*Chr", "", chrs[x])),
                 niceFacing = TRUE,
                 cex = 0.8,
                 col = "black",
                 font = 4)
   })
+
+  # Links between acc1 and acc2 aligned read segment pairs
+  circos.genomicLink(acc1_bed, acc2_bed, col = rand_color(nrow(acc1_bed)))
+
+  # Reset graphic parameters and internal variables
+  circos.clear()
+
+  text(-0.9, -0.8, paste0(acc1_name, "\ngenome"))
+  text(0.9, 0.8, paste0(acc2_name, "\ngenome"))
+
+}
+
+pdf(paste0(plotDir,
+           acc1, "_", acc2, "_",
+           "putative_", recombType, "_",
+           paste0(chrName, collapse = "_"), "_circlize_v", date, ".pdf"))                                                                
+circlize_plot()
+dev.off()
+
+
+
 
   # Gypsy heatmap
   circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(chrs), function(x) {
