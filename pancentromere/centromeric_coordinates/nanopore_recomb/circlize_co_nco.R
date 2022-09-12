@@ -44,6 +44,7 @@ library(circlize)
 library(ComplexHeatmap)
 library(gridBase)
 library(viridis)
+library(colorspace)
 library(data.table)
 library(dplyr)
 
@@ -429,6 +430,33 @@ rev_x = function(x, xrange = CELL_META$xlim) {
     xrange[2] - x + xrange[1]
 }
 
+
+aligner_col_fun = c("wm" = "#009E73", "mm" = "#0072B2", "sr" = "#CC79A7")
+atype_col_fun = structure(c("#332288", "#117733"), names = c("tp:A:P", "tp:A:S"))
+mapq_col_fun = colorRamp2(quantile(c(aln_best_pair_DF$acc1_mapq, aln_best_pair_DF$acc2_mapq),
+                                   c(0.05, 0.20, 0.40, 0.60, 0.80, 0.95),
+                                   na.rm = T),
+                          viridis(6))
+alen_col_fun = colorRamp2(quantile(c(aln_best_pair_DF$acc1_alen, aln_best_pair_DF$acc2_alen),
+                                   c(0.05, 0.20, 0.40, 0.60, 0.80, 0.95),
+                                   na.rm = T),
+                          plasma(6))
+nmatch_col_fun = colorRamp2(quantile(c(aln_best_pair_DF$acc1_nmatch, aln_best_pair_DF$acc2_nmatch),
+                                     c(0.05, 0.20, 0.40, 0.60, 0.80, 0.95),
+                                     na.rm = T),
+                            heat.colors(6))
+
+# Define corresponding heatmap legends
+lgd_aligner = Legend(at = c("wm", "mm", "sr"), type = "grid", legend_gp = gpar(col = aligner_col_fun), background = NULL, title = "Aligner", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")   
+lgd_atype = Legend(at = c("tp:A:P", "tp:A:S"), type = "grid", legend_gp = gpar(col = atype_col_fun), background = NULL, title = "Aligner", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")   
+lgd_mapq = Legend(col_fun = mapq_col_fun, title = "MAPQ", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")
+lgd_alen = Legend(col_fun = alen_col_fun, title = "Length", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")
+lgd_nmatch = Legend(col_fun = nmatch_col_fun, title = "Matches", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")
+lgd_list1 <- packLegend(lgd_aligner, lgd_atype, lgd_mapq, lgd_alen, lgd_nmatch)
+
+
+
+
 # Initialize circular layout
 circlize_plot = function(acc1_bed, acc2_bed) {
  
@@ -492,6 +520,21 @@ circlize_plot = function(acc1_bed, acc2_bed) {
 
     # Links between acc1 and acc2 aligned read segment pairs
     circos.genomicLink(acc1_bed, acc2_bed_rev, col = rand_color(nrow(acc1_bed)))
+
+
+    # Gypsy heatmap
+    circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(acc1_chrs), function(x) {                                                            
+      acc1_bed_mapq = acc1_bed
+      acc1_bed_mapq[acc1_bed_mapq$chr == acc1_chrs[x] &
+                    acc1_bed_mapq$start >= genome_DF
+[Gypsy_bed$chr == chrs[x] &
+                Gypsy_bed$start >= genomeDF$start[x] &
+                Gypsy_bed$end <= genomeDF$end[x],] } )),
+      col = Gypsy_col_fun,
+      border = NA,
+      side = "inside",
+      heatmap_height = 0.05,
+      connection_height = NULL)
 
     # Reset graphic parameters and internal variables
     circos.clear()
