@@ -113,6 +113,10 @@ acc2_CENend = acc2_CEN$end
 acc2_chrs = paste0(acc2_chrs, "_", acc2_name)
 
 
+CENstart = c(acc1_CENstart, acc2_CENstart)
+CENend = c(acc1_CENend, acc2_CENend)
+
+
 # Load read segment alignment files as a combined data.frame
 load_pafs = function(indir, acc_name, suffix, aligner) {
     files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
@@ -344,42 +348,9 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
 }    
       
 
-
+# Get best pair of aligned read segments for each read
 aln_best_pair_DF = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_list=acc2_aln_list)
-
-            print(m)
-            acc1_aln_m = acc1_aln_DF_list_l[m, ]
-            acc1_aln_DF = rbind(acc1_aln_DF, acc1_aln_m)
-
-            qname_match_acc2_aln_DF_list = lapply(1:length(acc2_aln_DF_list), function(x) {
-
-                tmp = acc2_aln_DF_list[[x]] %>%
-                    dplyr::filter(qname == acc1_aln_m$qname)
-                tmp = tmp[ with(tmp,
-                                order(mapq, alen, nmatch, decreasing=T)), ]
-                tmp_chr = tmp[which(tmp$tname == acc1_aln_m$tname),]
-                if(nrow(tmp_chr) > 0) {
-                    if("tp:A:P" %in% tmp_chr$atype) {
-                        tmp_select = tmp_chr[ which(tmp_chr$atype == "tp:A:P"), ][1, ]
-                    } else {
-                        tmp_select = tmp_chr[1, ]
-                    }
-                } else if(nrow(tmp) > 0) {
-                    if("tp:A:P" %in% tmp$atype) {
-                        tmp_select = tmp[ which(tmp$atype == "tp:A:P"), ][1, ]
-                    } else {
-                        tmp_select = tmp[1, ]
-                    }
-                } else {
-                    tmp_select = tmp
-                }
- 
-                tmp_select
-
-            })
-
-
- 
+stopifnot(identical(aln_best_pair_DF$acc1_qname, aln_best_pair_DF$acc2_qname))
 
 
 
@@ -395,10 +366,15 @@ head(bed1)
 
 # Define genome data.frame for circlize
 
-genome_DF = data.frame(chr = c(acc1_chrs, acc2_chrs),
-                       start = rep(1, length(c(acc1_chrs, acc2_chrs))),
-                       end = c(acc1_chrLens, acc2_chrLens))
+acc1_genome_DF = data.frame(chr = acc1_chrs,
+                            start = rep(0, length(acc1_chrs)),
+                            end = acc1_chrLens)
+acc2_genome_DF = data.frame(chr = acc2_chrs,
+                            start = rep(0, length(acc2_chrs)),
+                            end = acc2_chrLens)
+genome_DF = rbind(acc1_genome_DF, acc2_genome_DF)
 
+chr_index = c(acc1_chrs, rev(acc2_chrs))
 
 
 
@@ -411,11 +387,14 @@ genome_DF = data.frame(chr = c(acc1_chrs, acc2_chrs),
 # Initialize circular layout
 circlize_plot = function() {
   gapDegree = 6
-  circos.par(track.height = 0.15,
+  circos.par(
+             gap.after = c(rep(1, length(acc1_chrs)), 5, rep(1, length(acc2_chrs))),
+             track.height = 0.15,
              canvas.xlim = c(-1.1, 1.1),
              canvas.ylim = c(-1.1, 1.1),
              gap.degree = c(rep(1, length(chrs)-1), gapDegree),
-             start.degree = 90-(gapDegree/2))
+             start.degree = 90-(gapDegree/2)
+             )
   circos.genomicInitialize(data = genome_DF,
                            plotType = NULL,
                            tickLabelsStartFromZero = FALSE)
