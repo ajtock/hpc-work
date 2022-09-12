@@ -353,11 +353,24 @@ aln_best_pair_DF = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_lis
 stopifnot(identical(aln_best_pair_DF$acc1_qname, aln_best_pair_DF$acc2_qname))
 
 
+acc1_bed = data.frame(chr = paste0("Col-0_", aln_best_pair_DF$acc1_tname),
+                      start = aln_best_pair_DF$acc1_qstart0,
+                      end = aln_best_pair_DF$acc1_qend0,
+                      value1 = aln_best_pair_DF$acc1_aligner,
+                      value2 = aln_best_pair_DF$acc1_atype,
+                      value3 = aln_best_pair_DF$acc1_mapq,
+                      value4 = aln_best_pair_DF$acc1_alen,
+                      value5 = aln_best_pair_DF$acc1_nmatch)
 
-bed1=generateRandomBed(nr=100)
-head(bed1)
-bed1=bed1[sample(nrow(bed1), 20),]
-head(bed1)
+acc2_bed = data.frame(chr = paste0("Ler-0_", aln_best_pair_DF$acc2_tname),
+                      start = aln_best_pair_DF$acc2_qstart0,
+                      end = aln_best_pair_DF$acc2_qend0,
+                      value1 = aln_best_pair_DF$acc2_aligner,
+                      value2 = aln_best_pair_DF$acc2_atype,
+                      value3 = aln_best_pair_DF$acc2_mapq,
+                      value4 = aln_best_pair_DF$acc2_alen,
+                      value5 = aln_best_pair_DF$acc1_nmatch)
+
 
 
 
