@@ -356,8 +356,8 @@ stopifnot(identical(aln_best_pair_DF$acc1_qname, aln_best_pair_DF$acc2_qname))
 # recombination events in circlize plot
 
 acc1_bed = data.frame(chr = paste0(acc1_name, "_", aln_best_pair_DF$acc1_tname),
-                      start = aln_best_pair_DF$acc1_qstart0,
-                      end = aln_best_pair_DF$acc1_qend0,
+                      start = aln_best_pair_DF$acc1_tstart-1,
+                      end = aln_best_pair_DF$acc1_tend,
                       value1 = aln_best_pair_DF$acc1_aligner,
                       value2 = aln_best_pair_DF$acc1_atype,
                       value3 = aln_best_pair_DF$acc1_mapq,
@@ -365,8 +365,8 @@ acc1_bed = data.frame(chr = paste0(acc1_name, "_", aln_best_pair_DF$acc1_tname),
                       value5 = aln_best_pair_DF$acc1_nmatch)
 
 acc2_bed = data.frame(chr = paste0(acc2_name, "_", aln_best_pair_DF$acc2_tname),
-                      start = aln_best_pair_DF$acc2_qstart0,
-                      end = aln_best_pair_DF$acc2_qend0,
+                      start = aln_best_pair_DF$acc2_tstart-1,
+                      end = aln_best_pair_DF$acc2_tend,
                       value1 = aln_best_pair_DF$acc2_aligner,
                       value2 = aln_best_pair_DF$acc2_atype,
                       value3 = aln_best_pair_DF$acc2_mapq,
@@ -382,8 +382,8 @@ acc2_genome_DF = data.frame(chr = acc2_chrs,
                             start = rep(0, length(acc2_chrs)),
                             end = acc2_chrLens)
 genome_DF = rbind(acc1_genome_DF, acc2_genome_DF)
-chr_index = c(acc1_chrs, rev(acc2_chrs))
-genome_DF[, 1] = factor(genome_DF[, 1],, levels = chr_index)
+chr_index = c(rev(acc2_chrs), acc1_chrs)
+genome_DF[, 1] = factor(genome_DF[, 1], levels = chr_index)
 
 chrs = c(acc1_chrs, acc2_chrs)
 CENstart = c(acc1_CENstart, acc2_CENstart)
@@ -393,26 +393,24 @@ CENend = c(acc1_CENend, acc2_CENend)
 # Initialize circular layout
 circlize_plot = function() {
 
-#  gapDegree = 6
   circos.par(
              gap.after = c(rep(1, length(acc1_chrs)-1), 5, rep(1, length(acc2_chrs)-1), 5),
              track.height = 0.15
-#             canvas.xlim = c(-1.1, 1.1),
-#             canvas.ylim = c(-1.1, 1.1),
-#             gap.degree = c(rep(1, length(chrs)-1), gapDegree),
-#             start.degree = 90-(gapDegree/2)
-             )
+            )
 
   circos.genomicInitialize(data = genome_DF,
                            plotType = NULL,
                            tickLabelsStartFromZero = True)
   circos.track(ylim = c(0, 1), panel.fun = function(x, y) {
-      circos.text(CELL_META$xcenter,
-                  CELL_META$ylim[2] + mm_y(2),
-                  gsub(".*Chr", "", CELL_META$sector.index), cex = 0.6, niceFacing = T)
+#      circos.text(CELL_META$xcenter,
+#                  CELL_META$ylim[2] + mm_y(2),
+#                  gsub(".*Chr", "", CELL_META$sector.index), cex = 0.6, niceFacing = T)
   }, track.height = mm_h(1), cell.padding = c(0, 0 , 0, 0), bg.border = NA)
   highlight.chromosome(acc1_chrs, col = "dodgerblue3", track.index = 1)
   highlight.chromosome(acc2_chrs, col = "darkgoldenrod", track.index = 1)
+
+  set_track_gap(gap = 0.1)
+
   circos.track(ylim = c(0, 1),
                bg.col = "grey70",
                bg.border = NA,
@@ -440,8 +438,8 @@ circlize_plot = function() {
   # Reset graphic parameters and internal variables
   circos.clear()
 
-  text(-0.9, -0.8, paste0(acc1_name, "\ngenome"))
-  text(0.9, 0.8, paste0(acc2_name, "\ngenome"))
+  text(-0.9, -0.8, paste0(acc2_name, "\ngenome"))
+  text(0.9, 0.8, paste0(acc1_name, "\ngenome"))
 
 }
 
