@@ -371,38 +371,38 @@ print(paste0( round( ( nrow(aln_best_pair_hom_DF) / nrow(aln_best_pair_DF) ), 2 
 acc1_all_bed = data.frame(chr = paste0(acc1_name, "_", aln_best_pair_DF$acc1_tname),
                           start = aln_best_pair_DF$acc1_tstart-1,
                           end = aln_best_pair_DF$acc1_tend,
-                          value1 = aln_best_pair_DF$acc1_aligner,
-                          value2 = aln_best_pair_DF$acc1_atype,
-                          value3 = aln_best_pair_DF$acc1_mapq,
-                          value4 = aln_best_pair_DF$acc1_alen,
-                          value5 = aln_best_pair_DF$acc1_nmatch)
+                          aligner = aln_best_pair_DF$acc1_aligner,
+                          atype = aln_best_pair_DF$acc1_atype,
+                          mapq = aln_best_pair_DF$acc1_mapq,
+                          alen = aln_best_pair_DF$acc1_alen,
+                          nmatch = aln_best_pair_DF$acc1_nmatch)
 
 acc2_all_bed = data.frame(chr = paste0(acc2_name, "_", aln_best_pair_DF$acc2_tname),
                           start = aln_best_pair_DF$acc2_tstart-1,
                           end = aln_best_pair_DF$acc2_tend,
-                          value1 = aln_best_pair_DF$acc2_aligner,
-                          value2 = aln_best_pair_DF$acc2_atype,
-                          value3 = aln_best_pair_DF$acc2_mapq,
-                          value4 = aln_best_pair_DF$acc2_alen,
-                          value5 = aln_best_pair_DF$acc2_nmatch)
+                          aligner = aln_best_pair_DF$acc2_aligner,
+                          atype = aln_best_pair_DF$acc2_atype,
+                          mapq = aln_best_pair_DF$acc2_mapq,
+                          alen = aln_best_pair_DF$acc2_alen,
+                          nmatch = aln_best_pair_DF$acc2_nmatch)
 
 acc1_hom_bed = data.frame(chr = paste0(acc1_name, "_", aln_best_pair_hom_DF$acc1_tname),
                           start = aln_best_pair_hom_DF$acc1_tstart-1,
                           end = aln_best_pair_hom_DF$acc1_tend,
-                          value1 = aln_best_pair_hom_DF$acc1_aligner,
-                          value2 = aln_best_pair_hom_DF$acc1_atype,
-                          value3 = aln_best_pair_hom_DF$acc1_mapq,
-                          value4 = aln_best_pair_hom_DF$acc1_alen,
-                          value5 = aln_best_pair_hom_DF$acc1_nmatch)
+                          aligner = aln_best_pair_hom_DF$acc1_aligner,
+                          atype = aln_best_pair_hom_DF$acc1_atype,
+                          mapq = aln_best_pair_hom_DF$acc1_mapq,
+                          alen = aln_best_pair_hom_DF$acc1_alen,
+                          nmatch = aln_best_pair_hom_DF$acc1_nmatch)
 
 acc2_hom_bed = data.frame(chr = paste0(acc2_name, "_", aln_best_pair_hom_DF$acc2_tname),
                           start = aln_best_pair_hom_DF$acc2_tstart-1,
                           end = aln_best_pair_hom_DF$acc2_tend,
-                          value1 = aln_best_pair_hom_DF$acc2_aligner,
-                          value2 = aln_best_pair_hom_DF$acc2_atype,
-                          value3 = aln_best_pair_hom_DF$acc2_mapq,
-                          value4 = aln_best_pair_hom_DF$acc2_alen,
-                          value5 = aln_best_pair_hom_DF$acc2_nmatch)
+                          aligner = aln_best_pair_hom_DF$acc2_aligner,
+                          atype = aln_best_pair_hom_DF$acc2_atype,
+                          mapq = aln_best_pair_hom_DF$acc2_mapq,
+                          alen = aln_best_pair_hom_DF$acc2_alen,
+                          nmatch = aln_best_pair_hom_DF$acc2_nmatch)
 
 
 # Define genome data.frame for circlize
@@ -424,6 +424,10 @@ CEN_DF = data.frame(chr = chrs,
                     start = CENstart,
                     end = CENend)
 CEN_DF[, 1] = factor(CEN_DF[, 1], levels = chr_index)
+
+CEN_DF_extend = CEN_DF
+CEN_DF_extend$start = CEN_DF$start - 2e6
+CEN_DF_extend$end = CEN_DF$end - 2e6
 
 # Reverse orientation of given sectors (chromosomes)
 rev_x = function(x, xrange = CELL_META$xlim) {
@@ -448,17 +452,18 @@ nmatch_col_fun = colorRamp2(quantile(c(aln_best_pair_DF$acc1_nmatch, aln_best_pa
 
 # Define corresponding heatmap legends
 lgd_aligner = Legend(at = c("wm", "mm", "sr"), type = "grid", legend_gp = gpar(col = aligner_col_fun), background = NULL, title = "Aligner", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")   
-lgd_atype = Legend(at = c("tp:A:P", "tp:A:S"), type = "grid", legend_gp = gpar(col = atype_col_fun), background = NULL, title = "Aligner", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")   
+lgd_atype = Legend(at = c("tp:A:P", "tp:A:S"), type = "grid", legend_gp = gpar(col = atype_col_fun), background = NULL, title = "Type", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot") 
 lgd_mapq = Legend(col_fun = mapq_col_fun, title = "MAPQ", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")
 lgd_alen = Legend(col_fun = alen_col_fun, title = "Length", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")
 lgd_nmatch = Legend(col_fun = nmatch_col_fun, title = "Matches", title_gp = gpar(fontface = "bold"), title_position = "leftcenter-rot")
-lgd_list1 <- packLegend(lgd_aligner, lgd_atype, lgd_mapq, lgd_alen, lgd_nmatch)
+#lgd_list1 <- packLegend(lgd_aligner, lgd_atype, lgd_mapq, lgd_alen, lgd_nmatch)
+lgd_list1 <- packLegend(lgd_mapq, lgd_alen)
 
 
 
 
 # Initialize circular layout
-circlize_plot = function(acc1_bed, acc2_bed) {
+circlize_plot = function(acc1_bed, acc2_bed, genome_DF) {
  
     circos.par(
                gap.after = c(rep(1, length(acc1_chrs)-1), 5, rep(1, length(acc2_chrs)-1), 5),
@@ -492,7 +497,6 @@ circlize_plot = function(acc1_bed, acc2_bed) {
                      }
                  })
 
-
     # Reverse centromere coordinates for acc2
     CEN_DF_rev = CEN_DF
     for(l in which(CEN_DF_rev$chr %in% acc2_chrs)) {
@@ -518,23 +522,58 @@ circlize_plot = function(acc1_bed, acc2_bed) {
         acc2_bed_rev$start[l] = rev_x(acc2_bed$end[l], c(genome_DF[ which(genome_DF$chr == chr_l), 2], genome_DF[ which(genome_DF$chr == chr_l), 3]))
     } 
 
+    set_track_gap(gap = 0.005)
+
+    # mapq heatmap
+    acc1_bed_mapq = acc1_bed[, c(1:3, which(colnames(acc1_bed) == "mapq"))]
+    acc2_bed_mapq = acc2_bed_rev[, c(1:3, which(colnames(acc2_bed_rev) == "mapq"))]
+    acc_bed_mapq = rbind(acc1_bed_mapq, acc2_bed_mapq)
+    circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(chrs), function(x) {
+        acc_bed_mapq[ which( acc_bed_mapq$chr == genome_DF$chr[x] &
+                             acc_bed_mapq$start >= genome_DF[ which(genome_DF$chr == chrs[x]), 2] &
+                             acc_bed_mapq$end <= genome_DF[ which(genome_DF$chr == chrs[x]), 3] ), ] })),
+        col = mapq_col_fun,
+        border = "white",
+        side = "inside",
+        heatmap_height = 0.05,
+        connection_height = mm_h(8))
+
+    # alen heatmap
+    acc1_bed_alen = acc1_bed[, c(1:3, which(colnames(acc1_bed) == "alen"))]
+    acc2_bed_alen = acc2_bed_rev[, c(1:3, which(colnames(acc2_bed_rev) == "alen"))]
+    acc_bed_alen = rbind(acc1_bed_alen, acc2_bed_alen)
+    circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(chrs), function(x) {
+        acc_bed_alen[ which( acc_bed_alen$chr == genome_DF$chr[x] &
+                             acc_bed_alen$start >= genome_DF[ which(genome_DF$chr == chrs[x]), 2] &
+                             acc_bed_alen$end <= genome_DF[ which(genome_DF$chr == chrs[x]), 3] ), ] })),
+        col = alen_col_fun,
+        border = "white",
+        side = "inside",
+        heatmap_height = 0.05,
+        connection_height = mm_h(8))
+
+#    # nmatch heatmap
+#    acc1_bed_nmatch = acc1_bed[, c(1:3, which(colnames(acc1_bed) == "nmatch"))]
+#    acc2_bed_nmatch = acc2_bed_rev[, c(1:3, which(colnames(acc2_bed_rev) == "nmatch"))]
+#    acc_bed_nmatch = rbind(acc1_bed_nmatch, acc2_bed_nmatch)
+#    circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(chrs), function(x) {
+#        acc_bed_nmatch[ which( acc_bed_nmatch$chr == genome_DF$chr[x] &
+#                             acc_bed_nmatch$start >= genome_DF[ which(genome_DF$chr == chrs[x]), 2] &
+#                             acc_bed_nmatch$end <= genome_DF[ which(genome_DF$chr == chrs[x]), 3] ), ] })),
+#        col = nmatch_col_fun,
+#        border = "white",
+#        side = "inside",
+#        heatmap_height = 0.05,
+#        connection_height = mm_h(8))
+
+    set_track_gap(gap = 0.005)
+
     # Links between acc1 and acc2 aligned read segment pairs
     circos.genomicLink(acc1_bed, acc2_bed_rev, col = rand_color(nrow(acc1_bed)))
-
-
-    # Gypsy heatmap
-    circos.genomicHeatmap(bed = do.call(rbind, lapply(seq_along(acc1_chrs), function(x) {                                                            
-      acc1_bed_mapq = acc1_bed
-      acc1_bed_mapq[acc1_bed_mapq$chr == acc1_chrs[x] &
-                    acc1_bed_mapq$start >= genome_DF
-[Gypsy_bed$chr == chrs[x] &
-                Gypsy_bed$start >= genomeDF$start[x] &
-                Gypsy_bed$end <= genomeDF$end[x],] } )),
-      col = Gypsy_col_fun,
-      border = NA,
-      side = "inside",
-      heatmap_height = 0.05,
-      connection_height = NULL)
+#    circos.genomicLink(acc1_bed, acc2_bed_rev,
+#                       col = mapq_col_fun(sapply(1:nrow(acc1_bed_mapq), function(x) mean(acc1_bed_mapq$mapq[x], acc2_bed_mapq$mapq[x]))))
+#    circos.genomicLink(acc1_bed, acc2_bed_rev,
+#                       col = alen_col_fun(sapply(1:nrow(acc1_bed_alen), function(x) mean(acc1_bed_alen$alen[x], acc2_bed_alen$alen[x]))))
 
     # Reset graphic parameters and internal variables
     circos.clear()
@@ -549,7 +588,9 @@ pdf(paste0(plotDir,
            "putative_centromeric_", recombType, "_",
            paste0(chrName, collapse = "_"), "_circlize_v", date, ".pdf"))                                                                
 circlize_plot(acc1_bed = acc1_all_bed,
-              acc2_bed = acc2_all_bed)
+              acc2_bed = acc2_all_bed,
+              genome_DF = genome_DF)
+draw(lgd_list1, x = unit(1, "npc") - unit(2, "mm"), y = unit(4, "mm"), just = c("right", "bottom"))
 dev.off()
 
 pdf(paste0(plotDir,
@@ -557,8 +598,30 @@ pdf(paste0(plotDir,
            "putative_centromeric_", recombType, "_",
            paste0(chrName, collapse = "_"), "_circlize_v", date, ".pdf"))                                                                
 circlize_plot(acc1_bed = acc1_hom_bed,
-              acc2_bed = acc2_hom_bed)
+              acc2_bed = acc2_hom_bed,
+              genome_DF = genome_DF)
+draw(lgd_list1, x = unit(1, "npc") - unit(2, "mm"), y = unit(4, "mm"), just = c("right", "bottom"))
 dev.off()
+
+#pdf(paste0(plotDir,
+#           acc1, "_", acc2, "_all_",
+#           "putative_centromeric_", recombType, "_",
+#           paste0(chrName, collapse = "_"), "_circlize_zoom_v", date, ".pdf"))                                                                
+#circlize_plot(acc1_bed = acc1_all_bed,
+#              acc2_bed = acc2_all_bed,
+#              genome_DF = CEN_DF_extend)
+#draw(lgd_list1, x = unit(1, "npc") - unit(2, "mm"), y = unit(4, "mm"), just = c("right", "bottom"))
+#dev.off()
+#
+#pdf(paste0(plotDir,
+#           acc1, "_", acc2, "_hom_",
+#           "putative_centromeric_", recombType, "_",
+#           paste0(chrName, collapse = "_"), "_circlize_zoom_v", date, ".pdf"))                                                                
+#circlize_plot(acc1_bed = acc1_hom_bed,
+#              acc2_bed = acc2_hom_bed,
+#              genome_DF = CEN_DF_extend)
+#draw(lgd_list1, x = unit(1, "npc") - unit(2, "mm"), y = unit(4, "mm"), just = c("right", "bottom"))
+#dev.off()
 
 
 
