@@ -349,6 +349,12 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
 aln_best_pair_DF = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_list=acc2_aln_list)
 stopifnot(identical(aln_best_pair_DF$acc1_qname, aln_best_pair_DF$acc2_qname))
 
+#aln_best_pair_DF_ori = aln_best_pair_DF
+#
+#aln_best_pair_DF = aln_best_pair_DF %>%
+#    dplyr::filter(acc1_alen >= 200) %>%
+#    dplyr::filter(acc2_alen >= 200)
+
 print(paste0(nrow(aln_best_pair_DF), " putative ", recombType, " events"))
 #[1] "213 putative co events"
 #[1] "966 putative nco events"
@@ -535,7 +541,7 @@ circlize_plot = function(acc1_bed, acc2_bed, genome_DF) {
                              acc_bed_mapq$start >= genome_DF[ which(genome_DF$chr == chrs[x]), 2] &
                              acc_bed_mapq$end <= genome_DF[ which(genome_DF$chr == chrs[x]), 3] ), ] })),
         col = mapq_col_fun,
-        border = "white",
+        border = NA,
         side = "inside",
         heatmap_height = 0.05,
         connection_height = mm_h(8))
@@ -549,7 +555,7 @@ circlize_plot = function(acc1_bed, acc2_bed, genome_DF) {
                              acc_bed_alen$start >= genome_DF[ which(genome_DF$chr == chrs[x]), 2] &
                              acc_bed_alen$end <= genome_DF[ which(genome_DF$chr == chrs[x]), 3] ), ] })),
         col = alen_col_fun,
-        border = "white",
+        border = NA,
         side = "inside",
         heatmap_height = 0.05,
         connection_height = mm_h(8))
@@ -563,7 +569,7 @@ circlize_plot = function(acc1_bed, acc2_bed, genome_DF) {
 #                             acc_bed_nmatch$start >= genome_DF[ which(genome_DF$chr == chrs[x]), 2] &
 #                             acc_bed_nmatch$end <= genome_DF[ which(genome_DF$chr == chrs[x]), 3] ), ] })),
 #        col = nmatch_col_fun,
-#        border = "white",
+#        border = NA,
 #        side = "inside",
 #        heatmap_height = 0.05,
 #        connection_height = mm_h(8))
