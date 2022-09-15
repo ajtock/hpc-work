@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#__name__ = "__main__"
+__name__ = "__not_main__"
 
 def bar():
     print("bar")

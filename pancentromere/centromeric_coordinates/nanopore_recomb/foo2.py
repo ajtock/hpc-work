@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import os, sys; sys.path.insert(0, os.path.dirname(__file__)) # needed for some interpreters
+import os, sys
+sys.path.insert(0, os.path.dirname(__file__)) # needed for some interpreters
 
 def function_a():
     print("a1")
@@ -13,8 +14,10 @@ def function_b():
     print("b")
 
 print("t1")
+print(__name__)
 if __name__ == "__main__":
     print("m1")
     function_a()
     print("m2")
+
 print("t2")

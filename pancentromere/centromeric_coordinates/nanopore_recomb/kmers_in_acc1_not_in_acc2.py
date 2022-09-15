@@ -16,13 +16,20 @@ import os
 import argparse
 import pickle
 
+from matplotlib import pyplot as plt
+from matplotlib.pyplot import subplots
+from venn import venn
 from time import time, sleep
 import timeit
 
 outDir = "fasta"
+plotDir = outDir + "/plots"
 
 if not os.path.exists(outDir):
     os.makedirs(outDir)
+
+if not os.path.exists(plotDir):
+    os.makedirs(plotDir)
 
 
 # ==== Capture user input as command-line arguments
@@ -44,6 +51,10 @@ def create_parser():
     return parser
 
 
+parser = create_parser().parse_args()
+print(parser)
+
+
 # Function to define a list containing the union of
 # elements in an arbitrary number of lists 
 def union_lists(*lists):
@@ -63,10 +74,6 @@ def write_fasta(kmer_dict, acc_name, outfile):
         for s in kmer_dict.keys():
             fa_object.write(">" + str(s) + "_" + acc_name + "\n")
             fa_object.write(kmer_dict[s] + "\n")
-
-
-parser = create_parser().parse_args()
-print(parser)
 
 
 # Load k-mer count dictionaries (saved as pickle files)
@@ -103,6 +110,20 @@ print(len(acc2notcen))
 # 110021023
 print(len(mitochloro))
 # 475021
+
+# Make venn
+cmap = "plasma"
+
+dataset_dict = {
+    "Col-0 cen": set(acc1cen),
+    "Ler-0 cen": set(acc2cen),
+    "Col-0 arm": set(acc1notcen),
+    "Ler-0 arm": set(acc2notcen)
+} 
+
+plt.venn(dataset_dict, cmap="plasma")
+plt.savefig(plotDir + "/venn.png")   # save the figure to file
+plt.close(fig) 
 
 # Define union of acc1notcen, acc2cen, acc2notcen and mitochloro
 acc1notcen_acc2cen_acc2notcen_mitochloro_union = union_lists(acc1notcen, acc2cen, acc2notcen, mitochloro)

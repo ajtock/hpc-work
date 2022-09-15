@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-# Author: Andy Tock (ajt200@cam.ac.uk)
 # Mainly based on and adapted from: https://github.com/lh3/kmer-cnt/blob/master/kc-py1.py
-# Also see https://www.youtube.com/watch?v=dQG4-Gwo4BE
-# and https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
+# Also see https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
 # Date: 08/08/2022
 
 # Usage:
