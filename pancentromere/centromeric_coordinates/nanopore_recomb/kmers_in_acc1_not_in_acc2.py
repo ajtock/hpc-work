@@ -14,6 +14,7 @@
 import sys
 import os
 import argparse
+import screed
 import pickle
 
 from matplotlib import pyplot as plt
@@ -75,6 +76,41 @@ def write_fasta(kmer_dict, acc_name, outfile):
             fa_object.write(">" + str(s) + "_" + acc_name + "\n")
             fa_object.write(kmer_dict[s] + "\n")
 
+# Function to convert a k-mer into a hash
+# See https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
+# But using hash() instead of mmh3.hash64() because since version 3.4,
+# Python hash() uses SipHash, which is more secure and less vulnerable
+# to hash collision attacks
+def hash_kmer(kmer):
+    """
+    Convert a k-mer into a hash.
+    """
+    # Get the reverse complement
+    rc_kmer = screed.rc(kmer)
+    #
+    # Get the lesser of kmer and rc_kmer, based on lexicographical order
+    if kmer < rc_kmer:
+        canonical_kmer = kmer
+    else:
+        canonical_kmer = rc_kmer
+    #
+    # Calculate hash
+    kmer_hash = hash(canonical_kmer)
+    #
+    return kmer_hash
+
+# Function to convert a list of k-mers into a list of hashes
+# See https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
+def hash_kmers(kmers):
+    """
+    Convert a list of k-mers into a list of hashes.
+    """
+    kmer_hashes = []
+    for kmer in kmers:
+        kmer_hashes.append(hash_kmer(kmer))
+    #
+    return kmer_hashes
+
 
 # Load k-mer count dictionaries (saved as pickle files)
 with open("kmers_in_fasta_dict/" + parser.acc1c + ".fa_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
@@ -111,8 +147,23 @@ print(len(acc2notcen))
 print(len(mitochloro))
 # 475021
 
-# Make venn
+## Convert each list of k-mers into a list of hashes
+#acc1cen_hashes = hash_kmers(acc1cen)
+#acc2cen_hashes = hash_kmers(acc2cen)
+#acc1notcen_hashes = hash_kmers(acc1notcen)
+#acc2notcen_hashes = hash_kmers(acc2notcen)
+#mitochloro_hashes = hash_kmers(mitochloro)
+
+
+# Make venn to show k-mer overlap
 cmap = "plasma"
+
+#hash_dict = {
+#    "Col-0 cen": set(acc1cen_hashes),
+#    "Ler-0 cen": set(acc2cen_hashes),
+#    "Col-0 arm": set(acc1notcen_hashes),
+#    "Ler-0 arm": set(acc2notcen_hashes)
+#} 
 
 dataset_dict = {
     "Col-0 cen": set(acc1cen),
@@ -121,9 +172,15 @@ dataset_dict = {
     "Ler-0 arm": set(acc2notcen)
 } 
 
-plt.venn(dataset_dict, cmap="plasma")
-plt.savefig(plotDir + "/venn.png")   # save the figure to file
-plt.close(fig) 
+
+venn_plot = venn(dataset_dict, cmap="plasma")
+venn_fig = venn_plot.get_figure()
+venn_fig.savefig(plotDir + "/venn.png")
+
+#hash_venn_plot = venn(hash_dict, cmap="plasma")
+#hash_venn_fig = venn_plot.get_figure()
+#hash_venn_fig.savefig(plotDir + "/venn_hash.png")
+
 
 # Define union of acc1notcen, acc2cen, acc2notcen and mitochloro
 acc1notcen_acc2cen_acc2notcen_mitochloro_union = union_lists(acc1notcen, acc2cen, acc2notcen, mitochloro)
