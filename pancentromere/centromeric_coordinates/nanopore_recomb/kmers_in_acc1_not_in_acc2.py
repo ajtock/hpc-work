@@ -23,15 +23,6 @@ from venn import venn
 from time import time, sleep
 import timeit
 
-outDir = "fasta"
-plotDir = outDir + "/plots"
-
-if not os.path.exists(outDir):
-    os.makedirs(outDir)
-
-if not os.path.exists(plotDir):
-    os.makedirs(plotDir)
-
 
 # ==== Capture user input as command-line arguments
 # https://stackoverflow.com/questions/18160078/how-do-you-write-tests-for-the-argparse-portion-of-a-python-module
@@ -51,12 +42,21 @@ def create_parser():
     #### Create parser
     return parser
 
-
 parser = create_parser().parse_args()
 print(parser)
 
 
-# Function to define a list containing the union of
+outDir = "fasta"
+plotDir = outDir + "/plots"
+
+if not os.path.exists(outDir):
+    os.makedirs(outDir)
+
+if not os.path.exists(plotDir):
+    os.makedirs(plotDir)
+
+
+# Define a list containing the union of
 # elements in an arbitrary number of lists 
 def union_lists(*lists):
     """
@@ -65,7 +65,7 @@ def union_lists(*lists):
     return list(set.union(*map(set, lists)))
 
 
-# Function to write dictionary of accession-specific centromeric k-mers
+# Write dictionary of accession-specific centromeric k-mers
 # to FASTA to supply to bbduk.sh as input k-mer database file
 def write_fasta(kmer_dict, acc_name, outfile):
     """
@@ -76,7 +76,8 @@ def write_fasta(kmer_dict, acc_name, outfile):
             fa_object.write(">" + str(s) + "_" + acc_name + "\n")
             fa_object.write(kmer_dict[s] + "\n")
 
-# Function to convert a k-mer into a hash
+
+# Convert a k-mer into a hash
 # See https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
 # But using hash() instead of mmh3.hash64() because since version 3.4,
 # Python hash() uses SipHash, which is more secure and less vulnerable
@@ -99,7 +100,7 @@ def hash_kmer(kmer):
     #
     return kmer_hash
 
-# Function to convert a list of k-mers into a list of hashes
+# Convert a list of k-mers into a list of hashes
 # See https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
 def hash_kmers(kmers):
     """

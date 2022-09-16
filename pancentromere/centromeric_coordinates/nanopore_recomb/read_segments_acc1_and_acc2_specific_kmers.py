@@ -30,10 +30,12 @@ import re
 import numpy as np
 import pandas as pd
 import subprocess
+import screed
 
 from Bio import SeqIO
 from pathlib import Path
-#from time import time, sleep
+from numba import jit
+from time import time, sleep
 #import timeit
 
 # ==== Capture user input as command-line arguments
@@ -57,6 +59,7 @@ def create_parser():
 
 parser = create_parser().parse_args()
 print(parser)
+
 
 acc1_name = parser.acc1.split(".")[0].split("_")[0]
 acc2_name = parser.acc2.split(".")[0].split("_")[0]
@@ -109,7 +112,7 @@ Path(acc2_fa).resolve(strict=True)
 
 # Parse reads as FastaIterator
 reads = list(SeqIO.parse(input_fa, "fasta"))
-read=reads[parser.hybReadNo]
+read = reads[parser.hybReadNo]
 print("Hybrid read number: " + str(parser.hybReadNo))
 
 # Parse acc1-specific k-mers as FastaIterator
@@ -146,6 +149,60 @@ def flatten(lol):
     return [item for sublist in lol for item in sublist]
 
 
+# Convert a k-mer into a hash
+# See https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
+# But using hash() instead of mmh3.hash64() because since version 3.4,
+# Python hash() uses SipHash, which is more secure and less vulnerable
+# to hash collision attacks
+def hash_kmer(kmer):
+    """
+    Convert a k-mer into a hash.
+    """
+    # Get the reverse complement
+    rc_kmer = screed.rc(kmer)
+    #
+    # Get the lesser of kmer and rc_kmer, based on lexicographical order
+    if kmer < rc_kmer:
+        canonical_kmer = kmer
+    else:
+        canonical_kmer = rc_kmer
+    #
+    # Calculate hash
+    kmer_hash = hash(canonical_kmer)
+    #
+    return kmer_hash
+
+
+# Convert a list of k-mers into a list of hashes
+# See https://sourmash.readthedocs.io/en/latest/kmers-and-minhash.html
+def hash_kmers(kmers):
+    """
+    Convert a list of k-mers into a list of hashes.
+    """
+    kmer_hashes = []
+    for kmer in kmers:
+        kmer_hashes.append(hash_kmer(kmer))
+    #
+    return kmer_hashes
+
+# Within a read, find the 0-based start location of all occurrences
+# of each accession-specific k-mer
+@jit(nopython=True)
+def get_kmer_loc_numba(kmers, read):
+    """
+    For a given read, get the within-read 0-based start locations of all k-mer matches.
+    """
+read_hash = hash(read)
+kmer_loc_dict_list = []
+for h in range(len(kmers)):
+kmer_id = kmers[h].id
+kmer_acc = kmers[h].id.split("_", 1)[1]
+kmer_for = str(kmers[h].seq)
+kmer_for_hash = hash(kmer_for)
+kmer_rev = kmer_for.translate(comp_tab)[::-1]
+kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read)]
+
+
 # Within a read, find the 0-based start location of all occurrences
 # of each accession-specific k-mer
 def get_kmer_loc(kmers, read):
@@ -177,6 +234,14 @@ def get_kmer_loc(kmers, read):
             print("k-mer already present in object")
     #
     return pd.DataFrame(kmer_loc_dict_list)
+
+
+start = time()
+kmer_rev = kmer_for.translate(comp_tab)[::-1]
+end = time()
+print("Elapsed: %.19f" % (end - start) + "s")
+print("Elapsed: %s" % (end - start) + "s")
+print(f"Elapsed: {end - start:.19f}s")
 
 
 # Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
