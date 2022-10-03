@@ -36,7 +36,8 @@
 #! error file (NOTE: enclosing directory must exist)
 #SBATCH --error=logs/read_segments_acc1_and_acc2_specific_kmers_py_%A_%a.err
 #! Array task IDs
-#SBATCH --array=0-10749
+#SBATCH --array=0-9999
+#! SBATCH --array=0-749
 
 #! sbatch directives end here (put any additional directives above this line)
 
@@ -74,6 +75,8 @@ ACC1=$(echo $PARAMS | cut -d ' ' -f 2)
 ACC2=$(echo $PARAMS | cut -d ' ' -f 3)
 KMER_SIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 MIN_HITS=$(echo $PARAMS | cut -d ' ' -f 5)
+HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID))
+#HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID+10000))
 
 #! Activate conda environment
 source ~/.bashrc
@@ -81,6 +84,7 @@ conda activate python_3.9.6
 
 #! Output some informative messages
 echo "Slurm array task ID: $SLURM_ARRAY_TASK_ID"
+echo "Hybrid read number: $HYBRID_READ_INDEX"
 echo "Number of nodes used: $numnodes"
 echo "Number of tasks: $numtasks"
 echo "Number of tasks per node: $mpi_tasks_per_node"
@@ -94,7 +98,7 @@ application="./read_segments_acc1_and_acc2_specific_kmers.py"
 
 
 #! Run options for the application:
-options="-r $READS_PREFIX -a1 $ACC1 -a2 $ACC2 -k $KMER_SIZE -mh $MIN_HITS -hr $SLURM_ARRAY_TASK_ID"
+options="-r $READS_PREFIX -a1 $ACC1 -a2 $ACC2 -k $KMER_SIZE -mh $MIN_HITS -hr $HYBRID_READ_INDEX"
 
 
 #! Work directory (i.e. where the job will run):
