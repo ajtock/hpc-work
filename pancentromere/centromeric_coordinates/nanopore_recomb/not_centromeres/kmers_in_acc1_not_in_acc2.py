@@ -250,9 +250,9 @@ acc1cen_acc2cen_acc1notcen_mitochloro_union = union_lists(acc1cen, acc2cen, acc1
 acc2out = list(set(acc2notcen).difference(set(acc1cen_acc2cen_acc1notcen_mitochloro_union)))
 acc2out = sorted(acc2out)
 print(len(acc2out))
-# 
+# 19452914 
 print(len(acc2notcen) - len(acc2out))
-#
+# 90568109
 
 # Convert into dictionary
 acc2out_1tolen = list(range(1, len(acc2out)+1)) 
@@ -269,9 +269,9 @@ write_fasta(kmer_dict=acc2in_dict,
             outfile=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + ".fa")
 
 write_fasta(kmer_dict=acc1out_dict,
-            acc_name=parser.acc1c[0:5],
-            outfile=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + ".fa")
+            acc_name=parser.acc1nc[0:5],
+            outfile=outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + ".fa")
 
 write_fasta(kmer_dict=acc2out_dict,
-            acc_name=parser.acc2c[0:5],
-            outfile=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + ".fa")
+            acc_name=parser.acc2nc[0:5],
+            outfile=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + ".fa")
