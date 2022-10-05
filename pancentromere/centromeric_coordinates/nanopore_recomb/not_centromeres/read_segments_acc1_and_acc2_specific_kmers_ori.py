@@ -111,13 +111,6 @@ acc2_fa = "fasta/" + \
 Path(acc2_fa).resolve(strict=True)
 
 
-start = time()
-print("this")
-end = time()
-print("Elapsed: %.19f" % (end - start) + "s")
-print("Elapsed: %s" % (end - start) + "s")
-print(f"Elapsed: {end - start:.19f}s")
-
 # Parse reads and get read corresponding to index parser.hybReadNo
 #reads = list(SeqIO.parse(input_fa, "fasta"))
 #reads_iter = SeqIO.parse(input_fa, "fasta")
@@ -131,13 +124,14 @@ read = next(v for i, v in enumerate(reads_dict.values()) if i == parser.hybReadN
 del reads_dict
 print("Hybrid read number: " + str(parser.hybReadNo))
 
-# Parse acc1-specific k-mers as FastaIterator
-acc1_kmers_iter = SeqIO.parse(acc1_fa, "fasta")
-#acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
 
-# Parse acc2-specific k-mers as FastaIterator
-acc2_kmers_iter = SeqIO.parse(acc2_fa, "fasta")
-#acc2_kmers = list(SeqIO.parse(acc2_fa, "fasta"))
+## Parse acc1-specific k-mers as FastaIterator
+#acc1_kmers_iter = SeqIO.parse(acc1_fa, "fasta")
+##acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
+#
+## Parse acc2-specific k-mers as FastaIterator
+#acc2_kmers_iter = SeqIO.parse(acc2_fa, "fasta")
+##acc2_kmers = list(SeqIO.parse(acc2_fa, "fasta"))
 
 
 # Build a string translation table to enable
@@ -204,85 +198,71 @@ def hash_kmers(kmers):
     return kmer_hashes
 
 
-# From the list acc1_kmers or acc2_kmers, define a new list of kmers
-# (of class 'Bio.SeqRecord.SeqRecord') that is the subset found in read
-def get_kmer_subset(kmers, read):
-    """
-    From the list acc1_kmers or acc2_kmers, define a new list of kmers
-    (of class 'Bio.SeqRecord.SeqRecord') that is the subset found in read.
-    """
-seqrecord_list2 = [record for record in acc1_kmers_iter if re.search(str(record.seq), str(read.seq)) or re.search(screed.rc(str(record.seq)), str(read.seq))]
-seqrecord_list = []
+## From the list acc1_kmers or acc2_kmers, define a new list of kmers
+## (of class 'Bio.SeqRecord.SeqRecord') that is the subset found in read
+#def get_kmer_subset(kmers, read):
+#    """
+#    From the list acc1_kmers or acc2_kmers, define a new list of kmers
+#    (of class 'Bio.SeqRecord.SeqRecord') that is the subset found in read.
+#    """
+#seqrecord_list2 = [record for record in acc1_kmers_iter if re.search(str(record.seq), str(read.seq)) or re.search(screed.rc(str(record.seq)), str(read.seq))]
+#seqrecord_list = []
+#
+#SeqIO.write(seqrecord_iterator, acc1_subset_fa, "fasta")
+#
+#for record in seqrecord_iterator:
+#    seqrecord_list.append(record)
+#
+#    kmer_seqrecord_list = []
+#    for h in range(len(kmers)):
+#        kmer_for = str(kmers[h].seq)
+#        kmer_rev = screed.rc(kmer_for)
+#        kmer_for_match = re.search(kmer_for, read)
+#        kmer_rev_match = re.search(kmer_rev, read)
+#        if kmer_for_match or kmer_rev_match:
+#            kmer_seqrecord_list.append(kmers[h])
+#    #
+#    return kmer_seqrecord_list
+#
+#acc1_kmers_read_subset = get_kmer_subset(kmers=acc1_kmers, read=str(read.seq))
 
-SeqIO.write(seqrecord_iterator, acc1_subset_fa, "fasta")
-
-for record in seqrecord_iterator:
-    seqrecord_list.append(record)
-
-    kmer_seqrecord_list = []
-    for h in range(len(kmers)):
-        kmer_for = str(kmers[h].seq)
-        kmer_rev = screed.rc(kmer_for)
-        kmer_for_match = re.search(kmer_for, read)
-        kmer_rev_match = re.search(kmer_rev, read)
-        if kmer_for_match or kmer_rev_match:
-            kmer_seqrecord_list.append(kmers[h])
-    #
-    return kmer_seqrecord_list
-
-acc1_kmers_read_subset = get_kmer_subset(kmers=acc1_kmers, read=str(read.seq))
 
 # Within a read, find the 0-based start location of all occurrences
 # of each accession-specific k-mer
 def get_kmer_loc(kmers_fa, read_seq):
-"""
-For a given read, get the within-read 0-based start locations of all k-mer matches.
-"""
-kmers_fa = acc1_fa
-read_seq = str(read.seq)
-# Parse acc-specific k-mers
-kmers_iter = SeqIO.parse(kmers_fa, "fasta")
-kmers = [record for record in kmers_iter if
-         re.search(str(record.seq), read_seq) or
-         re.search(screed.rc(str(record.seq)), read_seq)]
-
-acc1_kmers_iter = SeqIO.parse(acc1_fa, "fasta")
-acc1_kmers_dict = SeqIO.index(acc1_fa, "fasta")
-kmers = [v for i, v in enumerate(acc1_kmers_dict.values()) if
-         re.search(str(v.seq), read_seq) or
-         re.search(screed.rc(str(v.seq)), read_seq)]
-
-seqrecord_list2 = [record for record in acc1_kmers_iter if re.search(str(record.seq), str(read.seq)) or re.search(screed.rc(str(record.seq)), str(read.seq))]
-read = next(v for i, v in enumerate(reads_dict.values()) if i == parser.hybReadNo)
-#read_test = [v for i, v in enumerate(reads_dict.values()) if i == parser.hybReadNo or i == 10749]
-
-#acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
-kmer_loc_dict_list = []
-for h in range(len(kmers)):
-    kmer_id = kmers[h].id
-    kmer_acc = kmers[h].id.split("_", 1)[1]
-    kmer_for = str(kmers[h].seq)
-    #kmer_rev = kmer_for.translate(comp_tab)[::-1] 
-    kmer_rev = screed.rc(kmer_for)
-    kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read)]
-    kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read)]
-    kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
-    if kmer_for < kmer_rev:
-        kmer = kmer_for
-    else:
-        kmer = kmer_rev
-    if kmer not in kmer_loc_dict_list:
-        if kmer_matches:
-            for k in range(len(kmer_matches)):
-                kmer_loc_dict_list.append({"kmer": kmer,
-                                           "id": kmer_id,
-                                           "acc": kmer_acc,
-                                           "hit_start": kmer_matches[k],
-                                           "hit_end": kmer_matches[k] + parser.kmerSize})
-    else:
-        print("k-mer already present in object")
-#
-return pd.DataFrame(kmer_loc_dict_list)
+    """
+    For a given read, get the within-read 0-based start locations of all k-mer matches.
+    """
+    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
+    kmers = [record for record in kmers_iter if
+             re.search(str(record.seq), read_seq) or
+             re.search(screed.rc(str(record.seq)), read_seq)]
+    kmer_loc_dict_list = []
+    for h in range(len(kmers)):
+        kmer_id = kmers[h].id
+        kmer_acc = kmers[h].id.split("_", 1)[1]
+        kmer_for = str(kmers[h].seq)
+        #kmer_rev = kmer_for.translate(comp_tab)[::-1] 
+        kmer_rev = screed.rc(kmer_for)
+        kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read)]
+        kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read)]
+        kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
+        if kmer_for < kmer_rev:
+            kmer = kmer_for
+        else:
+            kmer = kmer_rev
+        if kmer not in kmer_loc_dict_list:
+            if kmer_matches:
+                for k in range(len(kmer_matches)):
+                    kmer_loc_dict_list.append({"kmer": kmer,
+                                               "id": kmer_id,
+                                               "acc": kmer_acc,
+                                               "hit_start": kmer_matches[k],
+                                               "hit_end": kmer_matches[k] + parser.kmerSize})
+        else:
+            print("k-mer already present in object")
+    #
+    return pd.DataFrame(kmer_loc_dict_list)
 
 # Within a read, find the 0-based start location of all occurrences
 # of each accession-specific k-mer
@@ -542,8 +522,8 @@ def main():
     #
     #
     # Get the within-read start locations of accession-specific k-mer matches
-    acc1_kmer_loc_df_tmp = get_kmer_loc(kmers=acc1_kmers, read=str(read.seq)) 
-    acc2_kmer_loc_df_tmp = get_kmer_loc(kmers=acc2_kmers, read=str(read.seq)) 
+    acc1_kmer_loc_df_tmp = get_kmer_loc(kmers_fa=acc1_fa, read_seq=str(read.seq)) 
+    acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa=acc2_fa, read_seq=str(read.seq)) 
     #
     #
     # Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
