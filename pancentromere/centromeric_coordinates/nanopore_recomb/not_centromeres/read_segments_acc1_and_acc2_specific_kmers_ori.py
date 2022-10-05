@@ -102,11 +102,6 @@ acc1_fa = "fasta/" + \
 # File exists sanity check
 Path(acc1_fa).resolve(strict=True)
 
-acc1_subset_fa = "fasta/" + \
-    parser.acc1 + \
-    "_specific_k" + str(parser.kmerSize) + \
-    "_subset.fa"
-
 # Path to acc2-specific k-mers
 acc2_fa = "fasta/" + \
     parser.acc2 + \
@@ -115,8 +110,62 @@ acc2_fa = "fasta/" + \
 # File exists sanity check
 Path(acc2_fa).resolve(strict=True)
 
-# Parse reads as FastaIterator
-reads = list(SeqIO.parse(input_fa, "fasta"))
+
+start = time()
+print("this")
+end = time()
+print("Elapsed: %.19f" % (end - start) + "s")
+print("Elapsed: %s" % (end - start) + "s")
+print(f"Elapsed: {end - start:.19f}s")
+
+# Parse reads and get read corresponding to index parser.hybReadNo
+#reads = list(SeqIO.parse(input_fa, "fasta"))
+#reads_iter = SeqIO.parse(input_fa, "fasta")
+# Dictionary approach assumes use of Python >= 3.7, because in previous
+# Python versions dictionaries were inherently unordered
+reads_dict = SeqIO.index(input_fa, "fasta")
+# Commented-out approach to indexed read extraction from dictionary takes longer, although simpler
+#read = list(reads_dict.values())[parser.hybReadNo]
+read = next(v for i, v in enumerate(reads_dict.values()) if i == parser.hybReadNo or i == 10749)
+read_test = [v for i, v in enumerate(reads_dict.values()) if i == parser.hybReadNo or i == 10749]
+
+end0 = time()
+print("Elapsed: %.19f" % (end0 - start0) + "s")
+
+
+
+reads_dict = SeqIO.index(input_fa, "fasta")
+start0 = time()
+read0 = list(reads_dict.values())[0]
+end0 = time()
+print("Elapsed: %.19f" % (end0 - start0) + "s")
+read0
+
+reads_dict = SeqIO.index(input_fa, "fasta")
+start0 = time()
+read0 = next(v for i, v in enumerate(reads_dict.values()) if i == 0)
+end0 = time()
+print("Elapsed: %.19f" % (end0 - start0) + "s")
+read0
+
+
+reads_dict = SeqIO.index(input_fa, "fasta")
+start10749 = time()
+read10749 = list(reads_dict.values())[10749]
+end10749 = time()
+print("Elapsed: %.19f" % (end10749 - start10749) + "s")
+read10749
+
+reads_dict = SeqIO.index(input_fa, "fasta")
+start10749 = time()
+read10749 = next(v for i, v in enumerate(reads_dict.values()) if i == 10749)
+end10749 = time()
+print("Elapsed: %.19f" % (end10749 - start10749) + "s")
+read10749
+
+
+read10749 = list(reads_dict.values())[10749]
+
 read = reads[parser.hybReadNo]
 del reads
 print("Hybrid read number: " + str(parser.hybReadNo))
@@ -201,7 +250,7 @@ def get_kmer_subset(kmers, read):
     From the list acc1_kmers or acc2_kmers, define a new list of kmers
     (of class 'Bio.SeqRecord.SeqRecord') that is the subset found in read.
     """
-seqrecord_list = [record for record in acc1_kmers_iter if re.search(str(record.seq), str(read.seq)) or re.search(screed.rc(str(record.seq)), str(read.seq))]
+seqrecord_list2 = [record for record in acc1_kmers_iter if re.search(str(record.seq), str(read.seq)) or re.search(screed.rc(str(record.seq)), str(read.seq))]
 seqrecord_list = []
 
 SeqIO.write(seqrecord_iterator, acc1_subset_fa, "fasta")
