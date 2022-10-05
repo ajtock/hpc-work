@@ -237,6 +237,7 @@ def get_kmer_loc(kmers_fa, read_seq):
     kmers = [record for record in kmers_iter if
              re.search(str(record.seq), read_seq) or
              re.search(screed.rc(str(record.seq)), read_seq)]
+    del kmers_iter
     kmer_loc_dict_list = []
     for h in range(len(kmers)):
         kmer_id = kmers[h].id
