@@ -245,8 +245,8 @@ def get_kmer_loc(kmers_fa, read_seq):
         kmer_for = str(kmers[h].seq)
         #kmer_rev = kmer_for.translate(comp_tab)[::-1] 
         kmer_rev = screed.rc(kmer_for)
-        kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read)]
-        kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read)]
+        kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read_seq)]
+        kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read_seq)]
         kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
         if kmer_for < kmer_rev:
             kmer = kmer_for
@@ -264,6 +264,7 @@ def get_kmer_loc(kmers_fa, read_seq):
             print("k-mer already present in object")
     #
     return pd.DataFrame(kmer_loc_dict_list)
+
 
 # Within a read, find the 0-based start location of all occurrences
 # of each accession-specific k-mer
