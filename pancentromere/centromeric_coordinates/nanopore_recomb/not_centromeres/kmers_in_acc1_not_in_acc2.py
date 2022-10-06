@@ -16,6 +16,8 @@ import os
 import argparse
 import screed
 import pickle
+import re
+import subprocess
 
 from matplotlib import pyplot as plt
 from matplotlib.pyplot import subplots
@@ -275,3 +277,62 @@ write_fasta(kmer_dict=acc1out_dict,
 write_fasta(kmer_dict=acc2out_dict,
             acc_name=parser.acc2nc[0:5],
             outfile=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + ".fa")
+
+
+# Align accession-specific read segments to respective genome
+def align_read_segment_mm_sr(segment_fasta, genome):
+    """
+    Align read in FASTA format to genome using minimap2 sr.
+    """
+    aln_cmd = ["minimap2"] + \
+              ["-x", "sr"] + \
+              ["-t", "1"] + \
+              ["-p", "1.0"] + \
+              ["-N", "10"] + \
+              ["index/" + genome + ".fa"] + \
+              [segment_fasta]
+    outpaf = re.sub(".fasta", "_mm_sr.paf", segment_fasta)
+    outerr = re.sub(".fasta", "_mm_sr.err", segment_fasta)
+    with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    # Delete file(s) if unmapped
+    if os.stat(outpaf).st_size == 0:
+        subprocess.run(["rm", outpaf, outerr])
+
+
+# Align accession-specific k-mers to respesctive genome
+def align_kmers_bowtie(kmers_fasta, genome):
+    #kmers_fasta = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + ".fa"
+    #genome = re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
+    """
+    Align accession-specific kmers in FASTA format to respective genome using bowtie.
+    """
+    out_sam = re.sub(".fa", "_bowtie.sam", kmers_fasta)
+    out_err = re.sub(".fa", "_bowtie.err", kmers_fasta)
+    aln_cmd = ["bowtie"] + \
+              ["-x", "index/" + genome] + \
+              ["-f", kmers_fasta] + \
+              ["-v", "0"] + \
+              ["-a", "--best", "--strata"] + \
+              ["--sam"] + \
+              ["--no-unal"] + \
+              ["--threads", "32"]
+    with open(out_sam, "w") as outfile_handle, open(out_err, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+
+# Sort and convert SAM into BAM
+def sam_to_bam(in_sam):
+    #in_sam = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam"
+    """
+    Sort and convert SAM into BAM.
+    """
+    out_bam = re.sub(".sam", ".bam", in_sam)
+    out_err = re.sub(".sam", "_sam2bam.err", in_sam)
+    bam_cmd = ["samtools", "sort"] + \ 
+              ["-@", "32"] + \
+              ["-m", "3G"] + \
+              ["-o", out_bam] + \
+              [in_sam]
+    with open(out_err, "w") as outerr_handle:
+        subprocess.run(bam_cmd, stderr=outerr_handle)
+
