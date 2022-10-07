@@ -287,7 +287,7 @@ def align_kmers_bowtie(kmers_fasta, genome):
     Align accession-specific kmers in FASTA format to respective genome using bowtie.
     """
     out_sam = re.sub(".fa", "_bowtie.sam", kmers_fasta)
-    out_err = re.sub(".fa", "_bowtie.err", kmers_fasta)
+    out_sam_err = re.sub(".fa", "_bowtie.err", kmers_fasta)
     aln_cmd = ["bowtie"] + \
               ["-x", "index/" + genome] + \
               ["-f", kmers_fasta] + \
@@ -296,46 +296,55 @@ def align_kmers_bowtie(kmers_fasta, genome):
               ["--sam"] + \
               ["--no-unal"] + \
               ["--threads", "32"]
-    with open(out_sam, "w") as outfile_handle, open(out_err, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    with open(out_sam, "w") as out_sam_handle, open(out_sam_err, "w") as out_sam_err_handle:
+        subprocess.run(aln_cmd, stdout=out_sam_handle, stderr=out_sam_err_handle)
 
 
-# Sort and convert SAM into BAM, and delete SAM
-def sam_to_bam(in_sam):
+# Sort and convert SAM into BAM and BAM into BED
+def sam_to_bam_to_bed(in_sam):
     #in_sam = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam"
     """
-    Sort and convert SAM into BAM, and delete SAM
+    Sort and convert SAM into BAM and BAM into BED.
     """
     out_bam = re.sub(".sam", ".bam", in_sam)
-    out_err = re.sub(".sam", "_sam2bam.err", in_sam)
+    out_bam_err = re.sub(".sam", "_sam2bam.err", in_sam)
+    out_bed = re.sub(".sam", ".bed", in_sam)
+    out_bed_err = re.sub(".sam", "_bam2bed.err", in_sam)
     bam_cmd = ["samtools", "sort"] + \ 
               ["-@", "32"] + \
               ["-m", "3G"] + \
               ["-o", out_bam] + \
               [in_sam]
-    with open(out_err, "w") as outerr_handle:
-        subprocess.run(bam_cmd, stderr=outerr_handle)
+    bed_cmd = ["bedtools", "bamtobed"] + \
+              ["-i", out_bam] + \
+              ["-tag", "NM"]
+#              ["|", "LC_COLLATE=C", "sort", "-k1,1", "-k2,2n"] + \
+              #["|", "awk", "'BEGIN{FS="\t";OFS="\t"}", "{print", "$1,", "$2,", "$3}'", "-"]
+    with open(out_bam_err, "w") as out_bam_err_handle, open(out_bed, "w") as out_bed_handle, open(out_bed_err, "w") as out_bed_err_handle:
+        subprocess.run(bam_cmd, stderr=out_bam_err_handle)
         subprocess.run(["rm", in_sam])
+        subprocess.run(bed_cmd, stdout=out_bed_handle, stderr=out_bed_err_handle)
+        #subprocess.run(["rm", out_bam])
 
 
 # Align accession-specific k-mers to respective genome
-# Sort and convert SAM into BAM, and delete SAM
+# Sort and convert SAM into BAM and BAM into BED
 # acc1c_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c))
-sam_to_bam(outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
 # acc2c_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c))
-sam_to_bam(outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
 
 # acc1nc_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc))
-sam_to_bam(outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
 # acc2nc_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc))
-sam_to_bam(outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
 
 

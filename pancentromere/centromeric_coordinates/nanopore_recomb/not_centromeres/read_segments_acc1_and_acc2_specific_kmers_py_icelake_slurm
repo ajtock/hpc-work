@@ -37,8 +37,8 @@
 #! error file (NOTE: enclosing directory must exist)
 #SBATCH --error=logs/read_segments_acc1_and_acc2_specific_kmers_py_%A_%a.err
 #! Array task IDs
-#SBATCH --array=0-9999
-#! SBATCH --array=0-749
+#! SBATCH --array=0-9999
+#SBATCH --array=0-749
 
 #! sbatch directives end here (put any additional directives above this line)
 
@@ -76,8 +76,8 @@ ACC1=$(echo $PARAMS | cut -d ' ' -f 2)
 ACC2=$(echo $PARAMS | cut -d ' ' -f 3)
 KMER_SIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 MIN_HITS=$(echo $PARAMS | cut -d ' ' -f 5)
-HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID))
-#HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID+10000))
+#!HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID))
+HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID+10000))
 
 #! Activate conda environment
 source ~/.bashrc
