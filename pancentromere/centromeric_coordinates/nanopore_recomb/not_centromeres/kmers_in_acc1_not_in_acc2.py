@@ -284,10 +284,12 @@ def align_kmers_bowtie(kmers_fasta, genome):
     #kmers_fasta = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + ".fa"
     #genome = re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
     """
-    Align accession-specific kmers in FASTA format to respective genome using bowtie.
+    Align accession-specific kmers in FASTA format to respective genome using bowtie
+    and convert SAM into sorted BAM.
     """
-    out_sam = re.sub(".fa", "_bowtie.sam", kmers_fasta)
     out_sam_err = re.sub(".fa", "_bowtie.err", kmers_fasta)
+    out_bam = re.sub(".fa", "_bowtie_sorted.bam", kmers_fasta)
+    out_bam_err = re.sub(".fa", "_bowtie_sorted.err", kmers_fasta)
     aln_cmd = ["bowtie"] + \
               ["-x", "index/" + genome] + \
               ["-f", kmers_fasta] + \
@@ -296,55 +298,85 @@ def align_kmers_bowtie(kmers_fasta, genome):
               ["--sam"] + \
               ["--no-unal"] + \
               ["--threads", "32"]
-    with open(out_sam, "w") as out_sam_handle, open(out_sam_err, "w") as out_sam_err_handle:
-        subprocess.run(aln_cmd, stdout=out_sam_handle, stderr=out_sam_err_handle)
-
-
-# Sort and convert SAM into BAM and BAM into BED
-def sam_to_bam_to_bed(in_sam):
-    #in_sam = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam"
-    """
-    Sort and convert SAM into BAM and BAM into BED.
-    """
-    out_bam = re.sub(".sam", ".bam", in_sam)
-    out_bam_err = re.sub(".sam", "_sam2bam.err", in_sam)
-    out_bed = re.sub(".sam", ".bed", in_sam)
-    out_bed_err = re.sub(".sam", "_bam2bed.err", in_sam)
     bam_cmd = ["samtools", "sort"] + \ 
               ["-@", "32"] + \
               ["-m", "3G"] + \
-              ["-o", out_bam] + \
-              [in_sam]
-    bed_cmd = ["bedtools", "bamtobed"] + \
-              ["-i", out_bam] + \
-              ["-tag", "NM"]
-#              ["|", "LC_COLLATE=C", "sort", "-k1,1", "-k2,2n"] + \
-              #["|", "awk", "'BEGIN{FS="\t";OFS="\t"}", "{print", "$1,", "$2,", "$3}'", "-"]
-    with open(out_bam_err, "w") as out_bam_err_handle, open(out_bed, "w") as out_bed_handle, open(out_bed_err, "w") as out_bed_err_handle:
-        subprocess.run(bam_cmd, stderr=out_bam_err_handle)
-        subprocess.run(["rm", in_sam])
-        subprocess.run(bed_cmd, stdout=out_bed_handle, stderr=out_bed_err_handle)
-        #subprocess.run(["rm", out_bam])
+              ["-o", out_bam]
+    with open(out_sam_err, "w") as out_sam_err_handle, open(out_bam_err, "w") as out_bam_err_handle:
+        sam = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE, stderr=out_sam_err_handle)
+        subprocess.check_output(bam_cmd, stdin=sam.stdout, stderr=out_bam_err_handle)
+        sam.wait()
+
+
+# Convert BAM into BED and coordinate-sort BED
+def bam_to_bed(in_bam):
+in_bam = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie_sorted.bam"
+"""
+Convert BAM into BED and coordinate-sort BED.
+"""
+out_bed = re.sub(".bam", ".bed", in_bam)
+out_bed_err = re.sub(".bam", "_bam2bed.err", in_bam)
+out_grep_err = re.sub(".bam", "_grepbed.err", in_bam)
+out_sort_err = re.sub(".bam", "_sortbed.err", in_bam)
+bed_cmd = ["bedtools", "bamtobed"] + \
+          ["-i", in_bam] + \
+          ["-tag", "NM"]
+grep_cmd = ["grep", "^Chr"]
+sort_cmd = ["sort", "-k1,1", "-k2,2n"]
+#awk_cmd =  ["awk", "'BEGIN{FS="\t";OFS="\t"}", "{print", "$1,", "$2,", "$3}'"]
+with open(out_bed, "w") as out_bed_handle, \
+    open(out_bed_err, "w") as out_bed_err_handle, \
+    open(out_grep_err, "w") as out_grep_err_handle, \
+    open(out_sort_err, "w") as out_sort_err_handle:
+    bed = subprocess.Popen(bed_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
+    grep = subprocess.Popen(grep_cmd, stdin=bed.stdout, stdout=subprocess.PIPE, stderr=out_grep_err_handle)
+    subprocess.call(sort_cmd, stdin=grep.stdout, stdout=out_bed_handle, stderr=out_sort_err_handle)
+    bed.wait()
+    grep.wait()
+
+ 
+with open(out_bed_err, "w") as out_bed_err_handle, open(out_sort_err, "w") as out_sort_err_handle:
+    bed = subprocess.Popen(bed_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
+    subprocess.check_output(sort_cmd, stdin=bed.stdout, stderr=out_sort_err_handle)
+
+
+    subprocess.run(bam_cmd, stderr=out_bam_err_handle)
+    subprocess.run(bed_cmd, stdout=out_bed_handle, stderr=out_bed_err_handle)
+    #subprocess.run(["rm", out_bam])
+
+        subprocess.Popen(bed.
+
+#    # Delete file(s) if unmapped
+#    sam_view_cmd = ["samtools"] + \
+#                   ["view", outsam]
+#    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
+#    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
+#    sam_rm_cmd = ["rm"] + \
+#                 [outsam, outerr]
+#    if sam_flag == 4:
+#        subprocess.run(sam_rm_cmd)
+
+
 
 
 # Align accession-specific k-mers to respective genome
-# Sort and convert SAM into BAM and BAM into BED
+# Convert BAM into BED
 # acc1c_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c))
-sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+bam_to_bed(in_bam=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + "_bowtie_sorted.bam")
 # acc2c_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c))
-sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+bam_to_bed(in_bam=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + "_bowtie_sorted.bam")
 
 # acc1nc_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc))
-sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+bam_to_bed(in_bam=outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie_sorted.bam")
 # acc2nc_kmers
 align_kmers_bowtie(kmers_fasta=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + ".fa",
                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc))
-sam_to_bam_to_bed(in_sam=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + "_bowtie.sam")
+bam_to_bed(in_bam=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + "_bowtie_sorted.bam")
 
 
