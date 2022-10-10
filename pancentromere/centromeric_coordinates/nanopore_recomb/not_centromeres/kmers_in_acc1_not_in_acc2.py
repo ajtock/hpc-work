@@ -18,7 +18,9 @@ import screed
 import pickle
 import re
 import subprocess
+import pybedtools
 
+from pybedtools import BedTool
 from matplotlib import pyplot as plt
 from matplotlib.pyplot import subplots
 from venn import venn
@@ -279,12 +281,18 @@ write_fasta(kmer_dict=acc2nc_kmers_dict,
             outfile=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + ".fa")
 
 
-# Align accession-specific k-mers to respesctive genome
+
+## Downsample accession-specific k-mers
+
+
+# Align accession-specific k-mers to respesctive genome,
+# keeping zero-mismatch alignments only, and including multi-mappers
 def align_kmers_bowtie(kmers_fasta, genome):
     #kmers_fasta = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + ".fa"
     #genome = re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
     """
-    Align accession-specific kmers in FASTA format to respective genome using bowtie
+    Align accession-specific kmers in FASTA format to respective genome using bowtie,
+    keeping zero-mismatch alignments only, including multi-mappers,
     and convert SAM into sorted BAM.
     """
     out_sam_err = re.sub(".fa", "_bowtie.err", kmers_fasta)
@@ -308,55 +316,123 @@ def align_kmers_bowtie(kmers_fasta, genome):
         sam.wait()
 
 
-# Convert BAM into BED and coordinate-sort BED
+# Convert BAM into BED
 def bam_to_bed(in_bam):
-in_bam = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie_sorted.bam"
-"""
-Convert BAM into BED and coordinate-sort BED.
-"""
-out_bed = re.sub(".bam", ".bed", in_bam)
-out_bed_err = re.sub(".bam", "_bam2bed.err", in_bam)
-out_grep_err = re.sub(".bam", "_grepbed.err", in_bam)
-out_sort_err = re.sub(".bam", "_sortbed.err", in_bam)
-bed_cmd = ["bedtools", "bamtobed"] + \
-          ["-i", in_bam] + \
-          ["-tag", "NM"]
-grep_cmd = ["grep", "^Chr"]
-sort_cmd = ["sort", "-k1,1", "-k2,2n"]
-#awk_cmd =  ["awk", "'BEGIN{FS="\t";OFS="\t"}", "{print", "$1,", "$2,", "$3}'"]
-with open(out_bed, "w") as out_bed_handle, \
-    open(out_bed_err, "w") as out_bed_err_handle, \
-    open(out_grep_err, "w") as out_grep_err_handle, \
-    open(out_sort_err, "w") as out_sort_err_handle:
-    bed = subprocess.Popen(bed_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
-    grep = subprocess.Popen(grep_cmd, stdin=bed.stdout, stdout=subprocess.PIPE, stderr=out_grep_err_handle)
-    subprocess.call(sort_cmd, stdin=grep.stdout, stdout=out_bed_handle, stderr=out_sort_err_handle)
-    bed.wait()
-    grep.wait()
-
- 
-with open(out_bed_err, "w") as out_bed_err_handle, open(out_sort_err, "w") as out_sort_err_handle:
-    bed = subprocess.Popen(bed_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
-    subprocess.check_output(sort_cmd, stdin=bed.stdout, stderr=out_sort_err_handle)
+    #in_bam = outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + "_bowtie_sorted.bam"
+    """
+    Convert BAM into BED.
+    """
+    out_bed = re.sub(".bam", ".bed", in_bam)
+    out_bed_err = re.sub(".bam", "_bam2bed.err", in_bam)
+    out_grep_err = re.sub(".bam", "_grepbed.err", in_bam)
+#    out_sort_err = re.sub(".bam", "_sortbed.err", in_bam)
+    bed_cmd = ["bedtools", "bamtobed"] + \
+              ["-i", in_bam] + \
+              ["-tag", "NM"]
+    grep_cmd = ["grep", "^Chr"]
+    #export_cmd = ["export", "LC_COLLATE=C"]
+    #sort_cmd = ["sort", "-k1,1", "-k2,2n"]
+    #awk_cmd =  ["awk", "'BEGIN{FS="\t";OFS="\t"}", "{print", "$1,", "$2,", "$3}'"]
+    with open(out_bed, "w") as out_bed_handle, \
+        open(out_bed_err, "w") as out_bed_err_handle, \
+        open(out_grep_err, "w") as out_grep_err_handle:
+        bed = subprocess.Popen(bed_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
+        subprocess.call(grep_cmd, stdin=bed.stdout, stdout=out_bed_handle, stderr=out_grep_err_handle)
+        bed.wait()
+        #subprocess.run(["rm", in_bam])
 
 
-    subprocess.run(bam_cmd, stderr=out_bam_err_handle)
-    subprocess.run(bed_cmd, stdout=out_bed_handle, stderr=out_bed_err_handle)
-    #subprocess.run(["rm", out_bam])
-
-        subprocess.Popen(bed.
-
-#    # Delete file(s) if unmapped
-#    sam_view_cmd = ["samtools"] + \
-#                   ["view", outsam]
-#    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
-#    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
-#    sam_rm_cmd = ["rm"] + \
-#                 [outsam, outerr]
-#    if sam_flag == 4:
-#        subprocess.run(sam_rm_cmd)
+# Make BED of parser.kmerSize-bp adjacent genomic windows
+# to be used for getting overlapping k-mers
+def genomic_windows(window_size, step_size, acc_name):
+    #window_size = parser.kmerSize
+    #step_size = parser.kmerSize
+    #acc_name = re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
+    """
+    Make BED of genomic windows.
+    """
+    out_bed = outDir + "/" + acc_name + "_Chr_windows_w" + str(window_size) + "_s" + str(step_size) + ".bed"
+    chr_sizes_file = acc_name + "_Chr.fa.sizes"
+    windows = BedTool().window_maker(g=chr_sizes_file, w=window_size, s=step_size)
+    windows.saveas(out_bed)
 
 
+# Get the aligned k-mer coordinates for each k-mer that overlaps
+# a genomic window along >= overlap_prop of the aligned k-mers length
+# This minimum overlap proportion could be increased or decreased
+# for a smaller or larger k-mer subset, respectively
+# Decreasing it would exclude fewer k-mers that straddle two adjacent
+# genomic windows, but would include more k-mers that cover a single
+# variant site, whereas increasing it would do the opposite
+def get_gwol_kmers(overlap_prop, windows_bed, kmers_bed):
+    #overlap_prop = 0.9
+    #windows_bed = outDir + \
+    #    "/" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
+    #    "_Chr_windows_w" + str(parser.kmerSize) + \
+    #    "_s" + str(parser.kmerSize) + ".bed"
+    #kmers_bed = outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted.bed"
+    """
+    Get the aligned k-mer coordinates for each k-mer that overlaps
+    a genomic window along >= overlap_prop of the aligned k-mer's length.
+    """
+    out_bed = re.sub(".bed", "_intersect_op" + str(overlap_prop) + ".bed", kmers_bed)
+    out_bed_err = re.sub(".bed", "_intersect_op" + str(overlap_prop) + ".err", kmers_bed)
+    out_cut_err = re.sub(".bed", "_intersect_op" + str(overlap_prop) + "_cut.err", kmers_bed)
+    intersect_cmd = ["bedtools", "intersect"] + \
+                    ["-wb"] + \
+                    ["-F", str(overlap_prop)] + \
+                    ["-a", windows_bed] + \
+                    ["-b", kmers_bed] + \
+                    ["-sorted"]
+    cut_cmd = ["cut", "-f4,5,6,7,8,9"]
+    with open(out_bed, "w") as out_bed_handle, \
+        open(out_bed_err, "w") as out_bed_err_handle, \
+        open(out_cut_err, "w") as out_cut_err_handle:
+        intersect = subprocess.Popen(intersect_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
+        subprocess.call(cut_cmd, stdin=intersect.stdout, stdout=out_bed_handle, stderr=out_cut_err_handle)
+        intersect.wait()
+
+
+# From the full set of aligned accession-specific k-mers, keep k-mers
+# whose alignment coordinates do not overlap those of other k-mers to
+# retain singletons that may otherwise be excluded by get_gwol_kmers()
+def get_singletons(kmers_bed):
+    #kmers_bed = outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted.bed"
+    """
+    Keep k-mers whose alignment coordinates do not overlap those of other k-mers.
+    """
+    out_bed = re.sub(".bed", "_merge.bed", kmers_bed)
+    out_bed_err = re.sub(".bed", "_merge.err", kmers_bed)
+    out_grep_err = re.sub(".bed", "_merge_grep.err", kmers_bed)
+    merge_cmd = ["bedtools", "merge"] + \
+                ["-i", kmers_bed] + \
+                ["-d", "-1"] + \
+                ["-c", "1"] + \
+                ["-o", "count"]
+    grep_cmd = ["grep", "\t1$"]
+    with open(out_bed, "w") as out_bed_handle, \
+        open(out_bed_err, "w") as out_bed_err_handle, \
+        open(out_grep_err, "w") as out_grep_err_handle:
+        merge = subprocess.Popen(merge_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
+        subprocess.call(grep_cmd, stdin=merge.stdout, stdout=out_bed_handle, stderr=out_grep_err_handle)
+        merge.wait()
+
+
+
+
+# Make BED of genomic windows to be used for getting overlapping k-mers
+# acc1
+genomic_windows(window_size=parser.kmerSize,
+                step_size=parser.kmerSize,
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc))
+# acc2
+genomic_windows(window_size=parser.kmerSize,
+                step_size=parser.kmerSize,
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc))
 
 
 # Align accession-specific k-mers to respective genome
