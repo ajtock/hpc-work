@@ -439,64 +439,39 @@ def get_singleton_kmers(kmers_bed):
             subprocess.run(["rm", out_grep_err])
 
 
-# Get the union of k-mers obtained by get_gwol_kmers and get_singleton_kmers
-def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed, overlap_prop):
-    #overlap_prop = 0.9
-    #gwol_kmers_bed = outDir + "/" + \
-    #    parser.acc1nc + "_specific_k" + \
-    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #    str(overlap_prop) + ".bed"
-    #singleton_kmers_bed = outDir + "/" + \
-    #    parser.acc1nc + "_specific_k" + \
-    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
-    """
-    Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
-    by removing duplicate rows.
-    """
-    gwol_kmers_cut_bed = re.sub(".bed", "_cut.bed", gwol_kmers_bed)
-    gwol_kmers_cut_bed_err = re.sub(".bed", "_cut.err", gwol_kmers_bed)
-    singleton_kmers_cut_bed = re.sub(".bed", "_cut.bed", singleton_kmers_bed)
-    singleton_kmers_cut_bed_err = re.sub(".bed", "_cut.err", singleton_kmers_bed)
-    filt_kmers_cat_bed_err = re.sub(".bed", "_merge_cat.err", gwol_kmers_bed)
-    filt_kmers_sort_bed_err = re.sub(".bed", "_merge_cat_sort.err", gwol_kmers_bed)
-    filt_kmers_uniq_bed = re.sub(".bed", "_merge_cat_sort_uniq.bed", gwol_kmers_bed)
-    filt_kmers_uniq_bed_err = re.sub(".bed", "_merge_cat_sort_uniq.err", gwol_kmers_bed)
-    cut_gwol_cmd = ["cut", "-f1,2,3", gwol_kmers_bed]
-    cut_singleton_cmd = ["cut", "-f1,2,3", singleton_kmers_bed]
-    cat_cmd = ["cat", gwol_kmers_cut_bed, singleton_kmers_cut_bed]
-    sort_env = os.environ.copy()
-    sort_env["LC_COLLATE"] = "C"
-    sort_cmd = ["sort", "-k1,1", "-k2,2n"]
-    uniq_cmd = ["uniq"]
-    with open(gwol_kmers_cut_bed, "w") as gwol_kmers_cut_bed_handle, \
-        open(gwol_kmers_cut_bed_err, "w") as gwol_kmers_cut_bed_err_handle, \
-        open(singleton_kmers_cut_bed, "w") as singleton_kmers_cut_bed_handle, \
-        open(singleton_kmers_cut_bed_err, "w") as singleton_kmers_cut_bed_err_handle, \
-        open(filt_kmers_cat_bed_err, "w") as filt_kmers_cat_bed_err_handle, \
-        open(filt_kmers_sort_bed_err, "w") as filt_kmers_sort_bed_err_handle, \
-        open(filt_kmers_uniq_bed, "w") as filt_kmers_uniq_bed_handle, \
-        open(filt_kmers_uniq_bed_err, "w") as filt_kmers_uniq_bed_err_handle:
-        subprocess.run(cut_gwol_cmd, stdout=gwol_kmers_cut_bed_handle, stderr=gwol_kmers_cut_bed_err_handle)
-        subprocess.run(cut_singleton_cmd, stdout=singleton_kmers_cut_bed_handle, stderr=singleton_kmers_cut_bed_err_handle)
-        cat = subprocess.Popen(cat_cmd, stdout=subprocess.PIPE, stderr=filt_kmers_cat_bed_err_handle)
-        sort = subprocess.Popen(sort_cmd, stdin=cat.stdout, stdout=subprocess.PIPE, stderr=filt_kmers_sort_bed_err_handle, env=sort_env)
-        subprocess.call(uniq_cmd, stdin=sort.stdout, stdout=filt_kmers_uniq_bed_handle, stderr=filt_kmers_uniq_bed_err_handle)
-        sort.wait()
-        # Delete empty error files
-        if os.stat(gwol_kmers_cut_bed_err).st_size == 0:
-            subprocess.run(["rm", gwol_kmers_cut_bed_err])
-        if os.stat(singleton_kmers_cut_bed_err).st_size == 0:
-            subprocess.run(["rm", singleton_kmers_cut_bed_err])
-        if os.stat(filt_kmers_cat_bed_err,).st_size == 0:
-            subprocess.run(["rm", filt_kmers_cat_bed_err])
-        if os.stat(filt_kmers_sort_bed_err,).st_size == 0:
-            subprocess.run(["rm", filt_kmers_sort_bed_err])
-        if os.stat(filt_kmers_uniq_bed_err,).st_size == 0:
-            subprocess.run(["rm", filt_kmers_uniq_bed_err])
+# Make a FASTA file of the genomic sequences for the downsampled
+# accession-specific k-mer alignment coordinates
+def get_filt_kmers_fa(overlap_prop, kmers_bed, acc_name):
+overlap_prop = 0.9
+kmers_bed = outDir + "/" + \
+    parser.acc1nc + "_specific_k" + \
+    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    str(overlap_prop) + "_merge_dedup.bed"
+acc_name = re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
+"""
+Make FASTA of the genomic sequences for the downsampled
+accession-specific k-mer alignment coordinates in kmers_bed.
+"""
+genome_fa = outDir + "/" + acc_name + ".fa"
+out_fa = re.sub(".bed", ".fa", kmers_bed)
+out_fa_err = re.sub(".bed", "_fa.err", kmers_bed)
+getfasta_cmd = ["bedtools", "getfasta"] + \
+               ["-fi", genome_fa] + \
+               ["-bed", kmers_bed] + \
+               ["-fo", out_fa] + \
+               ["-name"]
+with open(out_fa_err, "w") as out_fa_err_handle:
+    subprocess.run(getfasta_cmd, stderr=out_fa_err_handle)
+    # Delete empty error files
+    if os.stat(out_fa_err).st_size == 0:
+        subprocess.run(["rm", out_fa_err])
 
 
-# Get the union of k-mers obtained by get_gwol_kmers and get_singleton_kmers
-def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed, overlap_prop):
+
+# Get the union of k-mer alignment coordinates obtained by
+# get_gwol_kmers and get_singleton_kmers
+# (i.e., downsampled accession-specific k-mer alignment coordinates)
+def union_filt_kmers(overlap_prop, gwol_kmers_bed, singleton_kmers_bed):
     #overlap_prop = 0.9
     #gwol_kmers_bed = outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
@@ -523,6 +498,66 @@ def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed, overlap_prop):
                                                            ignore_index=True)
     filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
     filt_kmers_cat_DF_sort_dedup.to_csv(filt_kmers_dedup_bed, sep="\t", header=False, index=False)
+
+
+## Get the union of k-mer alignment coordinates obtained by
+## get_gwol_kmers and get_singleton_kmers
+## (i.e., downsampled accession-specific k-mer alignment coordinates)
+#def union_filt_kmers(overlap_prop, gwol_kmers_bed, singleton_kmers_bed):
+#    #overlap_prop = 0.9
+#    #gwol_kmers_bed = outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+#    #    str(overlap_prop) + ".bed"
+#    #singleton_kmers_bed = outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
+#    """
+#    Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
+#    by removing duplicate rows.
+#    """
+#    gwol_kmers_cut_bed = re.sub(".bed", "_cut.bed", gwol_kmers_bed)
+#    gwol_kmers_cut_bed_err = re.sub(".bed", "_cut.err", gwol_kmers_bed)
+#    singleton_kmers_cut_bed = re.sub(".bed", "_cut.bed", singleton_kmers_bed)
+#    singleton_kmers_cut_bed_err = re.sub(".bed", "_cut.err", singleton_kmers_bed)
+#    filt_kmers_cat_bed_err = re.sub(".bed", "_merge_cat.err", gwol_kmers_bed)
+#    filt_kmers_sort_bed_err = re.sub(".bed", "_merge_cat_sort.err", gwol_kmers_bed)
+#    filt_kmers_uniq_bed = re.sub(".bed", "_merge_cat_sort_uniq.bed", gwol_kmers_bed)
+#    filt_kmers_uniq_bed_err = re.sub(".bed", "_merge_cat_sort_uniq.err", gwol_kmers_bed)
+#    cut_gwol_cmd = ["cut", "-f1,2,3", gwol_kmers_bed]
+#    cut_singleton_cmd = ["cut", "-f1,2,3", singleton_kmers_bed]
+#    cat_cmd = ["cat", gwol_kmers_cut_bed, singleton_kmers_cut_bed]
+#    sort_env = os.environ.copy()
+#    sort_env["LC_COLLATE"] = "C"
+#    sort_cmd = ["sort", "-k1,1", "-k2,2n"]
+#    uniq_cmd = ["uniq"]
+#    with open(gwol_kmers_cut_bed, "w") as gwol_kmers_cut_bed_handle, \
+#        open(gwol_kmers_cut_bed_err, "w") as gwol_kmers_cut_bed_err_handle, \
+#        open(singleton_kmers_cut_bed, "w") as singleton_kmers_cut_bed_handle, \
+#        open(singleton_kmers_cut_bed_err, "w") as singleton_kmers_cut_bed_err_handle, \
+#        open(filt_kmers_cat_bed_err, "w") as filt_kmers_cat_bed_err_handle, \
+#        open(filt_kmers_sort_bed_err, "w") as filt_kmers_sort_bed_err_handle, \
+#        open(filt_kmers_uniq_bed, "w") as filt_kmers_uniq_bed_handle, \
+#        open(filt_kmers_uniq_bed_err, "w") as filt_kmers_uniq_bed_err_handle:
+#        subprocess.run(cut_gwol_cmd, stdout=gwol_kmers_cut_bed_handle, stderr=gwol_kmers_cut_bed_err_handle)
+#        subprocess.run(cut_singleton_cmd, stdout=singleton_kmers_cut_bed_handle, stderr=singleton_kmers_cut_bed_err_handle)
+#        cat = subprocess.Popen(cat_cmd, stdout=subprocess.PIPE, stderr=filt_kmers_cat_bed_err_handle)
+#        sort = subprocess.Popen(sort_cmd, stdin=cat.stdout, stdout=subprocess.PIPE, stderr=filt_kmers_sort_bed_err_handle, env=sort_env)
+#        subprocess.call(uniq_cmd, stdin=sort.stdout, stdout=filt_kmers_uniq_bed_handle, stderr=filt_kmers_uniq_bed_err_handle)
+#        sort.wait()
+#        # Delete empty error files
+#        if os.stat(gwol_kmers_cut_bed_err).st_size == 0:
+#            subprocess.run(["rm", gwol_kmers_cut_bed_err])
+#        if os.stat(singleton_kmers_cut_bed_err).st_size == 0:
+#            subprocess.run(["rm", singleton_kmers_cut_bed_err])
+#        if os.stat(filt_kmers_cat_bed_err,).st_size == 0:
+#            subprocess.run(["rm", filt_kmers_cat_bed_err])
+#        if os.stat(filt_kmers_sort_bed_err,).st_size == 0:
+#            subprocess.run(["rm", filt_kmers_sort_bed_err])
+#        if os.stat(filt_kmers_uniq_bed_err,).st_size == 0:
+#            subprocess.run(["rm", filt_kmers_uniq_bed_err])
+
+
 
 
 # Make BED of genomic windows to be used for getting overlapping k-mers
