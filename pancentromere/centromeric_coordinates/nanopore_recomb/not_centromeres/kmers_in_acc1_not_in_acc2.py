@@ -19,6 +19,7 @@ import pickle
 import re
 import subprocess
 import pybedtools
+import pandas as pd
 
 from pybedtools import BedTool
 from matplotlib import pyplot as plt
@@ -492,6 +493,36 @@ def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed, overlap_prop):
             subprocess.run(["rm", filt_kmers_sort_bed_err])
         if os.stat(filt_kmers_uniq_bed_err,).st_size == 0:
             subprocess.run(["rm", filt_kmers_uniq_bed_err])
+
+
+# Get the union of k-mers obtained by get_gwol_kmers and get_singleton_kmers
+def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed, overlap_prop):
+    #overlap_prop = 0.9
+    #gwol_kmers_bed = outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    #    str(overlap_prop) + ".bed"
+    #singleton_kmers_bed = outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
+    """
+    Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
+    by removing duplicate rows.
+    """
+    filt_kmers_dedup_bed = re.sub(".bed", "_merge_dedup.bed", gwol_kmers_bed)
+    gwol_kmers_DF = pd.read_csv(gwol_kmers_bed, sep="\t", header=None)
+    singleton_kmers_DF = pd.read_csv(singleton_kmers_bed, sep="\t", header=None)
+    filt_kmers_cat_DF = pd.concat(objs=[gwol_kmers_DF.iloc[:,0:3], singleton_kmers_DF.iloc[:,0:3]],
+                                  axis=0,
+                                  ignore_index=True)
+    filt_kmers_cat_DF.columns = ["chr", "start0", "end"]
+    filt_kmers_cat_DF_sort = filt_kmers_cat_DF.sort_values(by=["chr", "start0"],
+                                                           axis=0,
+                                                           ascending=[True, True],
+                                                           kind="quicksort",
+                                                           ignore_index=True)
+    filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
+    filt_kmers_cat_DF_sort_dedup.to_csv(filt_kmers_dedup_bed, sep="\t", header=False, index=False)
 
 
 # Make BED of genomic windows to be used for getting overlapping k-mers
