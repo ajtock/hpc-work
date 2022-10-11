@@ -325,12 +325,13 @@ def bam_to_bed(in_bam):
     out_bed = re.sub(".bam", ".bed", in_bam)
     out_bed_err = re.sub(".bam", "_bam2bed.err", in_bam)
     out_grep_err = re.sub(".bam", "_grepbed.err", in_bam)
-#    out_sort_err = re.sub(".bam", "_sortbed.err", in_bam)
+    #out_sort_err = re.sub(".bam", "_sortbed.err", in_bam)
     bed_cmd = ["bedtools", "bamtobed"] + \
               ["-i", in_bam] + \
               ["-tag", "NM"]
     grep_cmd = ["grep", "^Chr"]
-    #export_cmd = ["export", "LC_COLLATE=C"]
+    #sort_env = os.environ.copy()
+    #sort_env["LC_COLLATE"] = "C"
     #sort_cmd = ["sort", "-k1,1", "-k2,2n"]
     #awk_cmd =  ["awk", "'BEGIN{FS="\t";OFS="\t"}", "{print", "$1,", "$2,", "$3}'"]
     with open(out_bed, "w") as out_bed_handle, \
@@ -339,6 +340,11 @@ def bam_to_bed(in_bam):
         bed = subprocess.Popen(bed_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
         subprocess.call(grep_cmd, stdin=bed.stdout, stdout=out_bed_handle, stderr=out_grep_err_handle)
         bed.wait()
+        # Delete empty error files
+        if os.stat(out_bed_err).st_size == 0:
+            subprocess.run(["rm", out_bed_err])
+        if os.stat(out_grep_err).st_size == 0:
+            subprocess.run(["rm", out_grep_err])
         #subprocess.run(["rm", in_bam])
 
 
@@ -393,12 +399,17 @@ def get_gwol_kmers(overlap_prop, windows_bed, kmers_bed):
         intersect = subprocess.Popen(intersect_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
         subprocess.call(cut_cmd, stdin=intersect.stdout, stdout=out_bed_handle, stderr=out_cut_err_handle)
         intersect.wait()
+        # Delete empty error files
+        if os.stat(out_bed_err).st_size == 0:
+            subprocess.run(["rm", out_bed_err])
+        if os.stat(out_cut_err).st_size == 0:
+            subprocess.run(["rm", out_cut_err])
 
 
 # From the full set of aligned accession-specific k-mers, keep k-mers
 # whose alignment coordinates do not overlap those of other k-mers to
 # retain singletons that may otherwise be excluded by get_gwol_kmers()
-def get_singletons(kmers_bed):
+def get_singleton_kmers(kmers_bed):
     #kmers_bed = outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted.bed"
@@ -420,8 +431,67 @@ def get_singletons(kmers_bed):
         merge = subprocess.Popen(merge_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
         subprocess.call(grep_cmd, stdin=merge.stdout, stdout=out_bed_handle, stderr=out_grep_err_handle)
         merge.wait()
+        # Delete empty error files
+        if os.stat(out_bed_err).st_size == 0:
+            subprocess.run(["rm", out_bed_err])
+        if os.stat(out_grep_err).st_size == 0:
+            subprocess.run(["rm", out_grep_err])
 
 
+# Get the union of k-mers obtained by get_gwol_kmers and get_singleton_kmers
+def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed, overlap_prop):
+    #overlap_prop = 0.9
+    #gwol_kmers_bed = outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    #    str(overlap_prop) + ".bed"
+    #singleton_kmers_bed = outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
+    """
+    Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
+    by removing duplicate rows.
+    """
+    gwol_kmers_cut_bed = re.sub(".bed", "_cut.bed", gwol_kmers_bed)
+    gwol_kmers_cut_bed_err = re.sub(".bed", "_cut.err", gwol_kmers_bed)
+    singleton_kmers_cut_bed = re.sub(".bed", "_cut.bed", singleton_kmers_bed)
+    singleton_kmers_cut_bed_err = re.sub(".bed", "_cut.err", singleton_kmers_bed)
+    filt_kmers_cat_bed_err = re.sub(".bed", "_merge_cat.err", gwol_kmers_bed)
+    filt_kmers_sort_bed_err = re.sub(".bed", "_merge_cat_sort.err", gwol_kmers_bed)
+    filt_kmers_uniq_bed = re.sub(".bed", "_merge_cat_sort_uniq.bed", gwol_kmers_bed)
+    filt_kmers_uniq_bed_err = re.sub(".bed", "_merge_cat_sort_uniq.err", gwol_kmers_bed)
+    cut_gwol_cmd = ["cut", "-f1,2,3", gwol_kmers_bed]
+    cut_singleton_cmd = ["cut", "-f1,2,3", singleton_kmers_bed]
+    cat_cmd = ["cat", gwol_kmers_cut_bed, singleton_kmers_cut_bed]
+    sort_env = os.environ.copy()
+    sort_env["LC_COLLATE"] = "C"
+    sort_cmd = ["sort", "-k1,1", "-k2,2n"]
+    uniq_cmd = ["uniq"]
+    with open(gwol_kmers_cut_bed, "w") as gwol_kmers_cut_bed_handle, \
+        open(gwol_kmers_cut_bed_err, "w") as gwol_kmers_cut_bed_err_handle, \
+        open(singleton_kmers_cut_bed, "w") as singleton_kmers_cut_bed_handle, \
+        open(singleton_kmers_cut_bed_err, "w") as singleton_kmers_cut_bed_err_handle, \
+        open(filt_kmers_cat_bed_err, "w") as filt_kmers_cat_bed_err_handle, \
+        open(filt_kmers_sort_bed_err, "w") as filt_kmers_sort_bed_err_handle, \
+        open(filt_kmers_uniq_bed, "w") as filt_kmers_uniq_bed_handle, \
+        open(filt_kmers_uniq_bed_err, "w") as filt_kmers_uniq_bed_err_handle:
+        subprocess.run(cut_gwol_cmd, stdout=gwol_kmers_cut_bed_handle, stderr=gwol_kmers_cut_bed_err_handle)
+        subprocess.run(cut_singleton_cmd, stdout=singleton_kmers_cut_bed_handle, stderr=singleton_kmers_cut_bed_err_handle)
+        cat = subprocess.Popen(cat_cmd, stdout=subprocess.PIPE, stderr=filt_kmers_cat_bed_err_handle)
+        sort = subprocess.Popen(sort_cmd, stdin=cat.stdout, stdout=subprocess.PIPE, stderr=filt_kmers_sort_bed_err_handle, env=sort_env)
+        subprocess.call(uniq_cmd, stdin=sort.stdout, stdout=filt_kmers_uniq_bed_handle, stderr=filt_kmers_uniq_bed_err_handle)
+        sort.wait()
+        # Delete empty error files
+        if os.stat(gwol_kmers_cut_bed_err).st_size == 0:
+            subprocess.run(["rm", gwol_kmers_cut_bed_err])
+        if os.stat(singleton_kmers_cut_bed_err).st_size == 0:
+            subprocess.run(["rm", singleton_kmers_cut_bed_err])
+        if os.stat(filt_kmers_cat_bed_err,).st_size == 0:
+            subprocess.run(["rm", filt_kmers_cat_bed_err])
+        if os.stat(filt_kmers_sort_bed_err,).st_size == 0:
+            subprocess.run(["rm", filt_kmers_sort_bed_err])
+        if os.stat(filt_kmers_uniq_bed_err,).st_size == 0:
+            subprocess.run(["rm", filt_kmers_uniq_bed_err])
 
 
 # Make BED of genomic windows to be used for getting overlapping k-mers
