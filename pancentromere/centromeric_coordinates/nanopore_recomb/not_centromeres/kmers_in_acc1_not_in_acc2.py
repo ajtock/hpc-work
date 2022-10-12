@@ -4,7 +4,7 @@
 # Date: 08/08/2022
 
 # Usage:
-# ./kmers_in_acc1_not_in_acc2.py -a1c Col-0.ragtag_scaffolds_centromeres -a2c Ler-0_110x.ragtag_scaffolds_centromeres -a1nc Col-0.ragtag_scaffolds_not_centromeres -a2nc Ler-0_110x.ragtag_scaffolds_not_centromeres -k 24 
+# ./kmers_in_acc1_not_in_acc2.py -a1c Col-0.ragtag_scaffolds_centromeres -a2c Ler-0_110x.ragtag_scaffolds_centromeres -a1nc Col-0.ragtag_scaffolds_not_centromeres -a2nc Ler-0_110x.ragtag_scaffolds_not_centromeres -k 24 -op 0.9 
 
 # Write accession-specific centromeric k-mers
 # to FASTA to supply as input file to bbduk.sh ("ref" parameter)
@@ -44,7 +44,9 @@ def create_parser():
     parser.add_argument("-a2nc", "--acc2nc", type=str, default="Ler-0_110x.ragtag_scaffolds_not_centromeres",
                         help="The prefix of the second accession's non-centromeric sequences. Default: Ler-0_110x.ragtag_scaffolds_not_centromeres")
     parser.add_argument("-k", "--kmerSize", type=int, default="24",
-                        help="The size of the k-mers to be found and counted in the FASTA file.")
+                        help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
+    parser.add_argument("-ol", "--overlapProp", type=float, default="0.9",
+                        help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
     #### Create parser
     return parser
 
@@ -62,20 +64,29 @@ if not os.path.exists(plotDir):
     os.makedirs(plotDir)
 
 
-# Define a list containing the union of
+# Make a list containing the union of
 # elements in an arbitrary number of lists 
 def union_lists(*lists):
     """
-    Get the union of elements in an arbitrary number of lists
+    Get the union of elements in an arbitrary number of lists.
     """
     return list(set.union(*map(set, lists)))
+
+
+# Make a list containing the intersection of
+# elements in an arbitrary number of lists
+def intersection_lists(*lists):
+    """
+    Get the intersection of elements in an arbitrary number of lists.
+    """
+    return list(set.intersection(*map(set, lists)))
 
 
 # Write dictionary of accession-specific centromeric k-mers
 # to FASTA to supply to bbduk.sh as input k-mer database file
 def write_fasta(kmer_dict, acc_name, outfile):
     """
-    Write dictionary of k-mers to FASTA
+    Write dictionary of k-mers to FASTA.
     """
     with open(outfile, "w") as fa_object:
         for s in kmer_dict.keys():
@@ -143,6 +154,9 @@ acc1notcen = list(acc1notcen_dict.keys())
 acc2notcen = list(acc2notcen_dict.keys())
 mitochloro = list(mitochloro_dict.keys())
 
+# Delete large k-mer dictionary objects
+del acc1cen_dict, acc2cen_dict, acc1notcen_dict, acc2notcen_dict, mitochloro_dict
+
 print(len(acc1cen))
 # 660531
 print(len(acc2cen))
@@ -165,13 +179,6 @@ print(len(mitochloro))
 # Make venn to show k-mer overlap
 cmap = "plasma"
 
-#hash_dict = {
-#    "Col-0 cen": set(acc1cen_hashes),
-#    "Ler-0 cen": set(acc2cen_hashes),
-#    "Col-0 arm": set(acc1notcen_hashes),
-#    "Ler-0 arm": set(acc2notcen_hashes)
-#} 
-
 dataset_dict = {
     "Col-0 cen": set(acc1cen),
     "Ler-0 cen": set(acc2cen),
@@ -179,6 +186,12 @@ dataset_dict = {
     "Ler-0 arm": set(acc2notcen)
 } 
 
+#hash_dict = {
+#    "Col-0 cen": set(acc1cen_hashes),
+#    "Ler-0 cen": set(acc2cen_hashes),
+#    "Col-0 arm": set(acc1notcen_hashes),
+#    "Ler-0 arm": set(acc2notcen_hashes)
+#} 
 
 venn_plot = venn(dataset_dict, cmap="plasma")
 venn_fig = venn_plot.get_figure()
@@ -187,6 +200,9 @@ venn_fig.savefig(plotDir + "/venn.png")
 #hash_venn_plot = venn(hash_dict, cmap="plasma")
 #hash_venn_fig = venn_plot.get_figure()
 #hash_venn_fig.savefig(plotDir + "/venn_hash.png")
+
+del dataset_dict, venn_plot, venn_fig
+#del hash_dict, hash_venn_plot, hash_venn_fig 
 
 
 ## acc1c_kmers (acc1 centromere-specific k-mers)
@@ -207,6 +223,8 @@ print(len(acc1cen) - len(acc1c_kmers))
 acc1c_kmers_1tolen = list(range(1, len(acc1c_kmers)+1)) 
 acc1c_kmers_dict = dict(zip(acc1c_kmers_1tolen, acc1c_kmers))
 
+del acc1notcen_acc2cen_acc2notcen_mitochloro_union, acc1c_kmers_1tolen
+
 
 # acc2c_kmers (acc2 centromere-specific k-mers)
 # Define union of acc2notcen, acc1cen, acc1notcen and mitochloro
@@ -225,6 +243,8 @@ print(len(acc2cen) - len(acc2c_kmers))
 # Convert into dictionary
 acc2c_kmers_1tolen = list(range(1, len(acc2c_kmers)+1)) 
 acc2c_kmers_dict = dict(zip(acc2c_kmers_1tolen, acc2c_kmers))
+
+del acc2notcen_acc1cen_acc1notcen_mitochloro_union, acc2c_kmers_1tolen
 
 
 # acc1nc_kmers (acc1 non-centromere-specific k-mers)
@@ -245,6 +265,8 @@ print(len(acc1notcen) - len(acc1nc_kmers))
 acc1nc_kmers_1tolen = list(range(1, len(acc1nc_kmers)+1)) 
 acc1nc_kmers_dict = dict(zip(acc1nc_kmers_1tolen, acc1nc_kmers))
 
+del acc1cen_acc2cen_acc2notcen_mitochloro_union, acc1nc_kmers_1tolen
+
 
 # acc2nc_kmers (acc2 non-centromere-specific k-mers)
 # Define union of acc1cen, acc2cen, acc1notcen and mitochloro
@@ -264,24 +286,29 @@ print(len(acc2notcen) - len(acc2nc_kmers))
 acc2nc_kmers_1tolen = list(range(1, len(acc2nc_kmers)+1)) 
 acc2nc_kmers_dict = dict(zip(acc2nc_kmers_1tolen, acc2nc_kmers))
 
+del acc1cen_acc2cen_acc1notcen_mitochloro_union, acc2nc_kmers_1tolen
+
+
+del acc1cen, acc2cen, acc1notcen, acc2notcen, mitochloro
+
 
 # Write to FASTA
 write_fasta(kmer_dict=acc1c_kmers_dict,
             acc_name=parser.acc1c[0:5],
             outfile=outDir + "/" + parser.acc1c + "_specific_k" + str(parser.kmerSize) + ".fa")
-
+del acc1c_kmers_dict
 write_fasta(kmer_dict=acc2c_kmers_dict,
             acc_name=parser.acc2c[0:5],
             outfile=outDir + "/" + parser.acc2c + "_specific_k" + str(parser.kmerSize) + ".fa")
-
+del acc2c_kmers_dict
 write_fasta(kmer_dict=acc1nc_kmers_dict,
             acc_name=parser.acc1nc[0:5],
             outfile=outDir + "/" + parser.acc1nc + "_specific_k" + str(parser.kmerSize) + ".fa")
-
+del acc1nc_kmers_dict
 write_fasta(kmer_dict=acc2nc_kmers_dict,
             acc_name=parser.acc2nc[0:5],
             outfile=outDir + "/" + parser.acc2nc + "_specific_k" + str(parser.kmerSize) + ".fa")
-
+del acc2nc_kmers_dict
 
 
 ## Downsample accession-specific k-mers
@@ -371,14 +398,13 @@ def bam_to_bed(in_bam):
 
 
 # Get the aligned k-mer coordinates for each k-mer that overlaps
-# a genomic window along >= overlap_prop of the aligned k-mers length
+# a genomic window along >= parser.overlapProp of the aligned k-mers length
 # This minimum overlap proportion could be increased or decreased
 # for a smaller or larger k-mer subset, respectively
 # Decreasing it would exclude fewer k-mers that straddle two adjacent
 # genomic windows, but would include more k-mers that cover a single
 # variant site, whereas increasing it would do the opposite
-def get_gwol_kmers(overlap_prop, windows_bed, kmers_bed):
-    #overlap_prop = 0.9
+def get_gwol_kmers(windows_bed, kmers_bed):
     #windows_bed = outDir + "/" + \
     #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
     #    "_Chr_windows_w" + str(parser.kmerSize) + \
@@ -388,14 +414,14 @@ def get_gwol_kmers(overlap_prop, windows_bed, kmers_bed):
     #    str(parser.kmerSize) + "_bowtie_sorted.bed"
     """
     Get the aligned k-mer coordinates for each k-mer that overlaps
-    a genomic window along >= overlap_prop of the aligned k-mer's length.
+    a genomic window along >= parser.overlapProp of the aligned k-mer's length.
     """
-    out_bed = re.sub(".bed", "_intersect_op" + str(overlap_prop) + ".bed", kmers_bed)
-    out_bed_err = re.sub(".bed", "_intersect_op" + str(overlap_prop) + ".err", kmers_bed)
-    out_cut_err = re.sub(".bed", "_intersect_op" + str(overlap_prop) + "_cut.err", kmers_bed)
+    out_bed = re.sub(".bed", "_intersect_op" + str(parser.overlapProp) + ".bed", kmers_bed)
+    out_bed_err = re.sub(".bed", "_intersect_op" + str(parser.overlapProp) + ".err", kmers_bed)
+    out_cut_err = re.sub(".bed", "_intersect_op" + str(parser.overlapProp) + "_cut.err", kmers_bed)
     intersect_cmd = ["bedtools", "intersect"] + \
                     ["-wb"] + \
-                    ["-F", str(overlap_prop)] + \
+                    ["-F", str(parser.overlapProp)] + \
                     ["-a", windows_bed] + \
                     ["-b", kmers_bed] + \
                     ["-sorted"]
@@ -448,12 +474,11 @@ def get_singleton_kmers(kmers_bed):
 # Get the union of k-mer alignment coordinates obtained by
 # get_gwol_kmers and get_singleton_kmers
 # (i.e., downsampled accession-specific k-mer alignment coordinates)
-def union_filt_kmers(overlap_prop, gwol_kmers_bed, singleton_kmers_bed):
-    #overlap_prop = 0.9
+def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
     #gwol_kmers_bed = outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #    str(overlap_prop) + ".bed"
+    #    str(parser.overlapProp) + ".bed"
     #singleton_kmers_bed = outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
@@ -479,17 +504,16 @@ def union_filt_kmers(overlap_prop, gwol_kmers_bed, singleton_kmers_bed):
 
 # Make a FASTA file of the genomic sequences for the downsampled
 # accession-specific k-mer alignment coordinates
-def make_filt_kmers_fa(overlap_prop, kmers_bed):
-overlap_prop = 0.9
-kmers_bed = outDir + "/" + \
-    parser.acc1nc + "_specific_k" + \
-    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    str(overlap_prop) + "_merge_dedup.bed"
+def make_filt_kmers_fa(kmers_bed):
+    #kmers_bed = outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    #    str(parser.overlapProp) + "_merge_dedup.bed"
     """
     Make FASTA of the genomic sequences for the downsampled
     accession-specific k-mer alignment coordinates in kmers_bed.
-    NOTE: Requires the genome FASTA file and corresponding
-    index file created with "samtools faidx genome.fa" (genome.fa.fai)
+    NOTE: Requires that the genome FASTA file and corresponding
+    index file, created with "samtools faidx genome.fa" (genome.fa.fai),
     are in the index/ subfolder of the current working directory.
     """
     acc_name = re.sub(r"(_scaffolds)_.+", r"\1", kmers_bed)
@@ -507,15 +531,19 @@ kmers_bed = outDir + "/" + \
         if os.stat(out_fa_err).st_size == 0:
             subprocess.run(["rm", out_fa_err])
 
-# Deduplicate downsampled accession-specific k-mers
-def dedup_kmers_fa(overlap_prop, kmers_fa):
-    #overlap_prop = 0.9
+
+# Deduplicate downsampled accession-specific k-mers, and
+# keep the strand representation of each k-mer that is
+# lexicographically smallest, as was done for full k-mer set,
+# enabling subsequent test for membership of full set.
+def dedup_kmers_fa(kmers_fa):
     #kmers_fa = outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #    str(overlap_prop) + "_merge_dedup.fa"
+    #    str(parser.overlapProp) + "_merge_dedup.fa"
     """
-    Deduplicate downsampled accession-specific k-mers.
+    Deduplicate downsampled accession-specific k-mers,
+    keeping the lexicographically smallest strand representation.
     """
     kmers_iter = SeqIO.parse(kmers_fa, "fasta")
     kmers_list = []
@@ -532,66 +560,33 @@ def dedup_kmers_fa(overlap_prop, kmers_fa):
     return kmers_list
 
 
-acc1nc_ds_kmers_list = dedup_kmers_fa(
-    overlap_prop=0.9,
-    kmers_fa=outDir + "/" + \
-        parser.acc1nc + "_specific_k" + \
-        str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-        str(overlap_prop) + "_merge_dedup.fa"
-)
-
-
-seq_dict = {rec.id : rec.seq for rec in SeqIO.parse("myfile.fasta", "fasta")} 
-
-# Within a read, find the 0-based start location of all occurrences
-# of each accession-specific k-mer
-def get_kmer_loc(kmers_fa, read_seq):
+# Check the downsampled (ds) kmers in the list output
+# from dedup_kmers_fa() (e.g., acc1nc_kmers_ds) for membership of
+# the corresponding full accession-specific k-mer set (e.g., acc1nc_kmers),
+# returning members as a sorted list
+def get_members(ds_kmers_list, full_kmers_list):
+    #ds_kmers_list=acc1nc_kmers_ds
+    #full_kmers_list=acc1nc_kmers
     """
-    For a given read, get the within-read 0-based start locations of all k-mer matches.
+    Make a sorted list containing the downsampled k-mers in the list output
+    from dedup_kmers_fa() that are members of the corresponding full
+    accession-specific k-mer set.
     """
-    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
-    kmers = [record for record in kmers_iter if
-             re.search(str(record.seq), read_seq) or
-             re.search(screed.rc(str(record.seq)), read_seq)]
-    del kmers_iter
-    kmer_loc_dict_list = []
-    for h in range(len(kmers)):
-        kmer_id = kmers[h].id
-        kmer_acc = kmers[h].id.split("_", 1)[1]
-        kmer_for = str(kmers[h].seq)
-        #kmer_rev = kmer_for.translate(comp_tab)[::-1]
-        kmer_rev = screed.rc(kmer_for)
-        kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read_seq)]
-        kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read_seq)]
-        kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
-        if kmer_for < kmer_rev:
-            kmer = kmer_for
-        else:
-            kmer = kmer_rev
-        if kmer not in kmer_loc_dict_list:
-            if kmer_matches:
-                for k in range(len(kmer_matches)):
-                    kmer_loc_dict_list.append({"kmer": kmer,
-                                               "id": kmer_id,
-                                               "acc": kmer_acc,
-                                               "hit_start": kmer_matches[k],
-                                               "hit_end": kmer_matches[k] + parser.kmerSize})
-        else:
-            print("k-mer already present in object")
+    members_ds_kmers_list = sorted(intersection_lists(ds_kmers_list, full_kmers_list))
+    print("k-mers in ds_kmers_list: " + str(len(ds_kmers_list)))
+    print("k-mers in members_ds_kmers_list: " + str(len(members_ds_kmers_list)))
     #
-    return pd.DataFrame(kmer_loc_dict_list)
-
+    return members_ds_kmers_list
 
 
 ## Get the union of k-mer alignment coordinates obtained by
 ## get_gwol_kmers and get_singleton_kmers
 ## (i.e., downsampled accession-specific k-mer alignment coordinates)
-#def union_filt_kmers_silly(overlap_prop, gwol_kmers_bed, singleton_kmers_bed):
-#    #overlap_prop = 0.9
+#def union_filt_kmers_silly(gwol_kmers_bed, singleton_kmers_bed):
 #    #gwol_kmers_bed = outDir + "/" + \
 #    #    parser.acc1nc + "_specific_k" + \
 #    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    #    str(overlap_prop) + ".bed"
+#    #    str(parser.overlapProp) + ".bed"
 #    #singleton_kmers_bed = outDir + "/" + \
 #    #    parser.acc1nc + "_specific_k" + \
 #    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
@@ -673,7 +668,6 @@ bam_to_bed(
 )
 # Get genomic-window-overlapping (gwol) k-mers
 get_gwol_kmers(
-    overlap_prop=0.9,
     windows_bed=outDir + "/" + \
         re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
         "_Chr_windows_w" + str(parser.kmerSize) + \
@@ -691,23 +685,50 @@ get_singleton_kmers(
 # Get the union of get_gwol_kmers and get_singleton_kmers
 # k-mer alignment coordinates
 union_filt_kmers(
-    overlap_prop = 0.9,
-    gwol_kmers_bed = outDir + "/" + \
+    gwol_kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-        str(overlap_prop) + ".bed",
-    singleton_kmers_bed = outDir + "/" + \
+        str(parser.overlapProp) + ".bed",
+    singleton_kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
 )
 # Make a FASTA file of the downsampled accession-specific k-mers
 make_filt_kmers_fa(
-    overlap_prop = 0.9,
-    kmers_bed = outDir + "/" + \
+    kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-        str(overlap_prop) + "_merge_dedup.bed"
+        str(parser.overlapProp) + "_merge_dedup.bed"
 )
+# Deduplicate downsampled accession-specific k-mers,
+# keeping the lexicographically smallest strand representation,
+# returned as a list
+acc1nc_kmers_ds = dedup_kmers_fa(
+    kmers_fa=outDir + "/" + \
+        parser.acc1nc + "_specific_k" + \
+        str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+        str(parser.overlapProp) + "_merge_dedup.fa"
+)
+# Make a sorted list containing the downsampled k-mers in the list output
+# from dedup_kmers_fa() that are members of the corresponding full
+# accession-specific k-mer set.
+acc1nc_kmers_ds_members = get_members(
+    ds_kmers_list=acc1nc_kmers_ds,
+    full_kmers_list=acc1nc_kmers
+)
+# Convert into dictionary
+acc1nc_kmers_ds_members_1tolen = list(range(1, len(acc1nc_kmers_ds_members)+1))
+acc1nc_kmers_ds_members_dict = dict(zip(acc1nc_kmers_ds_members_1tolen, acc1nc_kmers_ds_members))
+# Write to FASTA
+write_fasta(
+    kmer_dict=acc1nc_kmers_ds_members_dict,
+    acc_name=parser.acc1nc[0:5],
+    outfile=outDir + "/" + \
+        parser.acc1nc + "_specific_k" + \
+        str(parser.kmerSize) + "_downsampled_op" + \
+        str(parser.overlapProp) + ".fa"
+)
+
 
 
 
