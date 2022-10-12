@@ -615,68 +615,72 @@ def chr_kmer_profiles(windows_bed, kmers_bed):
         if os.stat(out_bed_err).st_size == 0:
             subprocess.run(["rm", out_bed_err])
 
+
 # Plot chromosome-scale profiles of counts of k-mers
 # overlapping genomic windows
-def chr_kmer_profiles_plot(*coverage_beds, bed_names):
-    #coverage_beds=[
+def chr_kmer_profiles_plot(**coverage_beds_dict):
+    #coverage_beds_dict={
+    #
     #    outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + \
-    #    "_bowtie_sorted_windows_w100000_s10000.bed",
-    #    outDir + "/" + \
-    #    parser.acc1nc + "_specific_k" + \
-    #    str(parser.kmerSize) + \
-    #    "_bowtie_sorted_intersect_op0.9_merge_dedup_windows_w100000_s10000.bed"
-    #]
-    #bed_names=[
+    #    "_bowtie_sorted_windows_w100000_s10000.bed" :
     #    str(parser.kmerSize) + "-mer set",
+    #
+    #    outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + \
+    #    "_bowtie_sorted_intersect_op0.9_merge_dedup_windows_w100000_s10000.bed" :
+    #    str(parser.kmerSize) + "-mer subset",
+    #
+    #    outDir + "/" + \
+    #    parser.acc2nc + "_specific_k" + \
+    #    str(parser.kmerSize) + \
+    #    "_bowtie_sorted_windows_w100000_s10000.bed" :
+    #    str(parser.kmerSize) + "-mer set",
+    #
+    #    outDir + "/" + \
+    #    parser.acc2nc + "_specific_k" + \
+    #    str(parser.kmerSize) + \
+    #    "_bowtie_sorted_intersect_op0.9_merge_dedup_windows_w100000_s10000.bed" :
     #    str(parser.kmerSize) + "-mer subset"
-    ##    str(parser.kmerSize) + "-mer subset (op=" + str(parser.overlapProp) + ")"
-    #]
+    #
+    #}
     """
     Plot chromosome-scale profiles of counts of k-mers
     overlapping genomic windows.
     """
-out_pdf = re.sub(".bed", ".pdf", coverage_beds[len(coverage_beds)-1])
-out_pdf = re.sub("^fasta", plotDir, out_pdf) 
-bed_list = []
-for x in range(len(coverage_beds)):
-    acc_name = re.sub("fasta/", "", coverage_beds[x])
-    acc_name = re.sub("\..+", "", acc_name)
-    kmer_set = acc_name + " " + bed_names[x]
-    bed_DF = pd.read_csv(coverage_beds[x], sep="\t", header=None)
-    bed_DF.columns = ["Chromosome", "Start0", "End", "Overlapping k-mers"]
-    #bed_DF = bed_DF.assign(Window=lambda x: ((((x.Start0 + x.End) / 2) / 1e+06)).astype(float))
-    bed_DF["Window midpoint (Mbp)"] = (((bed_DF["Start0"] + bed_DF["End"]) / 2) / 1e+06).astype(float)
-    bed_DF["k-mer set"] = kmer_set
-    bed_list.append(bed_DF)
-#
-cat_DF = pd.concat(objs=bed_list,
-                   axis=0,
-                   ignore_index=True)
-#
-sns.set_theme(style="darkgrid", palette="colorblind")
-kmer_chr_plot = sns.relplot(data=cat_DF,
-                            kind="line",
-                            x="Window midpoint (Mbp)",
-                            y="Overlapping k-mers",
-                            hue="k-mer set",
-                            col="Chromosome")
-df = sns.load_dataset("iris")
-ax = sns.boxplot(x='species', y='sepal_length', data=df)
-
-# Make colours transparent
-for patch in kmer_chr_plot.artists:
-    r, g, b, a = patch.get_facecolor()
-    patch.set_facecolor((r, g, b, 0.3))
-#
-kmer_chr_plot_fig = kmer_chr_plot.get_figure()
-kmer_chr_plot_fig.savefig(out_pdf, dpi=300)
-
-ovenn_plot = venn(dataset_dict, cmap="plasma")
-venn_fig = venn_plot.get_figure()
-venn_fig.savefig(plotDir + "/venn.png")
-
+    coverage_beds = list(coverage_beds_dict.keys())
+    bed_names = list(coverage_beds_dict.values())
+    out_pdf = re.sub(".bed", ".pdf", coverage_beds[len(coverage_beds)-1])
+    out_pdf = re.sub("^fasta", plotDir, out_pdf) 
+    bed_list = []
+    for x in range(len(coverage_beds)):
+        acc_name = re.sub("fasta/", "", coverage_beds[x])
+        acc_name = re.sub("\..+", "", acc_name)
+        kmer_set = acc_name + " " + bed_names[x]
+        bed_DF = pd.read_csv(coverage_beds[x], sep="\t", header=None)
+        bed_DF.columns = ["Chromosome", "Start0", "End", "Overlapping k-mers"]
+        #bed_DF = bed_DF.assign(Window=lambda x: ((((x.Start0 + x.End) / 2) / 1e+06)).astype(float))
+        bed_DF["Window midpoint (Mbp)"] = (((bed_DF["Start0"] + bed_DF["End"]) / 2) / 1e+06).astype(float)
+        bed_DF["Accession"] = acc_name
+        bed_DF["k-mer set"] = kmer_set
+        bed_list.append(bed_DF)
+    #
+    cat_DF = pd.concat(objs=bed_list,
+                       axis=0,
+                       ignore_index=True)
+    #
+    sns.set_theme(style="darkgrid", palette="colorblind")
+    kmer_chr_plot = sns.relplot(data=cat_DF,
+                                kind="line",
+                                x="Window midpoint (Mbp)",
+                                y="Overlapping k-mers",
+                                hue="k-mer set",
+                                alpha=0.8,
+                                row="Accession",
+                                col="Chromosome")
+    plt.savefig(out_pdf, dpi=300)
 
 
 ## Get the union of k-mer alignment coordinates obtained by
