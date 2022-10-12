@@ -18,7 +18,6 @@ import screed
 import pickle
 import re
 import subprocess
-import pybedtools
 import pandas as pd
 
 from Bio import SeqIO
@@ -322,9 +321,11 @@ def genomic_windows(window_size, step_size, acc_name):
     #acc_name = re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
     """
     Make BED of genomic windows.
+    NOTE: Requires that the genome FASTA chromosome sizes file (genome_Chr.fa.fai.size)
+    is in the index/ subfolder of the current working directory.
     """
     out_bed = outDir + "/" + acc_name + "_Chr_windows_w" + str(window_size) + "_s" + str(step_size) + ".bed"
-    chr_sizes_file = acc_name + "_Chr.fa.sizes"
+    chr_sizes_file = "index/" + acc_name + "_Chr.fa.sizes"
     windows = BedTool().window_maker(g=chr_sizes_file, w=window_size, s=step_size)
     windows.saveas(out_bed)
 
@@ -652,6 +653,19 @@ genomic_windows(window_size=parser.kmerSize,
 genomic_windows(window_size=parser.kmerSize,
                 step_size=parser.kmerSize,
                 acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc))
+
+
+# Also make BED of genomic windows to be used for making chromosome-scale
+# profiles of full and downsampled k-mer coverage
+# acc1
+genomic_windows(window_size=100000,
+                step_size=10000,
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc))
+# acc2
+genomic_windows(window_size=100000,
+                step_size=10000,
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc))
+
 
 ## acc1nc_kmers
 # Align accession-specific k-mers to respective genome
