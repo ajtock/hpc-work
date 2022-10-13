@@ -634,6 +634,13 @@ but not in the downsampled k-mer set.
 """
 ds_kmers_windows_DF = pd.read_csv(ds_kmers_windows, sep="\t", header=None)
 full_kmers_windows_DF = pd.read_csv(full_kmers_windows, sep="\t", header=None)
+ds_kmers_windows_DF.columns = ["chr", "start0", "end", "ds_count"]
+full_kmers_windows_DF.columns = ["chr", "start0", "end", "full_count"]
+left_join_DF = pd.merge(left=full_kmers_windows_DF, right=ds_kmers_windows_DF,
+                        how="left", on=["chr", "start0", "end"])
+excluded_windows_DF = left_join_DF[(left_join_DF["full_count"] >= 1) & (left_join_DF["ds_count"] == 0)]
+print(excluded_windows_DF["full_count"].describe())
+
 
 
     """
