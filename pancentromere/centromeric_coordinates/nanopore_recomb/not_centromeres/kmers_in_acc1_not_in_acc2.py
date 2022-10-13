@@ -615,6 +615,46 @@ def chr_kmer_profiles(windows_bed, kmers_bed):
         if os.stat(out_bed_err).st_size == 0:
             subprocess.run(["rm", out_bed_err])
 
+# Get genomic windows that are covered by >= 1 k-mer in the full k-mer set
+# but not in the downsampled k-mer set
+def get_excluded_windows(ds_kmers_windows, full_kmers_windows):
+ds_kmers_windows=outDir + "/" + \
+    parser.acc1nc + "_specific_k" + \
+    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    str(parser.overlapProp) + \
+    "_merge_windows_w" + str(parser.kmerSize) + \
+    "_s" + str(parser.kmerSize) + ".bed"
+full_kmers_windows=outDir + "/" + \
+    parser.acc1nc + "_specific_k" + \
+    str(parser.kmerSize) + "_bowtie_sorted_windows_w" + str(parser.kmerSize) + \
+    "_s" + str(parser.kmerSize) + ".bed"
+"""
+Get genomic windows that are covered by >= 1 k-mer in the full k-mer set
+but not in the downsampled k-mer set.
+"""
+ds_kmers_windows_DF = pd.read_csv(ds_kmers_windows, sep="\t", header=None)
+full_kmers_windows_DF = pd.read_csv(full_kmers_windows, sep="\t", header=None)
+
+
+    """
+    Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
+    by removing duplicate rows.
+    """
+    filt_kmers_bed = re.sub(".bed", "_merge.bed", gwol_kmers_bed)
+    gwol_kmers_DF = pd.read_csv(gwol_kmers_bed, sep="\t", header=None)
+    singleton_kmers_DF = pd.read_csv(singleton_kmers_bed, sep="\t", header=None)
+    filt_kmers_cat_DF = pd.concat(objs=[gwol_kmers_DF.iloc[:,0:3], singleton_kmers_DF.iloc[:,0:3]],
+                                  axis=0,
+                                  ignore_index=True)
+    filt_kmers_cat_DF.columns = ["chr", "start0", "end"]
+    filt_kmers_cat_DF_sort = filt_kmers_cat_DF.sort_values(by=["chr", "start0"],
+                                                           axis=0,
+                                                           ascending=[True, True],
+                                                           kind="quicksort",
+                                                           ignore_index=True)
+    filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
+    filt_kmers_cat_DF_sort_dedup.to_csv(filt_kmers_bed, sep="\t", header=False, index=False)
+
 
 # Plot chromosome-scale profiles of counts of k-mers
 # overlapping genomic windows
