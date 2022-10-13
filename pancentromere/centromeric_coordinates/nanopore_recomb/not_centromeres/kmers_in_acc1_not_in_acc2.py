@@ -654,7 +654,7 @@ def get_excluded_windows(full_kmers_windows, ds_kmers_windows):
 
 
 # Get the aligned k-mer coordinates for each k-mer that overlaps
-# an excluded genomic window (output of get_excluded_windows())
+# an excluded genomic window (output from get_excluded_windows())
 # along >= 1 bp of the aligned k-mer's length
 def get_egwol_kmers(excluded_windows_bed, kmers_bed):
     #excluded_windows_bed=outDir + "/" + \
@@ -666,7 +666,7 @@ def get_egwol_kmers(excluded_windows_bed, kmers_bed):
     #    str(parser.kmerSize) + "_bowtie_sorted.bed"
     """
     Get the aligned k-mer coordinates for each k-mer that overlaps
-    an excluded genomic window (output of get_excluded windows())
+    an excluded genomic window (output from get_excluded windows())
     along >= 1 bp of the aligned k-mer's length.
     """
     out_bed = re.sub(".bed", "_intersect_om.bed", kmers_bed)
@@ -685,7 +685,7 @@ def get_egwol_kmers(excluded_windows_bed, kmers_bed):
 
 
 # From the aligned k-mer coordinates for the k-mer that overlaps
-# an excluded genomic window (output of get_egwol_kmers()),
+# an excluded genomic window (output from get_egwol_kmers()),
 # select the one(s) with greatest overlap
 def get_greatest_egwol_kmers(kmers_bed):
 kmers_bed=outDir + "/" + \
@@ -693,7 +693,7 @@ kmers_bed=outDir + "/" + \
     str(parser.kmerSize) + "_bowtie_sorted_intersect_om.bed"
 """
 From the aligned k-mer coordinates for the k-mer that overlaps
-an excluded genomic window (output of get_egwol_kmers()),
+an excluded genomic window (output from get_egwol_kmers()),
 select the one(s) with greatest overlap.
 """
 rep_kmers_bed = re.sub(".bed", "_represent.bed", kmers_bed)
@@ -701,22 +701,48 @@ kmers_DF = pd.read_csv(kmers_bed, sep="\t", header=None)
 kmers_DF.columns = ["win_chr", "win_start0", "win_end",
                     "kmer_chr", "kmer_start0", "kmer_end",
                     "kmer_id", "mismatches", "strand", "overlap_bp"]
-
-
-    filt_kmers_bed = re.sub(".bed", "_merge.bed", gwol_kmers_bed)
-    gwol_kmers_DF = pd.read_csv(gwol_kmers_bed, sep="\t", header=None)
-    singleton_kmers_DF = pd.read_csv(singleton_kmers_bed, sep="\t", header=None)
-    filt_kmers_cat_DF = pd.concat(objs=[gwol_kmers_DF.iloc[:,0:3], singleton_kmers_DF.iloc[:,0:3]],
-                                  axis=0,
+kmers_DF_sort = kmers_DF.sort_values(by=["win_chr", "win_start0", "win_end", "overlap_bp"],
+                                     axis=0,
+                                     ascending=[True, True, True, False],
+                                     kind="quicksort",
+                                     ignore_index=True)
+kmers_DF_sort_list = list(kmers_DF_sort.groupby(["win_chr", "win_start0", "win_end"]))
+kmers_DF_greatest = pd.DataFrame()
+for window_tuple in kmers_DF_sort_list:
+    window_DF_greatest = window_tuple[1].iloc[[0]]
+    kmers_DF_greatest = pd.concat(objs=[kmers_DF_greatest, window_DF_greatest],
+                                  axis = 0,
                                   ignore_index=True)
-    filt_kmers_cat_DF.columns = ["chr", "start0", "end"]
-    filt_kmers_cat_DF_sort = filt_kmers_cat_DF.sort_values(by=["chr", "start0"],
-                                                           axis=0,
-                                                           ascending=[True, True],
-                                                           kind="quicksort",
-                                                           ignore_index=True)
-    filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
-    filt_kmers_cat_DF_sort_dedup.to_csv(filt_kmers_bed, sep="\t", header=False, index=False)
+kmers_DF_greatest_sort = kmers_DF_greatest.sort_values(by=["kmer_chr", "kmer_start0", "kmer_end"],
+                                                       axis=0,
+                                                       ascending=[True, True, True],
+                                                       kind="quicksort",
+                                                       ignore_index=True)
+kmers_DF_greatest_sort = kmers_DF_greatest_sort.iloc[:,3:9]
+
+
+#    segment = pd.DataFrame()
+#    for h in range(len(kmer_loc_df_sort)-1):
+#        if len(segment) == 0:
+#            segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h:h+1,:]],
+#                                axis=0,
+#                                ignore_index=True)
+
+
+#    filt_kmers_bed = re.sub(".bed", "_merge.bed", gwol_kmers_bed)
+#    gwol_kmers_DF = pd.read_csv(gwol_kmers_bed, sep="\t", header=None)
+#    singleton_kmers_DF = pd.read_csv(singleton_kmers_bed, sep="\t", header=None)
+#    filt_kmers_cat_DF = pd.concat(objs=[gwol_kmers_DF.iloc[:,0:3], singleton_kmers_DF.iloc[:,0:3]],
+#                                  axis=0,
+#                                  ignore_index=True)
+#    filt_kmers_cat_DF.columns = ["chr", "start0", "end"]
+#    filt_kmers_cat_DF_sort = filt_kmers_cat_DF.sort_values(by=["chr", "start0"],
+#                                                           axis=0,
+#                                                           ascending=[True, True],
+#                                                           kind="quicksort",
+#                                                           ignore_index=True)
+#    filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
+#    filt_kmers_cat_DF_sort_dedup.to_csv(filt_kmers_bed, sep="\t", header=False, index=False)
 
 
 # Plot chromosome-scale profiles of counts of k-mers
