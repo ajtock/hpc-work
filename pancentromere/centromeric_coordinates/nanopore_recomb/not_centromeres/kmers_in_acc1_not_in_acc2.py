@@ -168,84 +168,84 @@ print(len(acc2notcen))
 print(len(mitochloro))
 # 475021
 
-## Convert each list of k-mers into a list of hashes
-#acc1cen_hashes = hash_kmers(acc1cen)
-#acc2cen_hashes = hash_kmers(acc2cen)
-#acc1notcen_hashes = hash_kmers(acc1notcen)
-#acc2notcen_hashes = hash_kmers(acc2notcen)
-#mitochloro_hashes = hash_kmers(mitochloro)
-
-
-# Make venn to show k-mer overlap
-cmap = "plasma"
-
-# Including k-mers that are shared with the
-# mitochondria and chloroplast
-dataset_dict_inclMC = {
-    "Col-0 cen": set(acc1cen),
-    "Ler-0 cen": set(acc2cen),
-    "Col-0 arm": set(acc1notcen),
-    "Ler-0 arm": set(acc2notcen)
-} 
-
-#hash_dict_inclMC = {
-#    "Col-0 cen": set(acc1cen_hashes),
-#    "Ler-0 cen": set(acc2cen_hashes),
-#    "Col-0 arm": set(acc1notcen_hashes),
-#    "Ler-0 arm": set(acc2notcen_hashes)
+### Convert each list of k-mers into a list of hashes
+##acc1cen_hashes = hash_kmers(acc1cen)
+##acc2cen_hashes = hash_kmers(acc2cen)
+##acc1notcen_hashes = hash_kmers(acc1notcen)
+##acc2notcen_hashes = hash_kmers(acc2notcen)
+##mitochloro_hashes = hash_kmers(mitochloro)
+#
+#
+## Make venn to show k-mer overlap
+#cmap = "plasma"
+#
+## Including k-mers that are shared with the
+## mitochondria and chloroplast
+#dataset_dict_inclMC = {
+#    "Col-0 cen": set(acc1cen),
+#    "Ler-0 cen": set(acc2cen),
+#    "Col-0 arm": set(acc1notcen),
+#    "Ler-0 arm": set(acc2notcen)
 #} 
-
-venn_plot = venn(dataset_dict_inclMC, cmap="plasma")
-venn_fig = venn_plot.get_figure()
-venn_fig.savefig(plotDir + "/venn_incl_mitochloro.png")
-
-#hash_venn_plot = venn(hash_dict_inclMC, cmap="plasma")
-#hash_venn_fig = venn_plot.get_figure()
-#hash_venn_fig.savefig(plotDir + "/venn_hash_incl_mitochloro.png")
-
-del dataset_dict_inclMC, venn_plot, venn_fig
-#del hash_dict_inclMC, hash_venn_plot, hash_venn_fig 
-
-
-# Excluding k-mers that are shared with the
-# mitochondria and chloroplast
-acc1cen_exclMC = list(set(acc1cen).difference(set(mitochloro)))
-acc2cen_exclMC = list(set(acc2cen).difference(set(mitochloro)))
-acc1notcen_exclMC = list(set(acc1notcen).difference(set(mitochloro)))
-acc2notcen_exclMC = list(set(acc2notcen).difference(set(mitochloro)))
-
-## Convert each list of k-mers into a list of hashes
-#acc1cen_exclMC_hashes = hash_kmers(acc1cen_exclMC)
-#acc2cen_exclMC_hashes = hash_kmers(acc2cen_exclMC)
-#acc1notcen_exclMC_hashes = hash_kmers(acc1notcen_exclMC)
-#acc2notcen_exclMC_hashes = hash_kmers(acc2notcen_exclMC)
-
-dataset_dict_exclMC = {
-    "Col-0 cen": set(acc1cen_exclMC),
-    "Ler-0 cen": set(acc2cen_exclMC),
-    "Col-0 arm": set(acc1notcen_exclMC),
-    "Ler-0 arm": set(acc2notcen_exclMC)
-} 
-
-#hash_dict_exclMC = {
-#    "Col-0 cen": set(acc1cen_exclMC_hashes),
-#    "Ler-0 cen": set(acc2cen_exclMC_hashes),
-#    "Col-0 arm": set(acc1notcen_exclMC_hashes),
-#    "Ler-0 arm": set(acc2notcen_exclMC_hashes)
+#
+##hash_dict_inclMC = {
+##    "Col-0 cen": set(acc1cen_hashes),
+##    "Ler-0 cen": set(acc2cen_hashes),
+##    "Col-0 arm": set(acc1notcen_hashes),
+##    "Ler-0 arm": set(acc2notcen_hashes)
+##} 
+#
+#venn_plot = venn(dataset_dict_inclMC, cmap="plasma")
+#venn_fig = venn_plot.get_figure()
+#venn_fig.savefig(plotDir + "/venn_incl_mitochloro.png")
+#
+##hash_venn_plot = venn(hash_dict_inclMC, cmap="plasma")
+##hash_venn_fig = venn_plot.get_figure()
+##hash_venn_fig.savefig(plotDir + "/venn_hash_incl_mitochloro.png")
+#
+#del dataset_dict_inclMC, venn_plot, venn_fig
+##del hash_dict_inclMC, hash_venn_plot, hash_venn_fig 
+#
+#
+## Excluding k-mers that are shared with the
+## mitochondria and chloroplast
+#acc1cen_exclMC = list(set(acc1cen).difference(set(mitochloro)))
+#acc2cen_exclMC = list(set(acc2cen).difference(set(mitochloro)))
+#acc1notcen_exclMC = list(set(acc1notcen).difference(set(mitochloro)))
+#acc2notcen_exclMC = list(set(acc2notcen).difference(set(mitochloro)))
+#
+### Convert each list of k-mers into a list of hashes
+##acc1cen_exclMC_hashes = hash_kmers(acc1cen_exclMC)
+##acc2cen_exclMC_hashes = hash_kmers(acc2cen_exclMC)
+##acc1notcen_exclMC_hashes = hash_kmers(acc1notcen_exclMC)
+##acc2notcen_exclMC_hashes = hash_kmers(acc2notcen_exclMC)
+#
+#dataset_dict_exclMC = {
+#    "Col-0 cen": set(acc1cen_exclMC),
+#    "Ler-0 cen": set(acc2cen_exclMC),
+#    "Col-0 arm": set(acc1notcen_exclMC),
+#    "Ler-0 arm": set(acc2notcen_exclMC)
 #} 
-
-venn_plot = venn(dataset_dict_exclMC, cmap="plasma")
-venn_fig = venn_plot.get_figure()
-venn_fig.savefig(plotDir + "/venn_excl_mitochloro.png")
-
-#hash_venn_plot = venn(hash_dict_exclMC, cmap="plasma")
-#hash_venn_fig = venn_plot.get_figure()
-#hash_venn_fig.savefig(plotDir + "/venn_hash_excl_mitochloro.png")
-
-del dataset_dict_exclMC, venn_plot, venn_fig
-#del hash_dict_exclMC, hash_venn_plot, hash_venn_fig 
-del acc1cen_exclMC, acc2cen_exclMC, acc1notcen_exclMC, acc2notcen_exclMC
-#del acc1cen_exclMC_hashes, acc2cen_exclMC_hashes, acc1notcen_exclMC_hashes, acc2notcen_exclMC_hashes
+#
+##hash_dict_exclMC = {
+##    "Col-0 cen": set(acc1cen_exclMC_hashes),
+##    "Ler-0 cen": set(acc2cen_exclMC_hashes),
+##    "Col-0 arm": set(acc1notcen_exclMC_hashes),
+##    "Ler-0 arm": set(acc2notcen_exclMC_hashes)
+##} 
+#
+#venn_plot = venn(dataset_dict_exclMC, cmap="plasma")
+#venn_fig = venn_plot.get_figure()
+#venn_fig.savefig(plotDir + "/venn_excl_mitochloro.png")
+#
+##hash_venn_plot = venn(hash_dict_exclMC, cmap="plasma")
+##hash_venn_fig = venn_plot.get_figure()
+##hash_venn_fig.savefig(plotDir + "/venn_hash_excl_mitochloro.png")
+#
+#del dataset_dict_exclMC, venn_plot, venn_fig
+##del hash_dict_exclMC, hash_venn_plot, hash_venn_fig 
+#del acc1cen_exclMC, acc2cen_exclMC, acc1notcen_exclMC, acc2notcen_exclMC
+##del acc1cen_exclMC_hashes, acc2cen_exclMC_hashes, acc1notcen_exclMC_hashes, acc2notcen_exclMC_hashes
 
 
 ### Get accession-specific k-mers and write to FASTA
@@ -607,8 +607,7 @@ def get_excluded_windows(full_kmers_windows, ds_kmers_windows):
     Get genomic windows that are covered by >= 1 k-mer in the full k-mer set
     but not in the downsampled k-mer set.
     """
-    out_bed = outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
+    out_bed = re.sub(r"(_scaffolds)_.+", r"\1", full_kmers_windows) + \
         "_Chr_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + "_excluded_windows.bed"
     ds_kmers_windows_DF = pd.read_csv(ds_kmers_windows, sep="\t", header=None)
@@ -848,11 +847,9 @@ def chr_kmer_profiles_plot(*coverage_beds):
         bed_DF["Accession"] = acc_name
         bed_DF["k-mer set"] = kmer_set
         bed_list.append(bed_DF)
-    #
     cat_DF = pd.concat(objs=bed_list,
                        axis=0,
                        ignore_index=True)
-    #
     sns.set_theme(style="darkgrid", palette="colorblind")
     kmer_chr_plot = sns.relplot(data=cat_DF,
                                 kind="line",
@@ -1104,7 +1101,6 @@ chr_kmer_profiles(
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
         str(parser.overlapProp) + "_merge_omg.bed")
 
-
 ## acc2nc_kmers
 # Align accession-specific k-mers to respective genome
 align_kmers_bowtie(
@@ -1256,6 +1252,8 @@ chr_kmer_profiles(
         parser.acc2nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
         str(parser.overlapProp) + "_merge_omg.bed")
+
+
 
 
 
