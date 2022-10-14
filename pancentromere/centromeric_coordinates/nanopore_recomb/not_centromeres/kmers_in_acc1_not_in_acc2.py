@@ -45,7 +45,7 @@ def create_parser():
                         help="The prefix of the second accession's non-centromeric sequences. Default: Ler-0_110x.ragtag_scaffolds_not_centromeres")
     parser.add_argument("-k", "--kmerSize", type=int, default="24",
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
-    parser.add_argument("-ol", "--overlapProp", type=float, default="0.9",
+    parser.add_argument("-op", "--overlapProp", type=float, default="0.9",
                         help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
     #### Create parser
     return parser
