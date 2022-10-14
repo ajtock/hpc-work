@@ -317,9 +317,9 @@ del acc2nc_kmers_dict
 # Make BED of parser.kmerSize-bp adjacent genomic windows
 # to be used for getting overlapping k-mers
 def genomic_windows(window_size, step_size, acc_name):
-    #window_size = parser.kmerSize
-    #step_size = parser.kmerSize
-    #acc_name = re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
+    #window_size=parser.kmerSize
+    #step_size=parser.kmerSize
+    #acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
     """
     Make BED of genomic windows.
     NOTE: Requires that the genome FASTA chromosome sizes file (genome_Chr.fa.fai.size)
@@ -334,7 +334,7 @@ def genomic_windows(window_size, step_size, acc_name):
 # Align accession-specific k-mers to respesctive genome,
 # keeping zero-mismatch alignments only, and including multi-mappers
 def align_kmers_bowtie(kmers_fasta):
-    #kmers_fasta = outDir + "/" + \
+    #kmers_fasta=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + ".fa"
     """
@@ -367,7 +367,7 @@ def align_kmers_bowtie(kmers_fasta):
 
 # Convert BAM into BED
 def bam_to_bed(in_bam):
-    #in_bam = outDir + "/" + \
+    #in_bam=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted.bam"
     """
@@ -400,18 +400,18 @@ def bam_to_bed(in_bam):
 
 
 # Get the aligned k-mer coordinates for each k-mer that overlaps
-# a genomic window along >= parser.overlapProp of the aligned k-mer's length
+# a genomic window (gwol) along >= parser.overlapProp of the aligned k-mer's length
 # This minimum overlap proportion could be increased or decreased
 # for a smaller or larger k-mer subset, respectively
 # Decreasing it would exclude fewer k-mers that straddle two adjacent
 # genomic windows, but would include more k-mers that cover a single
 # variant site, whereas increasing it would do the opposite
 def get_gwol_kmers(windows_bed, kmers_bed):
-    #windows_bed = outDir + "/" + \
+    #windows_bed=outDir + "/" + \
     #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
     #    "_Chr_windows_w" + str(parser.kmerSize) + \
     #    "_s" + str(parser.kmerSize) + ".bed"
-    #kmers_bed = outDir + "/" + \
+    #kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted.bed"
     """
@@ -445,7 +445,7 @@ def get_gwol_kmers(windows_bed, kmers_bed):
 # whose alignment coordinates do not overlap those of other k-mers to
 # retain singletons that may otherwise be excluded by get_gwol_kmers()
 def get_singleton_kmers(kmers_bed):
-    #kmers_bed = outDir + "/" + \
+    #kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted.bed"
     """
@@ -477,11 +477,11 @@ def get_singleton_kmers(kmers_bed):
 # get_gwol_kmers and get_singleton_kmers
 # (i.e., downsampled accession-specific k-mer alignment coordinates)
 def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
-    #gwol_kmers_bed = outDir + "/" + \
+    #gwol_kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
     #    str(parser.overlapProp) + ".bed"
-    #singleton_kmers_bed = outDir + "/" + \
+    #singleton_kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
     """
@@ -507,7 +507,7 @@ def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
 # Make a FASTA file of the genomic sequences for the downsampled
 # accession-specific k-mer alignment coordinates
 def make_filt_kmers_fa(kmers_bed):
-    #kmers_bed = outDir + "/" + \
+    #kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
     #    str(parser.overlapProp) + "_merge.bed"
@@ -539,7 +539,7 @@ def make_filt_kmers_fa(kmers_bed):
 # lexicographically smallest, as was done for full k-mer set,
 # enabling subsequent test for membership of full set
 def dedup_kmers_fa(kmers_fa):
-    #kmers_fa = outDir + "/" + \
+    #kmers_fa=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
     #    str(parser.overlapProp) + "_merge.fa"
@@ -646,15 +646,15 @@ def get_excluded_windows(full_kmers_windows, ds_kmers_windows):
     excluded_windows_DF = left_join_DF[(left_join_DF["full_count"] >= 1) & (left_join_DF["ds_count"] == 0)]
     #print(excluded_windows_DF["full_count"].describe())
     excluded_windows_DF_sort = excluded_windows_DF.iloc[:,0:3].sort_values(by=["chr", "start0"],
-                                                                            axis=0,
-                                                                            ascending=[True, True],
-                                                                            kind="quicksort",
-                                                                            ignore_index=True)
+                                                                           axis=0,
+                                                                           ascending=[True, True],
+                                                                           kind="quicksort",
+                                                                           ignore_index=True)
     excluded_windows_DF_sort.to_csv(out_bed, sep="\t", header=False, index=False)
 
 
 # Get the aligned k-mer coordinates for each k-mer that overlaps
-# an excluded genomic window (output from get_excluded_windows())
+# an excluded genomic window (egwol) (output from get_excluded_windows())
 # along >= 1 bp of the aligned k-mer's length
 def get_egwol_kmers(excluded_windows_bed, kmers_bed):
     #excluded_windows_bed=outDir + "/" + \
@@ -684,66 +684,42 @@ def get_egwol_kmers(excluded_windows_bed, kmers_bed):
             subprocess.run(["rm", out_bed_err])
 
 
-# From the aligned k-mer coordinates for the k-mer that overlaps
+# From the aligned k-mer coordinates for the k-mers that overlap
 # an excluded genomic window (output from get_egwol_kmers()),
-# select the one(s) with greatest overlap
+# select the one with greatest overlap
 def get_greatest_egwol_kmers(kmers_bed):
-kmers_bed=outDir + "/" + \
-    parser.acc1nc + "_specific_k" + \
-    str(parser.kmerSize) + "_bowtie_sorted_intersect_om.bed"
-"""
-From the aligned k-mer coordinates for the k-mer that overlaps
-an excluded genomic window (output from get_egwol_kmers()),
-select the one(s) with greatest overlap.
-"""
-rep_kmers_bed = re.sub(".bed", "_represent.bed", kmers_bed)
-kmers_DF = pd.read_csv(kmers_bed, sep="\t", header=None)
-kmers_DF.columns = ["win_chr", "win_start0", "win_end",
-                    "kmer_chr", "kmer_start0", "kmer_end",
-                    "kmer_id", "mismatches", "strand", "overlap_bp"]
-kmers_DF_sort = kmers_DF.sort_values(by=["win_chr", "win_start0", "win_end", "overlap_bp"],
-                                     axis=0,
-                                     ascending=[True, True, True, False],
-                                     kind="quicksort",
-                                     ignore_index=True)
-kmers_DF_sort_list = list(kmers_DF_sort.groupby(["win_chr", "win_start0", "win_end"]))
-kmers_DF_greatest = pd.DataFrame()
-for window_tuple in kmers_DF_sort_list:
-    window_DF_greatest = window_tuple[1].iloc[[0]]
-    kmers_DF_greatest = pd.concat(objs=[kmers_DF_greatest, window_DF_greatest],
-                                  axis = 0,
-                                  ignore_index=True)
-kmers_DF_greatest_sort = kmers_DF_greatest.sort_values(by=["kmer_chr", "kmer_start0", "kmer_end"],
-                                                       axis=0,
-                                                       ascending=[True, True, True],
-                                                       kind="quicksort",
-                                                       ignore_index=True)
-kmers_DF_greatest_sort = kmers_DF_greatest_sort.iloc[:,3:9]
-
-
-#    segment = pd.DataFrame()
-#    for h in range(len(kmer_loc_df_sort)-1):
-#        if len(segment) == 0:
-#            segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h:h+1,:]],
-#                                axis=0,
-#                                ignore_index=True)
-
-
-#    filt_kmers_bed = re.sub(".bed", "_merge.bed", gwol_kmers_bed)
-#    gwol_kmers_DF = pd.read_csv(gwol_kmers_bed, sep="\t", header=None)
-#    singleton_kmers_DF = pd.read_csv(singleton_kmers_bed, sep="\t", header=None)
-#    filt_kmers_cat_DF = pd.concat(objs=[gwol_kmers_DF.iloc[:,0:3], singleton_kmers_DF.iloc[:,0:3]],
-#                                  axis=0,
-#                                  ignore_index=True)
-#    filt_kmers_cat_DF.columns = ["chr", "start0", "end"]
-#    filt_kmers_cat_DF_sort = filt_kmers_cat_DF.sort_values(by=["chr", "start0"],
-#                                                           axis=0,
-#                                                           ascending=[True, True],
-#                                                           kind="quicksort",
-#                                                           ignore_index=True)
-#    filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
-#    filt_kmers_cat_DF_sort_dedup.to_csv(filt_kmers_bed, sep="\t", header=False, index=False)
-
+    #kmers_bed=outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_om.bed"
+    """
+    From the aligned k-mer coordinates for the k-mers that overlap
+    an excluded genomic window (output from get_egwol_kmers()),
+    select the one with greatest overlap.
+    """
+    out_bed = re.sub(".bed", "_greatest.bed", kmers_bed)
+    kmers_DF = pd.read_csv(kmers_bed, sep="\t", header=None)
+    kmers_DF.columns = ["win_chr", "win_start0", "win_end",
+                        "kmer_chr", "kmer_start0", "kmer_end",
+                        "kmer_id", "mismatches", "strand", "overlap_bp"]
+    kmers_DF_sort = kmers_DF.sort_values(by=["win_chr", "win_start0", "overlap_bp"],
+                                         axis=0,
+                                         ascending=[True, True, False],
+                                         kind="quicksort",
+                                         ignore_index=True)
+    kmers_DF_sort_list = list(kmers_DF_sort.groupby(["win_chr", "win_start0", "win_end"]))
+    kmers_DF_greatest = pd.DataFrame()
+    for window_tuple in kmers_DF_sort_list:
+        window_DF_greatest = window_tuple[1].iloc[[0]]
+        kmers_DF_greatest = pd.concat(objs=[kmers_DF_greatest, window_DF_greatest],
+                                      axis = 0,
+                                      ignore_index=True)
+    kmers_DF_greatest_sort = kmers_DF_greatest.iloc[:,3:9].sort_values(by=["kmer_chr", "kmer_start0"],
+                                                                       axis=0,
+                                                                       ascending=[True, True],
+                                                                       kind="quicksort",
+                                                                       ignore_index=True)
+    kmers_DF_greatest_sort.to_csv(out_bed, sep="\t", header=False, index=False)
+ 
 
 # Plot chromosome-scale profiles of counts of k-mers
 # overlapping genomic windows
@@ -809,11 +785,11 @@ def chr_kmer_profiles_plot(*coverage_beds):
 ## get_gwol_kmers and get_singleton_kmers
 ## (i.e., downsampled accession-specific k-mer alignment coordinates)
 #def union_filt_kmers_silly(gwol_kmers_bed, singleton_kmers_bed):
-#    #gwol_kmers_bed = outDir + "/" + \
+#    #gwol_kmers_bed=outDir + "/" + \
 #    #    parser.acc1nc + "_specific_k" + \
 #    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
 #    #    str(parser.overlapProp) + ".bed"
-#    #singleton_kmers_bed = outDir + "/" + \
+#    #singleton_kmers_bed=outDir + "/" + \
 #    #    parser.acc1nc + "_specific_k" + \
 #    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
 #    """
@@ -917,7 +893,7 @@ get_singleton_kmers(
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
-# Get the union of get_gwol_kmers and get_singleton_kmers
+# Get the union of get_gwol_kmers() and get_singleton_kmers()
 # k-mer alignment coordinates
 union_filt_kmers(
     gwol_kmers_bed=outDir + "/" + \
@@ -973,6 +949,13 @@ get_egwol_kmers(
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
+# From the aligned k-mer coordinates for the k-mers that overlap
+# an excluded genomic window (output from get_egwol_kmers()),
+# select the one with greatest overlap
+get_greatest_egwol_kmers(
+    kmers_bed=outDir + "/" + \
+        parser.acc1nc + "_specific_k" + \
+        str(parser.kmerSize) + "_bowtie_sorted_intersect_om.bed")
 
 # Make a FASTA file of the downsampled accession-specific k-mers
 make_filt_kmers_fa(
