@@ -504,89 +504,18 @@ def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
     filt_kmers_cat_DF_sort_dedup.to_csv(out_bed, sep="\t", header=False, index=False)
 
 
-# Make a FASTA file of the genomic sequences for the downsampled
-# accession-specific k-mer alignment coordinates
-def make_filt_kmers_fa(kmers_bed):
-    #kmers_bed=outDir + "/" + \
-    #    parser.acc1nc + "_specific_k" + \
-    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #    str(parser.overlapProp) + "_merge.bed"
-    """
-    Make FASTA of the genomic sequences for the downsampled
-    accession-specific k-mer alignment coordinates in kmers_bed.
-    NOTE: Requires that the genome FASTA file and corresponding
-    index file, created with "samtools faidx genome.fa" (genome.fa.fai),
-    are in the index/ subfolder of the current working directory.
-    """
-    acc_name = re.sub(r"(_scaffolds)_.+", r"\1", kmers_bed)
-    acc_name = re.sub("fasta/", "", acc_name)
-    out_fa = re.sub(".bed", ".fa", kmers_bed)
-    out_fa_err = re.sub(".bed", "_fa.err", kmers_bed)
-    getfasta_cmd = ["bedtools", "getfasta"] + \
-                   ["-fi", "index/" + acc_name + ".fa"] + \
-                   ["-bed", kmers_bed] + \
-                   ["-fo", out_fa] + \
-                   ["-name"]
-    with open(out_fa_err, "w") as out_fa_err_handle:
-        subprocess.run(getfasta_cmd, stderr=out_fa_err_handle)
-        # Delete empty error files
-        if os.stat(out_fa_err).st_size == 0:
-            subprocess.run(["rm", out_fa_err])
-
-
-# Deduplicate downsampled accession-specific k-mers, and
-# keep the strand representation of each k-mer that is
-# lexicographically smallest, as was done for full k-mer set,
-# enabling subsequent test for membership of full set
-def dedup_kmers_fa(kmers_fa):
-    #kmers_fa=outDir + "/" + \
-    #    parser.acc1nc + "_specific_k" + \
-    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #    str(parser.overlapProp) + "_merge.fa"
-    """
-    Deduplicate downsampled accession-specific k-mers,
-    keeping the lexicographically smallest strand representation.
-    """
-    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
-    kmers_list = []
-    for record in kmers_iter:
-        kmer_for = str(record.seq)
-        kmer_rev = screed.rc(str(record.seq))
-        if kmer_for < kmer_rev:
-            kmer = kmer_for
-        else:
-            kmer = kmer_rev
-        if kmer not in kmers_list:
-            kmers_list.append(kmer)
-    #
-    return kmers_list
-
-
-# Check the downsampled (ds) kmers in the list output
-# from dedup_kmers_fa() (e.g., acc1nc_kmers_ds) for membership of
-# the corresponding full accession-specific k-mer set (e.g., acc1nc_kmers),
-# returning members as a sorted list
-def get_members(ds_kmers_list, full_kmers_list):
-    #ds_kmers_list=acc1nc_kmers_ds
-    #full_kmers_list=acc1nc_kmers
-    """
-    Make a sorted list containing the downsampled k-mers in the list output
-    from dedup_kmers_fa() that are members of the corresponding full
-    accession-specific k-mer set.
-    """
-    members_ds_kmers_list = sorted(intersection_lists(ds_kmers_list, full_kmers_list))
-    print("k-mers in ds_kmers_list: " + str(len(ds_kmers_list)))
-    print("k-mers in members_ds_kmers_list: " + str(len(members_ds_kmers_list)))
-    #
-    return members_ds_kmers_list
-
-
 # Make chromosome-scale profiles of counts of k-mers
 # overlapping genomic windows
 def chr_kmer_profiles(windows_bed, kmers_bed):
     #windows_bed=outDir + "/" + \
     #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
+    #    "_Chr_windows_w" + str(parser.kmerSize) + \
+    #    "_s" + str(parser.kmerSize) + ".bed"
+    ## OR:
+    #windows_bed=outDir + "/" + \
+    #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
     #    "_Chr_windows_w100000_s10000.bed"
+    #
     #kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted.bed"
@@ -724,7 +653,7 @@ def get_greatest_egwol_kmers(kmers_bed):
 # Get the union of k-mer alignment coordinates obtained by
 # union_filt_kmers() and get_greatest_egwol_kmers() 
 # (i.e., downsampled accession-specific k-mer alignment coordinates,
-# including those for the k-mers with the greatest overlap with
+# including those for k-mers with the greatest overlap with
 # previously excluded genomic windows)
 def union_filt_omg_kmers(filt_kmers_bed, omg_kmers_bed):
     #filt_kmers_bed=outDir + "/" + \
@@ -752,6 +681,83 @@ def union_filt_omg_kmers(filt_kmers_bed, omg_kmers_bed):
                                                            ignore_index=True)
     filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
     filt_kmers_cat_DF_sort_dedup.to_csv(out_bed, sep="\t", header=False, index=False)
+
+
+# Make a FASTA file of the genomic sequences for the downsampled
+# accession-specific k-mer alignment coordinates
+def make_kmers_fa(kmers_bed):
+    #kmers_bed=outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    #    str(parser.overlapProp) + "_merge.bed"
+    """
+    Make FASTA of the genomic sequences for the downsampled
+    accession-specific k-mer alignment coordinates in kmers_bed.
+    NOTE: Requires that the genome FASTA file and corresponding
+    index file, created with "samtools faidx genome.fa" (genome.fa.fai),
+    are in the index/ subfolder of the current working directory.
+    """
+    acc_name = re.sub(r"(_scaffolds)_.+", r"\1", kmers_bed)
+    acc_name = re.sub("fasta/", "", acc_name)
+    out_fa = re.sub(".bed", ".fa", kmers_bed)
+    out_fa_err = re.sub(".bed", "_fa.err", kmers_bed)
+    getfasta_cmd = ["bedtools", "getfasta"] + \
+                   ["-fi", "index/" + acc_name + ".fa"] + \
+                   ["-bed", kmers_bed] + \
+                   ["-fo", out_fa] + \
+                   ["-name"]
+    with open(out_fa_err, "w") as out_fa_err_handle:
+        subprocess.run(getfasta_cmd, stderr=out_fa_err_handle)
+        # Delete empty error files
+        if os.stat(out_fa_err).st_size == 0:
+            subprocess.run(["rm", out_fa_err])
+
+
+# Deduplicate downsampled accession-specific k-mers, and
+# keep the strand representation of each k-mer that is
+# lexicographically smallest, as was done for full k-mer set,
+# enabling subsequent test for membership of full set
+def dedup_kmers_fa(kmers_fa):
+    #kmers_fa=outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    #    str(parser.overlapProp) + "_merge.fa"
+    """
+    Deduplicate downsampled accession-specific k-mers,
+    keeping the lexicographically smallest strand representation.
+    """
+    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
+    kmers_list = []
+    for record in kmers_iter:
+        kmer_for = str(record.seq)
+        kmer_rev = screed.rc(str(record.seq))
+        if kmer_for < kmer_rev:
+            kmer = kmer_for
+        else:
+            kmer = kmer_rev
+        if kmer not in kmers_list:
+            kmers_list.append(kmer)
+    #
+    return kmers_list
+
+
+# Check the downsampled (ds) kmers in the list output
+# from dedup_kmers_fa() (e.g., acc1nc_kmers_ds) for membership of
+# the corresponding full accession-specific k-mer set (e.g., acc1nc_kmers),
+# returning members as a sorted list
+def get_members(ds_kmers_list, full_kmers_list):
+    #ds_kmers_list=acc1nc_kmers_ds
+    #full_kmers_list=acc1nc_kmers
+    """
+    Make a sorted list containing the downsampled k-mers in the list output
+    from dedup_kmers_fa() that are members of the corresponding full
+    accession-specific k-mer set.
+    """
+    members_ds_kmers_list = sorted(intersection_lists(ds_kmers_list, full_kmers_list))
+    print("k-mers in ds_kmers_list: " + str(len(ds_kmers_list)))
+    print("k-mers in members_ds_kmers_list: " + str(len(members_ds_kmers_list)))
+    #
+    return members_ds_kmers_list
 
 
 # Plot chromosome-scale profiles of counts of k-mers
@@ -987,21 +993,34 @@ get_greatest_egwol_kmers(
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_om.bed")
-
+# Get the union of k-mer alignment coordinates obtained by
+# union_filt_kmers() and get_greatest_egwol_kmers() 
+# (i.e., downsampled accession-specific k-mer alignment coordinates,
+# including those for k-mers with the greatest overlap with
+# previously excluded genomic windows)
+union_filt_omg_kmers(
+    filt_kmers_bed=outDir + "/" + \
+        parser.acc1nc + "_specific_k" + \
+        str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+        str(parser.overlapProp) + "_merge.bed",
+    omg_kmers_bed=outDir + "/" + \
+        parser.acc1nc + "_specific_k" + \
+        str(parser.kmerSize) + "_bowtie_sorted_intersect_omg.bed")
 # Make a FASTA file of the downsampled accession-specific k-mers
-make_filt_kmers_fa(
+make_kmers_fa(
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-        str(parser.overlapProp) + "_merge.bed")
+        str(parser.overlapProp) + "_merge_omg.bed")
 # Deduplicate downsampled accession-specific k-mers,
 # keeping the lexicographically smallest strand representation,
 # returned as a list
+# NOTE: memory-intensive and runs for a while
 acc1nc_kmers_ds = dedup_kmers_fa(
     kmers_fa=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-        str(parser.overlapProp) + "_merge.fa")
+        str(parser.overlapProp) + "_merge_omg.fa")
 # Make a sorted list containing the downsampled k-mers in the list output
 # from dedup_kmers_fa() that are members of the corresponding full
 # accession-specific k-mer set
@@ -1038,7 +1057,7 @@ chr_kmer_profiles(
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-        str(parser.overlapProp) + "_merge.bed")
+        str(parser.overlapProp) + "_merge_omg.bed")
 
 
 ## acc2nc_kmers
@@ -1077,7 +1096,7 @@ union_filt_kmers(
         parser.acc2nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_merge.bed")
 # Make a FASTA file of the downsampled accession-specific k-mers
-make_filt_kmers_fa(
+make_kmers_fa(
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
