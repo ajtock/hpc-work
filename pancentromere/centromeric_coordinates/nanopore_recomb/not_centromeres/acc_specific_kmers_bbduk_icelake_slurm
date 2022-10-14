@@ -74,7 +74,8 @@ THREADS=$(echo $PARAMS | cut -d ' ' -f 2)
 FQ_PREFIX=$(echo $PARAMS | cut -d ' ' -f 3)
 FA_PREFIX=$(echo $PARAMS | cut -d ' ' -f 4)
 K=$(echo $PARAMS | cut -d ' ' -f 5)
-HITS=$(echo $PARAMS | cut -d ' ' -f 6)
+OP=$(echo $PARAMS | cut -d ' ' -f 6)
+HITS=$(echo $PARAMS | cut -d ' ' -f 7)
 
 #! Activate conda environment
 source ~/.bashrc
@@ -95,7 +96,7 @@ hostname
 application="./acc_specific_kmers_bbduk.sh"
 
 #! Run options for the application:
-options="$MEMORY $THREADS $FQ_PREFIX $FA_PREFIX $K $HITS"
+options="$MEMORY $THREADS $FQ_PREFIX $FA_PREFIX $K $OP $HITS"
 
 #! Work directory (i.e. where the job will run):
 workdir="$SLURM_SUBMIT_DIR"  # The value of SLURM_SUBMIT_DIR sets workdir to the directory

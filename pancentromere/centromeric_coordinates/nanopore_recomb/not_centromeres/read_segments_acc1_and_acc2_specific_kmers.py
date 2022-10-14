@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Author: Andy Tock (ajt200@cam.ac.uk)
-# Date: 25/08/2022
+# Date: 14/10/2022
 
 # Usage:
 # conda activate python_3.9.6
@@ -10,6 +10,7 @@
 #  -a1 Col-0.ragtag_scaffolds_not_centromeres \
 #  -a2 Ler-0_110x.ragtag_scaffolds_not_centromeres \ 
 #  -k 24 \
+#  -op 0.9 \
 #  -mh 10 \
 #  -hr 2
 # conda deactivate
@@ -51,6 +52,8 @@ def create_parser():
                         help="The prefix of the second accession's sequences. Default: Ler-0_110x.ragtag_scaffolds_not_centromeres")
     parser.add_argument("-k", "--kmerSize", type=int, default="24",
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
+    parser.add_argument("-op", "--overlapProp", type=float, default="0.9",
+                        help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
     parser.add_argument("-mh", "--minHits", type=int, default="10",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 10")
     parser.add_argument("-hr", "--hybReadNo", type=int, default="0",
@@ -96,17 +99,17 @@ Path(input_fa).resolve(strict=True)
 
 # Path to acc1-specific k-mers
 acc1_fa = "fasta/" + \
-    parser.acc1 + \
-    "_specific_k" + str(parser.kmerSize) + \
-    ".fa"
+    parser.acc1 + "_specific_k" + \
+    str(parser.kmerSize) + "_downsampled_op" + \
+    str(parser.overlapProp) + ".fa"
 # File exists sanity check
 Path(acc1_fa).resolve(strict=True)
 
 # Path to acc2-specific k-mers
 acc2_fa = "fasta/" + \
-    parser.acc2 + \
-    "_specific_k" + str(parser.kmerSize) + \
-    ".fa"
+    parser.acc2 + "_specific_k" + \
+    str(parser.kmerSize) + "_downsampled_op" + \
+    str(parser.overlapProp) + ".fa"
 # File exists sanity check
 Path(acc2_fa).resolve(strict=True)
 
@@ -521,13 +524,13 @@ def main():
     Execute functions on a given read to extract and map
     the longest accession-specific read segment.
     """
-    #
-    #
+    
+    
     # Get the within-read start locations of accession-specific k-mer matches
     acc1_kmer_loc_df_tmp = get_kmer_loc(kmers_fa=acc1_fa, read_seq=str(read.seq)) 
     acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa=acc2_fa, read_seq=str(read.seq)) 
-    #
-    #
+    
+    
     # Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
     # overlap any of those in acc2_kmer_loc_df, and vice versa
     # NOTE: requires two reciprocal function calls
@@ -536,23 +539,23 @@ def main():
     acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
                                        DF2=acc1_kmer_loc_df_tmp)
     del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
-    #
-    #
+    
+    
     # Stop main execution if acc1_kmer_loc_df or acc2_kmer_loc_df have < parser.minHits
     if len(acc1_kmer_loc_df) < parser.minHits or len(acc2_kmer_loc_df) < parser.minHits or not "acc1_kmer_loc_df" in locals() or not "acc1_kmer_loc_df" in locals():
         print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
               "acc1_kmer_loc_df or acc2_kmer_loc_df has < " + str(parser.minHits) + " accession-specific k-mers")
         return
-    #
-    #
+    
+    
     # TODO: Use pyranges to remove rows in acc1_kmer_loc_df and acc2_kmer_loc_df
     # whose k-mer match coordinate ranges overlap between accessions
     # E.g.:
     # https://stackoverflow.com/questions/57032580/finding-overlaps-between-millions-of-ranges-intervals
     # https://stackoverflow.com/questions/49118347/pythonic-equivalent-to-reduce-in-r-granges-how-to-collapse-ranged-data
     # NOTE: Not needed given remove_overlaps() function using range() above
-    #
-    #
+    
+    
     # Concatenate and sort by k-mer match start location in read
     acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
                                 axis=0,
@@ -562,8 +565,8 @@ def main():
                                                            ascending=True,
                                                            kind="quicksort",
                                                            ignore_index=True)
-    #
-    #
+    
+    
     # For a given read, get accession-specific read segments
     # get_read_segments function call 1:
     # The first function call will exclude segments with < parser.minHits consecutive
@@ -572,14 +575,14 @@ def main():
     # separately (using concat_DF_list() on output), to be provided as the input to the second call
     acc_read_segments_list_tmp = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
     del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
-    #
-    #
+    
+    
     # Concatenate acc_read_segments_list_tmp into a single DataFrame,
     # sorted by k-mer hit_start location in read
     acc_kmer_loc_df_sort = concat_DF_list(DF_list=acc_read_segments_list_tmp)
     del acc_read_segments_list_tmp
-    #
-    #
+    
+    
     # For a given read, get accession-specific read segments
     # get_read_segments function call 2:
     # The second function call will be applied to the concatenated DataFrame consisting
@@ -589,16 +592,16 @@ def main():
     # there are no intervening short segments representing the other accession
     # (excluded segments with < parser.minHits consecutive accession-specific k-mers)
     acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
-    #
-    #
+    
+    
     # Stop main execution if acc_read_segments_list has < 2 elements
     # (accession-specific segments)
     if len(acc_read_segments_list) < 2:
         print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
               "acc_read_segments_list has < 2 elements (accession-specific segments)")
         return
-    #
-    #
+    
+    
     # Get per-accession read segments lists
     acc1_read_segments_list = []
     acc2_read_segments_list = []
@@ -607,16 +610,16 @@ def main():
             acc1_read_segments_list.append(acc_read_segments_list[i])
         elif acc_read_segments_list[i]["acc"][0] == acc2_name and len(acc_read_segments_list[i]) >= parser.minHits:
             acc2_read_segments_list.append(acc_read_segments_list[i])
-    #
-    #
+    
+    
     # Stop main execution if acc1_read_segments_list or acc2_read_segments_list
     # is empty (without accession-specific segments)
     if not acc1_read_segments_list or not acc2_read_segments_list:
         print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
               "acc1_read_segments_list or acc2_read_segments_list is empty (without accession-specific segments)")
         return
-    #
-    #
+    
+    
     # Determine whether hybrid read represents a putative crossover or noncrossover
     if len(acc1_read_segments_list) > 1 or len(acc2_read_segments_list) > 1:
         acc1_outdir = acc1_outdir_nco
@@ -624,33 +627,33 @@ def main():
     elif len(acc1_read_segments_list) == 1 and len(acc2_read_segments_list) == 1:
         acc1_outdir = acc1_outdir_co
         acc2_outdir = acc2_outdir_co
-    #
-    #
+    
+    
     # Stop main execution if acc1_outdir or acc2_outdir is not defined
     if not "acc1_outdir" in locals() or not "acc2_outdir" in locals():
         print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
               "acc1_outdir or acc2_outdir is not defined")
         return
-    #
-    #
+    
+    
     # Get the longest accession-specific read segment for each accession 
     acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
     acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
-    #
-    #
+    
+    
     # Stop main execution if acc1_longest_read_segment or acc2_longest_read_segment
     # is not defined
     if not "acc1_longest_read_segment" in locals() or not "acc2_longest_read_segment" in locals():
         print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
               "acc1_longest_read_segment or acc2_longest_read_segment is not defined")
         return
-    #
-    #
+    
+    
     # Define output FASTA file names for writing read segments 
     acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fasta"
     acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fasta"
-    #
-    #
+    
+    
     # Write accession-specific read segment to FASTA
     # to supply to alignment software as input read
     write_fasta_from_SeqRecord(read=read,
@@ -659,25 +662,25 @@ def main():
     write_fasta_from_SeqRecord(read=read,
                                segment=acc2_longest_read_segment,
                                outfile=acc2_outfile)
-    #
-    #
+    
+    
     # Align accession-specific read segments to respective genome
     align_read_segment_wm_ont(segment_fasta=acc1_outfile,
                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1))
     align_read_segment_wm_ont(segment_fasta=acc2_outfile,
                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2))
-    #
+    
     align_read_segment_mm_ont(segment_fasta=acc1_outfile,
                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1))
     align_read_segment_mm_ont(segment_fasta=acc2_outfile,
                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2))
-    #
+    
     align_read_segment_mm_sr(segment_fasta=acc1_outfile,
                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1))
     align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2))
-    #
-    #
+    
+    
     # Delete accession-specific segment alignment file if the equivalent
     # file for the other accession doesn't exist (indicating an unmapped segment)
     acc1_alignment_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_"
