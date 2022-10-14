@@ -50,6 +50,18 @@ def create_parser():
     #### Create parser
     return parser
 
+parser = create_parser().parse_args()
+print(parser)
+
+
+outDir = "fasta"
+plotDir = outDir + "/plots"
+
+if not os.path.exists(outDir):
+    os.makedirs(outDir)
+
+if not os.path.exists(plotDir):
+    os.makedirs(plotDir)
 
 
 # Make a list containing the union of
@@ -685,21 +697,6 @@ def main():
     Get accession-specific and downsampled accession-specific k-mers
     and write to FASTA files.
     """
-    
-    
-    parser = create_parser().parse_args()
-    print(parser)
-    
-    
-    outDir = "fasta"
-    plotDir = outDir + "/plots"
-    
-    if not os.path.exists(outDir):
-        os.makedirs(outDir)
-    
-    if not os.path.exists(plotDir):
-        os.makedirs(plotDir)
-    
     
     # Load k-mer count dictionaries (saved as pickle files)
     with open("kmers_in_fasta_dict/" + parser.acc1c + ".fa_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
