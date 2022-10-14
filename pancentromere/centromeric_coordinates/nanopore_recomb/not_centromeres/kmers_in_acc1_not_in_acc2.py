@@ -474,7 +474,7 @@ def get_singleton_kmers(kmers_bed):
 
 
 # Get the union of k-mer alignment coordinates obtained by
-# get_gwol_kmers and get_singleton_kmers
+# get_gwol_kmers() and get_singleton_kmers()
 # (i.e., downsampled accession-specific k-mer alignment coordinates)
 def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
     #gwol_kmers_bed=outDir + "/" + \
@@ -488,7 +488,7 @@ def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
     Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
     by removing duplicate rows.
     """
-    filt_kmers_bed = re.sub(".bed", "_merge.bed", gwol_kmers_bed)
+    out_bed = re.sub(".bed", "_merge.bed", gwol_kmers_bed)
     gwol_kmers_DF = pd.read_csv(gwol_kmers_bed, sep="\t", header=None)
     singleton_kmers_DF = pd.read_csv(singleton_kmers_bed, sep="\t", header=None)
     filt_kmers_cat_DF = pd.concat(objs=[gwol_kmers_DF.iloc[:,0:3], singleton_kmers_DF.iloc[:,0:3]],
@@ -501,7 +501,7 @@ def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
                                                            kind="quicksort",
                                                            ignore_index=True)
     filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
-    filt_kmers_cat_DF_sort_dedup.to_csv(filt_kmers_bed, sep="\t", header=False, index=False)
+    filt_kmers_cat_DF_sort_dedup.to_csv(out_bed, sep="\t", header=False, index=False)
 
 
 # Make a FASTA file of the genomic sequences for the downsampled
@@ -696,7 +696,7 @@ def get_greatest_egwol_kmers(kmers_bed):
     an excluded genomic window (output from get_egwol_kmers()),
     select the one with greatest overlap.
     """
-    out_bed = re.sub(".bed", "_greatest.bed", kmers_bed)
+    out_bed = re.sub("om.bed", "omg.bed", kmers_bed)
     kmers_DF = pd.read_csv(kmers_bed, sep="\t", header=None)
     kmers_DF.columns = ["win_chr", "win_start0", "win_end",
                         "kmer_chr", "kmer_start0", "kmer_end",
@@ -713,13 +713,46 @@ def get_greatest_egwol_kmers(kmers_bed):
         kmers_DF_greatest = pd.concat(objs=[kmers_DF_greatest, window_DF_greatest],
                                       axis = 0,
                                       ignore_index=True)
-    kmers_DF_greatest_sort = kmers_DF_greatest.iloc[:,3:9].sort_values(by=["kmer_chr", "kmer_start0"],
+    kmers_DF_greatest_sort = kmers_DF_greatest.iloc[:,3:10].sort_values(by=["kmer_chr", "kmer_start0"],
                                                                        axis=0,
                                                                        ascending=[True, True],
                                                                        kind="quicksort",
                                                                        ignore_index=True)
     kmers_DF_greatest_sort.to_csv(out_bed, sep="\t", header=False, index=False)
  
+
+# Get the union of k-mer alignment coordinates obtained by
+# union_filt_kmers() and get_greatest_egwol_kmers() 
+# (i.e., downsampled accession-specific k-mer alignment coordinates,
+# including those for the k-mers with the greatest overlap with
+# previously excluded genomic windows)
+def union_filt_omg_kmers(filt_kmers_bed, omg_kmers_bed):
+    #filt_kmers_bed=outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    #    str(parser.overlapProp) + "_merge.bed"
+    #omg_kmers_bed=outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_omg.bed"
+    """
+    Concatenate filt_kmers_bed and omg_kmers_bed and get the union
+    by removing duplicate rows.
+    """
+    out_bed = re.sub(".bed", "_omg.bed", filt_kmers_bed)
+    filt_kmers_DF = pd.read_csv(filt_kmers_bed, sep="\t", header=None)
+    omg_kmers_DF = pd.read_csv(omg_kmers_bed, sep="\t", header=None)
+    filt_kmers_cat_DF = pd.concat(objs=[filt_kmers_DF.iloc[:,0:3], omg_kmers_DF.iloc[:,0:3]],
+                                  axis=0,
+                                  ignore_index=True)
+    filt_kmers_cat_DF.columns = ["chr", "start0", "end"]
+    filt_kmers_cat_DF_sort = filt_kmers_cat_DF.sort_values(by=["chr", "start0"],
+                                                           axis=0,
+                                                           ascending=[True, True],
+                                                           kind="quicksort",
+                                                           ignore_index=True)
+    filt_kmers_cat_DF_sort_dedup = filt_kmers_cat_DF_sort.drop_duplicates(ignore_index=True)
+    filt_kmers_cat_DF_sort_dedup.to_csv(out_bed, sep="\t", header=False, index=False)
+
 
 # Plot chromosome-scale profiles of counts of k-mers
 # overlapping genomic windows
@@ -903,10 +936,9 @@ union_filt_kmers(
     singleton_kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_merge.bed")
-## For checking the number of windows that are covered by >= 1 k-mer
-## before and after downsampling
-# Make chromosome-scale profiles of counts of k-mers
-# overlapping genomic windows
+## To enable identification of genomic windows that are excluded
+## (overlapped by 0 k-mers) due to downsampling
+# Get counts of k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
         re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
@@ -915,8 +947,7 @@ chr_kmer_profiles(
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
-# Make chromosome-scale profiles of counts of downsampled k-mers
-# overlapping genomic windows
+# Get counts of downsampled k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
         re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
@@ -1035,7 +1066,7 @@ get_singleton_kmers(
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
-# Get the union of get_gwol_kmers and get_singleton_kmers
+# Get the union of get_gwol_kmers() and get_singleton_kmers()
 # k-mer alignment coordinates
 union_filt_kmers(
     gwol_kmers_bed=outDir + "/" + \
