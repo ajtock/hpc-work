@@ -160,7 +160,7 @@ def align_kmers_bowtie(kmers_fasta):
               ["--sam"] + \
               ["--no-unal"] + \
               ["--threads", "32"]
-    bam_cmd = ["samtools", "sort"] + \ 
+    bam_cmd = ["samtools", "sort"] + \
               ["-@", "32"] + \
               ["-m", "3G"] + \
               ["-o", out_bam]
