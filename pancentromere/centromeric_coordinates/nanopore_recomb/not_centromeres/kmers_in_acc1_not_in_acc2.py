@@ -1605,43 +1605,6 @@ def main():
         parser.acc2c + "_specific_k" + \
         str(parser.kmerSize) + \
         "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed")
-    
-    
-    # Plot chromosome-scale profiles of counts of k-mers
-    # overlapping genomic windows
-    chr_kmer_profiles_plot(
-        outDir + "/" + \
-        parser.acc1nc + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_windows_w100000_s10000.bed",
-        outDir + "/" + \
-        parser.acc1nc + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed",
-        outDir + "/" + \
-        parser.acc2nc + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_windows_w100000_s10000.bed",
-        outDir + "/" + \
-        parser.acc2nc + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed",
-        outDir + "/" + \
-        parser.acc1c + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_windows_w100000_s10000.bed",
-        outDir + "/" + \
-        parser.acc1c + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed",
-        outDir + "/" + \
-        parser.acc2c + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_windows_w100000_s10000.bed",
-        outDir + "/" + \
-        parser.acc2c + "_specific_k" + \
-        str(parser.kmerSize) + \
-        "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed")
 
 
 
