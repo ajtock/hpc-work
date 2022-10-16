@@ -36,7 +36,7 @@
 #! error file (NOTE: enclosing directory must exist)
 #SBATCH --error=logs/kmers_in_acc1_not_in_acc2_dedup_kmers_check_members_icelake_slurm_%A_%a.err
 #! Array task IDs
-#SBATCH --array=1
+#SBATCH --array=1-4
 
 #! sbatch directives end here (put any additional directives above this line)
 
