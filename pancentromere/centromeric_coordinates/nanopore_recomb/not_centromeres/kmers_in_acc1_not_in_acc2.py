@@ -1176,6 +1176,7 @@ def main():
     #        str(parser.kmerSize) + "_downsampled_op" + \
     #        str(parser.overlapProp) + ".fa")
     #del acc1nc_kmers_ds_members_dict
+    del acc1nc_kmers
     
     
     ## acc2nc_kmers
@@ -1332,6 +1333,7 @@ def main():
     #        str(parser.kmerSize) + "_downsampled_op" + \
     #        str(parser.overlapProp) + ".fa")
     #del acc2nc_kmers_ds_members_dict
+    del acc2nc_kmers
     
     
     ## acc1c_kmers
@@ -1488,6 +1490,7 @@ def main():
     #        str(parser.kmerSize) + "_downsampled_op" + \
     #        str(parser.overlapProp) + ".fa")
     #del acc1c_kmers_ds_members_dict
+    del acc1c_kmers
     
     
     ## acc2c_kmers
@@ -1644,6 +1647,7 @@ def main():
     #        str(parser.kmerSize) + "_downsampled_op" + \
     #        str(parser.overlapProp) + ".fa")
     #del acc2c_kmers_ds_members_dict
+    del acc2c_kmers
     
     
     # Plot chromosome-scale profiles of counts of k-mers
