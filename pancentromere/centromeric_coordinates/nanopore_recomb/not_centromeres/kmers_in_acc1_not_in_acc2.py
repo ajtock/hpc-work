@@ -4,7 +4,9 @@
 # Date: 14/10/2022
 
 # Usage:
+# conda activate python_3.9.6
 # ./kmers_in_acc1_not_in_acc2.py -a1c Col-0.ragtag_scaffolds_centromeres -a2c Ler-0_110x.ragtag_scaffolds_centromeres -a1nc Col-0.ragtag_scaffolds_not_centromeres -a2nc Ler-0_110x.ragtag_scaffolds_not_centromeres -k 24 -op 0.9 
+# conda deactivate
 
 # Write accession-specific centromeric k-mers
 # to FASTA to supply as input file to bbduk.sh ("ref" parameter)
