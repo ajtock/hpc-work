@@ -574,72 +574,6 @@ def dedup_kmers_fa(kmers_fa_noheaders):
     return list(dict.fromkeys(kmers_list))
 
 
-## Deduplicate downsampled accession-specific k-mers, and
-## keep the strand representation of each k-mer that is
-## lexicographically smallest, as was done for full k-mer set,
-## enabling subsequent test for membership of full set
-## NOTE: long run time of this function means that it
-## doesn't finish before 12-hour SLURM max job time,
-## so run as part of a separate script along with subsequent
-## get_members() function calls
-## (separate script name: kmers_in_acc1_not_in_acc2_dedup_kmers_check_members.py)
-## NOTE: This separate script approach was also too slow
-## so rewrote dedup_kmers_fa() in a more efficient way (above)
-#def dedup_kmers_fa_slow(kmers_fa_noheaders):
-#    #kmers_fa_noheaders=outDir + "/" + \
-#    #    parser.acc1nc + "_specific_k" + \
-#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    #    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
-#    """
-#    Deduplicate downsampled accession-specific k-mers,
-#    keeping the lexicographically smallest strand representation.
-#    """
-#    kmers_list = []
-#    with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
-#        for line in kmers_fa_noheaders_handle:
-#            #if line[0] == ">": continue
-#            kmer_for = line[:-1]
-#            #kmer_rev = screed.rc(kmer_for)
-#            kmer_rev = kmer_for.translate(comp_tab)[::-1]
-#            if kmer_for < kmer_rev:
-#                kmer = kmer_for
-#            else:
-#                kmer = kmer_rev
-#            if kmer not in kmers_list:
-#                kmers_list.append(kmer)
-#    #
-#    return kmers_list
-
-
-## Deduplicate downsampled accession-specific k-mers, and
-## keep the strand representation of each k-mer that is
-## lexicographically smallest, as was done for full k-mer set,
-## enabling subsequent test for membership of full set
-#def dedup_kmers_fa_seqio(kmers_fa):
-#    #kmers_fa=outDir + "/" + \
-#    #    parser.acc1nc + "_specific_k" + \
-#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    #    str(parser.overlapProp) + "_merge_omg.fa"
-#    """
-#    Deduplicate downsampled accession-specific k-mers,
-#    keeping the lexicographically smallest strand representation.
-#    """
-#    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
-#    kmers_list = []
-#    for record in kmers_iter:
-#        kmer_for = str(record.seq)
-#        #kmer_rev = screed.rc(kmer_for)
-#        kmer_rev = kmer_for.translate(comp_tab)[::-1]
-#        if kmer_for < kmer_rev:
-#            kmer = kmer_for
-#        else:
-#            kmer = kmer_rev
-#        if kmer not in kmers_list:
-#            kmers_list.append(kmer)
-#    #
-#    return kmers_list
-
-
 # Check the downsampled (ds) kmers in the list output
 # from dedup_kmers_fa() (e.g., acc1nc_kmers_ds) for membership of
 # the corresponding full accession-specific k-mer set (e.g., acc1nc_kmers),
@@ -773,6 +707,71 @@ def chr_kmer_profiles_plot(*coverage_beds):
 #        if os.stat(filt_kmers_uniq_bed_err,).st_size == 0:
 #            subprocess.run(["rm", filt_kmers_uniq_bed_err])
 
+
+## Deduplicate downsampled accession-specific k-mers, and
+## keep the strand representation of each k-mer that is
+## lexicographically smallest, as was done for full k-mer set,
+## enabling subsequent test for membership of full set
+## NOTE: long run time of this function means that it
+## doesn't finish before 12-hour SLURM max job time,
+## so run as part of a separate script along with subsequent
+## get_members() function calls
+## (separate script name: kmers_in_acc1_not_in_acc2_dedup_kmers_check_members.py)
+## NOTE: This separate script approach was also too slow
+## so rewrote dedup_kmers_fa() in a more efficient way (above)
+#def dedup_kmers_fa_slow(kmers_fa_noheaders):
+#    #kmers_fa_noheaders=outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+#    #    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
+#    """
+#    Deduplicate downsampled accession-specific k-mers,
+#    keeping the lexicographically smallest strand representation.
+#    """
+#    kmers_list = []
+#    with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
+#        for line in kmers_fa_noheaders_handle:
+#            #if line[0] == ">": continue
+#            kmer_for = line[:-1]
+#            #kmer_rev = screed.rc(kmer_for)
+#            kmer_rev = kmer_for.translate(comp_tab)[::-1]
+#            if kmer_for < kmer_rev:
+#                kmer = kmer_for
+#            else:
+#                kmer = kmer_rev
+#            if kmer not in kmers_list:
+#                kmers_list.append(kmer)
+#    #
+#    return kmers_list
+
+
+## Deduplicate downsampled accession-specific k-mers, and
+## keep the strand representation of each k-mer that is
+## lexicographically smallest, as was done for full k-mer set,
+## enabling subsequent test for membership of full set
+#def dedup_kmers_fa_seqio(kmers_fa):
+#    #kmers_fa=outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+#    #    str(parser.overlapProp) + "_merge_omg.fa"
+#    """
+#    Deduplicate downsampled accession-specific k-mers,
+#    keeping the lexicographically smallest strand representation.
+#    """
+#    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
+#    kmers_list = []
+#    for record in kmers_iter:
+#        kmer_for = str(record.seq)
+#        #kmer_rev = screed.rc(kmer_for)
+#        kmer_rev = kmer_for.translate(comp_tab)[::-1]
+#        if kmer_for < kmer_rev:
+#            kmer = kmer_for
+#        else:
+#            kmer = kmer_rev
+#        if kmer not in kmers_list:
+#            kmers_list.append(kmer)
+#    #
+#    return kmers_list
 
 
 def main():

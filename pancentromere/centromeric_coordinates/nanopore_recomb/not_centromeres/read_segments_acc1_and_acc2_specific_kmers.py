@@ -100,6 +100,20 @@ Path(input_fa).resolve(strict=True)
 # Path to acc1-specific k-mers
 acc1_fa = "fasta/" + \
     parser.acc1 + "_specific_k" + \
+    str(parser.kmerSize) + ".fa"
+# File exists sanity check
+Path(acc1_fa).resolve(strict=True)
+
+# Path to acc2-specific k-mers
+acc2_fa = "fasta/" + \
+    parser.acc2 + "_specific_k" + \
+    str(parser.kmerSize) + ".fa"
+# File exists sanity check
+Path(acc2_fa).resolve(strict=True)
+
+# Path to acc1-specific k-mers
+acc1_fa = "fasta/" + \
+    parser.acc1 + "_specific_k" + \
     str(parser.kmerSize) + "_downsampled_op" + \
     str(parser.overlapProp) + ".fa"
 # File exists sanity check
