@@ -75,6 +75,15 @@ def union_lists(*lists):
     return list(set.union(*map(set, lists)))
 
 
+# Make a set containing the union of
+# elements in an arbitrary number of sets 
+def union_sets(*sets):
+    """
+    Get the union of elements in an arbitrary number of sets.
+    """
+    return set.union(*sets)
+
+
 # Make a list containing the intersection of
 # elements in an arbitrary number of lists
 def intersection_lists(*lists):
@@ -774,6 +783,7 @@ def chr_kmer_profiles_plot(*coverage_beds):
 #    return kmers_list
 
 
+
 def main():
     """
     Get accession-specific and downsampled accession-specific k-mers
@@ -796,13 +806,12 @@ def main():
     with open("kmers_in_fasta_dict/t2t-col.20210610_ChrM_ChrC.fa_k" + str(parser.kmerSize) + ".pickle", "rb") as handle:
       mitochloro_dict = pickle.load(handle)
     
-    
-    # Make keys (k-mers) in each dictionary a list
-    acc1cen = list(acc1cen_dict.keys())
-    acc2cen = list(acc2cen_dict.keys())
-    acc1notcen = list(acc1notcen_dict.keys())
-    acc2notcen = list(acc2notcen_dict.keys())
-    mitochloro = list(mitochloro_dict.keys())
+    # Make keys (k-mers) in each dictionary a set
+    acc1cen = set(acc1cen_dict.keys())
+    acc2cen = set(acc2cen_dict.keys())
+    acc1notcen = set(acc1notcen_dict.keys())
+    acc2notcen = set(acc2notcen_dict.keys())
+    mitochloro = set(mitochloro_dict.keys())
     
     # Delete large k-mer dictionary objects
     del acc1cen_dict, acc2cen_dict, acc1notcen_dict, acc2notcen_dict, mitochloro_dict
@@ -819,11 +828,11 @@ def main():
     # 475021
     
     ### Convert each list of k-mers into a list of hashes
-    ##acc1cen_hashes = hash_kmers(acc1cen)
-    ##acc2cen_hashes = hash_kmers(acc2cen)
-    ##acc1notcen_hashes = hash_kmers(acc1notcen)
-    ##acc2notcen_hashes = hash_kmers(acc2notcen)
-    ##mitochloro_hashes = hash_kmers(mitochloro)
+    ##acc1cen_hashes = hash_kmers(list(acc1cen))
+    ##acc2cen_hashes = hash_kmers(list(acc2cen))
+    ##acc1notcen_hashes = hash_kmers(list(acc1notcen))
+    ##acc2notcen_hashes = hash_kmers(list(acc2notcen))
+    ##mitochloro_hashes = hash_kmers(list(mitochloro))
     #
     #
     ## Make venn to show k-mer overlap
@@ -832,10 +841,10 @@ def main():
     ## Including k-mers that are shared with the
     ## mitochondria and chloroplast
     #dataset_dict_inclMC = {
-    #    "Col-0 cen": set(acc1cen),
-    #    "Ler-0 cen": set(acc2cen),
-    #    "Col-0 arm": set(acc1notcen),
-    #    "Ler-0 arm": set(acc2notcen)
+    #    "Col-0 cen": acc1cen,
+    #    "Ler-0 cen": acc2cen,
+    #    "Col-0 arm": acc1notcen,
+    #    "Ler-0 arm": acc2notcen
     #} 
     #
     ##hash_dict_inclMC = {
@@ -859,22 +868,22 @@ def main():
     #
     ## Excluding k-mers that are shared with the
     ## mitochondria and chloroplast
-    #acc1cen_exclMC = list(set(acc1cen).difference(set(mitochloro)))
-    #acc2cen_exclMC = list(set(acc2cen).difference(set(mitochloro)))
-    #acc1notcen_exclMC = list(set(acc1notcen).difference(set(mitochloro)))
-    #acc2notcen_exclMC = list(set(acc2notcen).difference(set(mitochloro)))
+    #acc1cen_exclMC = acc1cen.difference(mitochloro)
+    #acc2cen_exclMC = acc2cen.difference(mitochloro)
+    #acc1notcen_exclMC = acc1notcen.difference(mitochloro)
+    #acc2notcen_exclMC = acc2notcen.difference(mitochloro)
     #
     ### Convert each list of k-mers into a list of hashes
-    ##acc1cen_exclMC_hashes = hash_kmers(acc1cen_exclMC)
-    ##acc2cen_exclMC_hashes = hash_kmers(acc2cen_exclMC)
-    ##acc1notcen_exclMC_hashes = hash_kmers(acc1notcen_exclMC)
-    ##acc2notcen_exclMC_hashes = hash_kmers(acc2notcen_exclMC)
+    ##acc1cen_exclMC_hashes = hash_kmers(list(acc1cen_exclMC))
+    ##acc2cen_exclMC_hashes = hash_kmers(list(acc2cen_exclMC))
+    ##acc1notcen_exclMC_hashes = hash_kmers(list(acc1notcen_exclMC))
+    ##acc2notcen_exclMC_hashes = hash_kmers(list(acc2notcen_exclMC))
     #
     #dataset_dict_exclMC = {
-    #    "Col-0 cen": set(acc1cen_exclMC),
-    #    "Ler-0 cen": set(acc2cen_exclMC),
-    #    "Col-0 arm": set(acc1notcen_exclMC),
-    #    "Ler-0 arm": set(acc2notcen_exclMC)
+    #    "Col-0 cen": acc1cen_exclMC,
+    #    "Ler-0 cen": acc2cen_exclMC,
+    #    "Col-0 arm": acc1notcen_exclMC,
+    #    "Ler-0 arm": acc2notcen_exclMC
     #} 
     #
     ##hash_dict_exclMC = {
@@ -902,13 +911,13 @@ def main():
     
     ## acc1c_kmers (acc1 centromere-specific k-mers)
     # Define union of acc1notcen, acc2cen, acc2notcen and mitochloro
-    acc1notcen_acc2cen_acc2notcen_mitochloro_union = union_lists(acc1notcen, acc2cen, acc2notcen, mitochloro)
+    acc1notcen_acc2cen_acc2notcen_mitochloro_union = union_sets(acc1notcen, acc2cen, acc2notcen, mitochloro)
     
     # Get k-mers unique to acc1cen by computing difference between
     # acc1cen and the above-defined union
     # (i.e., acc1cen \ acc1notcen_acc2cen_acc2notcen_mitochloro_union): acc1c_kmers
-    acc1c_kmers = list(set(acc1cen).difference(set(acc1notcen_acc2cen_acc2notcen_mitochloro_union)))
-    acc1c_kmers = sorted(acc1c_kmers)
+    acc1c_kmers = acc1cen.difference(acc1notcen_acc2cen_acc2notcen_mitochloro_union)
+    acc1c_kmers = sorted(list(acc1c_kmers))
     print(len(acc1c_kmers))
     # 309849
     print(len(acc1cen) - len(acc1c_kmers))
@@ -923,13 +932,13 @@ def main():
     
     ## acc2c_kmers (acc2 centromere-specific k-mers)
     # Define union of acc2notcen, acc1cen, acc1notcen and mitochloro
-    acc2notcen_acc1cen_acc1notcen_mitochloro_union = union_lists(acc2notcen, acc1cen, acc1notcen, mitochloro)
+    acc2notcen_acc1cen_acc1notcen_mitochloro_union = union_sets(acc2notcen, acc1cen, acc1notcen, mitochloro)
     
     # Get k-mers unique to acc2cen by computing difference between
     # acc2cen and the second above-defined union
     # (i.e., acc2cen \ acc2notcen_acc1cen_acc1notcen_mitochloro_union): acc2c_kmers
-    acc2c_kmers = list(set(acc2cen).difference(set(acc2notcen_acc1cen_acc1notcen_mitochloro_union)))
-    acc2c_kmers = sorted(acc2c_kmers)
+    acc2c_kmers = acc2cen.difference(acc2notcen_acc1cen_acc1notcen_mitochloro_union)
+    acc2c_kmers = sorted(list(acc2c_kmers))
     print(len(acc2c_kmers))
     # 353341 
     print(len(acc2cen) - len(acc2c_kmers))
@@ -944,13 +953,13 @@ def main():
     
     ## acc1nc_kmers (acc1 non-centromere-specific k-mers)
     # Define union of acc1cen, acc2cen, acc2notcen and mitochloro
-    acc1cen_acc2cen_acc2notcen_mitochloro_union = union_lists(acc1cen, acc2cen, acc2notcen, mitochloro)
+    acc1cen_acc2cen_acc2notcen_mitochloro_union = union_sets(acc1cen, acc2cen, acc2notcen, mitochloro)
     
     # Get k-mers unique to acc1notcen by computing difference between
     # acc1notcen and the above-defined union
     # (i.e., acc1notcen \ acc1cen_acc2cen_acc2notcen_mitochloro_union): acc1nc_kmers
-    acc1nc_kmers = list(set(acc1notcen).difference(set(acc1cen_acc2cen_acc2notcen_mitochloro_union)))
-    acc1nc_kmers = sorted(acc1nc_kmers)
+    acc1nc_kmers = acc1notcen.difference(acc1cen_acc2cen_acc2notcen_mitochloro_union)
+    acc1nc_kmers = sorted(list(acc1nc_kmers))
     print(len(acc1nc_kmers))
     # 19183610 
     print(len(acc1notcen) - len(acc1nc_kmers))
@@ -965,13 +974,13 @@ def main():
     
     ## acc2nc_kmers (acc2 non-centromere-specific k-mers)
     # Define union of acc1cen, acc2cen, acc1notcen and mitochloro
-    acc1cen_acc2cen_acc1notcen_mitochloro_union = union_lists(acc1cen, acc2cen, acc1notcen, mitochloro)
+    acc1cen_acc2cen_acc1notcen_mitochloro_union = union_sets(acc1cen, acc2cen, acc1notcen, mitochloro)
     
     # Get k-mers unique to acc2notcen by computing difference between
     # acc2notcen and the above-defined union
     # (i.e., acc2notcen \ acc1cen_acc2cen_acc1notcen_mitochloro_union): acc2nc_kmers
-    acc2nc_kmers = list(set(acc2notcen).difference(set(acc1cen_acc2cen_acc1notcen_mitochloro_union)))
-    acc2nc_kmers = sorted(acc2nc_kmers)
+    acc2nc_kmers = acc2notcen.difference(acc1cen_acc2cen_acc1notcen_mitochloro_union)
+    acc2nc_kmers = sorted(list(acc2nc_kmers))
     print(len(acc2nc_kmers))
     # 19452914 
     print(len(acc2notcen) - len(acc2nc_kmers))
