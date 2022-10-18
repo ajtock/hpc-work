@@ -4,11 +4,15 @@
 # query k-mers given in a FASTA file
 # (e.g., accession-specific centromeric k-mers, the output of kmers_in_acc1_not_in_acc2.py)
  
-# Usage:
+# Usage (requires a lot of RAM and CPUs so
+# sbatch acc_specific_kmers_bbduk_icelake_slurm
+# sbatch acc1_AND_acc2_specific_kmers_bbduk_icelake_slurm ):
+# conda activate python_3.9.6
 # ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99 Col-0.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
 # ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99 Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
 # ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99_match_Col-0.ragtag_scaffolds_not_centromeres_specific_k24_hits10 Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
 # ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99_match_Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k24_hits10 Col-0.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
+# conda deactivate
 
 #MEMORY=256g
 #THREADS=76

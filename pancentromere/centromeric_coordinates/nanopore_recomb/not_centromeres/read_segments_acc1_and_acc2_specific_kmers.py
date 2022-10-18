@@ -3,7 +3,7 @@
 # Author: Andy Tock (ajt200@cam.ac.uk)
 # Date: 14/10/2022
 
-# Usage:
+# Usage (sbatch read_segments_acc1_and_acc2_specific_kmers_py_icelake_slurm):
 # conda activate python_3.9.6
 # ./read_segments_acc1_and_acc2_specific_kmers.py \
 #  -r Col_ler_f1_pollen_500bp_minq99 \
