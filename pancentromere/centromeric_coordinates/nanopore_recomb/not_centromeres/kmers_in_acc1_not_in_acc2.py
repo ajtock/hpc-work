@@ -549,9 +549,9 @@ def make_kmers_fa(kmers_bed):
             subprocess.run(["rm", out_fa_noheaders_err])
 
 
-# Build a string translation table to enable
+# Make a string translation table to enable
 # forward-strand sequence to be translated into
-# reverse-strand sequence
+# reverse complement
 base_for = "ACGT"
 base_rev = "TGCA"
 comp_tab = str.maketrans(base_for, base_rev)
@@ -660,63 +660,6 @@ def chr_kmer_profiles_plot(*coverage_beds):
     plt.savefig(out_pdf, dpi=300)
 
 
-## Get the union of k-mer alignment coordinates obtained by
-## get_gwol_kmers and get_singleton_kmers
-## (i.e., downsampled accession-specific k-mer alignment coordinates)
-#def union_filt_kmers_silly(gwol_kmers_bed, singleton_kmers_bed):
-#    #gwol_kmers_bed=outDir + "/" + \
-#    #    parser.acc1nc + "_specific_k" + \
-#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    #    str(parser.overlapProp) + ".bed"
-#    #singleton_kmers_bed=outDir + "/" + \
-#    #    parser.acc1nc + "_specific_k" + \
-#    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
-#    """
-#    Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
-#    by removing duplicate rows.
-#    """
-#    gwol_kmers_cut_bed = re.sub(".bed", "_cut.bed", gwol_kmers_bed)
-#    gwol_kmers_cut_bed_err = re.sub(".bed", "_cut.err", gwol_kmers_bed)
-#    singleton_kmers_cut_bed = re.sub(".bed", "_cut.bed", singleton_kmers_bed)
-#    singleton_kmers_cut_bed_err = re.sub(".bed", "_cut.err", singleton_kmers_bed)
-#    filt_kmers_cat_bed_err = re.sub(".bed", "_merge_cat.err", gwol_kmers_bed)
-#    filt_kmers_sort_bed_err = re.sub(".bed", "_merge_cat_sort.err", gwol_kmers_bed)
-#    filt_kmers_uniq_bed = re.sub(".bed", "_merge_cat_sort_uniq.bed", gwol_kmers_bed)
-#    filt_kmers_uniq_bed_err = re.sub(".bed", "_merge_cat_sort_uniq.err", gwol_kmers_bed)
-#    cut_gwol_cmd = ["cut", "-f1,2,3", gwol_kmers_bed]
-#    cut_singleton_cmd = ["cut", "-f1,2,3", singleton_kmers_bed]
-#    cat_cmd = ["cat", gwol_kmers_cut_bed, singleton_kmers_cut_bed]
-#    sort_env = os.environ.copy()
-#    sort_env["LC_COLLATE"] = "C"
-#    sort_cmd = ["sort", "-k1,1", "-k2,2n"]
-#    uniq_cmd = ["uniq"]
-#    with open(gwol_kmers_cut_bed, "w") as gwol_kmers_cut_bed_handle, \
-#        open(gwol_kmers_cut_bed_err, "w") as gwol_kmers_cut_bed_err_handle, \
-#        open(singleton_kmers_cut_bed, "w") as singleton_kmers_cut_bed_handle, \
-#        open(singleton_kmers_cut_bed_err, "w") as singleton_kmers_cut_bed_err_handle, \
-#        open(filt_kmers_cat_bed_err, "w") as filt_kmers_cat_bed_err_handle, \
-#        open(filt_kmers_sort_bed_err, "w") as filt_kmers_sort_bed_err_handle, \
-#        open(filt_kmers_uniq_bed, "w") as filt_kmers_uniq_bed_handle, \
-#        open(filt_kmers_uniq_bed_err, "w") as filt_kmers_uniq_bed_err_handle:
-#        subprocess.run(cut_gwol_cmd, stdout=gwol_kmers_cut_bed_handle, stderr=gwol_kmers_cut_bed_err_handle)
-#        subprocess.run(cut_singleton_cmd, stdout=singleton_kmers_cut_bed_handle, stderr=singleton_kmers_cut_bed_err_handle)
-#        cat = subprocess.Popen(cat_cmd, stdout=subprocess.PIPE, stderr=filt_kmers_cat_bed_err_handle)
-#        sort = subprocess.Popen(sort_cmd, stdin=cat.stdout, stdout=subprocess.PIPE, stderr=filt_kmers_sort_bed_err_handle, env=sort_env)
-#        subprocess.call(uniq_cmd, stdin=sort.stdout, stdout=filt_kmers_uniq_bed_handle, stderr=filt_kmers_uniq_bed_err_handle)
-#        sort.wait()
-#        # Delete empty error files
-#        if os.stat(gwol_kmers_cut_bed_err).st_size == 0:
-#            subprocess.run(["rm", gwol_kmers_cut_bed_err])
-#        if os.stat(singleton_kmers_cut_bed_err).st_size == 0:
-#            subprocess.run(["rm", singleton_kmers_cut_bed_err])
-#        if os.stat(filt_kmers_cat_bed_err,).st_size == 0:
-#            subprocess.run(["rm", filt_kmers_cat_bed_err])
-#        if os.stat(filt_kmers_sort_bed_err,).st_size == 0:
-#            subprocess.run(["rm", filt_kmers_sort_bed_err])
-#        if os.stat(filt_kmers_uniq_bed_err,).st_size == 0:
-#            subprocess.run(["rm", filt_kmers_uniq_bed_err])
-
-
 ## Deduplicate downsampled accession-specific k-mers, and
 ## keep the strand representation of each k-mer that is
 ## lexicographically smallest, as was done for full k-mer set,
@@ -781,6 +724,63 @@ def chr_kmer_profiles_plot(*coverage_beds):
 #            kmers_list.append(kmer)
 #    #
 #    return kmers_list
+
+
+## Get the union of k-mer alignment coordinates obtained by
+## get_gwol_kmers and get_singleton_kmers
+## (i.e., downsampled accession-specific k-mer alignment coordinates)
+#def union_filt_kmers_silly(gwol_kmers_bed, singleton_kmers_bed):
+#    #gwol_kmers_bed=outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+#    #    str(parser.overlapProp) + ".bed"
+#    #singleton_kmers_bed=outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_merge.bed"
+#    """
+#    Concatenate gwol_kmers_bed and singleton_kmers_bed and get the union
+#    by removing duplicate rows.
+#    """
+#    gwol_kmers_cut_bed = re.sub(".bed", "_cut.bed", gwol_kmers_bed)
+#    gwol_kmers_cut_bed_err = re.sub(".bed", "_cut.err", gwol_kmers_bed)
+#    singleton_kmers_cut_bed = re.sub(".bed", "_cut.bed", singleton_kmers_bed)
+#    singleton_kmers_cut_bed_err = re.sub(".bed", "_cut.err", singleton_kmers_bed)
+#    filt_kmers_cat_bed_err = re.sub(".bed", "_merge_cat.err", gwol_kmers_bed)
+#    filt_kmers_sort_bed_err = re.sub(".bed", "_merge_cat_sort.err", gwol_kmers_bed)
+#    filt_kmers_uniq_bed = re.sub(".bed", "_merge_cat_sort_uniq.bed", gwol_kmers_bed)
+#    filt_kmers_uniq_bed_err = re.sub(".bed", "_merge_cat_sort_uniq.err", gwol_kmers_bed)
+#    cut_gwol_cmd = ["cut", "-f1,2,3", gwol_kmers_bed]
+#    cut_singleton_cmd = ["cut", "-f1,2,3", singleton_kmers_bed]
+#    cat_cmd = ["cat", gwol_kmers_cut_bed, singleton_kmers_cut_bed]
+#    sort_env = os.environ.copy()
+#    sort_env["LC_COLLATE"] = "C"
+#    sort_cmd = ["sort", "-k1,1", "-k2,2n"]
+#    uniq_cmd = ["uniq"]
+#    with open(gwol_kmers_cut_bed, "w") as gwol_kmers_cut_bed_handle, \
+#        open(gwol_kmers_cut_bed_err, "w") as gwol_kmers_cut_bed_err_handle, \
+#        open(singleton_kmers_cut_bed, "w") as singleton_kmers_cut_bed_handle, \
+#        open(singleton_kmers_cut_bed_err, "w") as singleton_kmers_cut_bed_err_handle, \
+#        open(filt_kmers_cat_bed_err, "w") as filt_kmers_cat_bed_err_handle, \
+#        open(filt_kmers_sort_bed_err, "w") as filt_kmers_sort_bed_err_handle, \
+#        open(filt_kmers_uniq_bed, "w") as filt_kmers_uniq_bed_handle, \
+#        open(filt_kmers_uniq_bed_err, "w") as filt_kmers_uniq_bed_err_handle:
+#        subprocess.run(cut_gwol_cmd, stdout=gwol_kmers_cut_bed_handle, stderr=gwol_kmers_cut_bed_err_handle)
+#        subprocess.run(cut_singleton_cmd, stdout=singleton_kmers_cut_bed_handle, stderr=singleton_kmers_cut_bed_err_handle)
+#        cat = subprocess.Popen(cat_cmd, stdout=subprocess.PIPE, stderr=filt_kmers_cat_bed_err_handle)
+#        sort = subprocess.Popen(sort_cmd, stdin=cat.stdout, stdout=subprocess.PIPE, stderr=filt_kmers_sort_bed_err_handle, env=sort_env)
+#        subprocess.call(uniq_cmd, stdin=sort.stdout, stdout=filt_kmers_uniq_bed_handle, stderr=filt_kmers_uniq_bed_err_handle)
+#        sort.wait()
+#        # Delete empty error files
+#        if os.stat(gwol_kmers_cut_bed_err).st_size == 0:
+#            subprocess.run(["rm", gwol_kmers_cut_bed_err])
+#        if os.stat(singleton_kmers_cut_bed_err).st_size == 0:
+#            subprocess.run(["rm", singleton_kmers_cut_bed_err])
+#        if os.stat(filt_kmers_cat_bed_err,).st_size == 0:
+#            subprocess.run(["rm", filt_kmers_cat_bed_err])
+#        if os.stat(filt_kmers_sort_bed_err,).st_size == 0:
+#            subprocess.run(["rm", filt_kmers_sort_bed_err])
+#        if os.stat(filt_kmers_uniq_bed_err,).st_size == 0:
+#            subprocess.run(["rm", filt_kmers_uniq_bed_err])
 
 
 
@@ -1017,7 +1017,6 @@ def main():
     
     ## Downsample accession-specific k-mers
     
-    
     # Make BED of genomic windows to be used for getting overlapping k-mers
     # acc1
     genomic_windows(window_size=parser.kmerSize,
@@ -1111,7 +1110,7 @@ def main():
             "_merge_windows_w" + str(parser.kmerSize) + \
             "_s" + str(parser.kmerSize) + ".bed")
     # Get the aligned k-mer coordinates for each k-mer that overlaps
-    # a genomic window along >= 1 bp of the aligned k-mer's length
+    # an excluded genomic window along >= 1 bp of the aligned k-mer's length
     get_egwol_kmers(
         excluded_windows_bed=outDir + "/" + \
             re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
@@ -1169,7 +1168,6 @@ def main():
     # Deduplicate downsampled accession-specific k-mers,
     # keeping the lexicographically smallest strand representation,
     # returned as a list
-    # NOTE: long run time
     acc1nc_kmers_ds = dedup_kmers_fa(
         kmers_fa_noheaders=outDir + "/" + \
             parser.acc1nc + "_specific_k" + \
@@ -1267,7 +1265,7 @@ def main():
             "_merge_windows_w" + str(parser.kmerSize) + \
             "_s" + str(parser.kmerSize) + ".bed")
     # Get the aligned k-mer coordinates for each k-mer that overlaps
-    # a genomic window along >= 1 bp of the aligned k-mer's length
+    # an excluded genomic window along >= 1 bp of the aligned k-mer's length
     get_egwol_kmers(
         excluded_windows_bed=outDir + "/" + \
             re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc) + \
@@ -1325,7 +1323,6 @@ def main():
     # Deduplicate downsampled accession-specific k-mers,
     # keeping the lexicographically smallest strand representation,
     # returned as a list
-    # NOTE: long run time
     acc2nc_kmers_ds = dedup_kmers_fa(
         kmers_fa_noheaders=outDir + "/" + \
             parser.acc2nc + "_specific_k" + \
@@ -1423,7 +1420,7 @@ def main():
             "_merge_windows_w" + str(parser.kmerSize) + \
             "_s" + str(parser.kmerSize) + ".bed")
     # Get the aligned k-mer coordinates for each k-mer that overlaps
-    # a genomic window along >= 1 bp of the aligned k-mer's length
+    # an excluded genomic window along >= 1 bp of the aligned k-mer's length
     get_egwol_kmers(
         excluded_windows_bed=outDir + "/" + \
             re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c) + \
@@ -1481,7 +1478,6 @@ def main():
     # Deduplicate downsampled accession-specific k-mers,
     # keeping the lexicographically smallest strand representation,
     # returned as a list
-    # NOTE: long run time
     acc1c_kmers_ds = dedup_kmers_fa(
         kmers_fa_noheaders=outDir + "/" + \
             parser.acc1c + "_specific_k" + \
@@ -1579,7 +1575,7 @@ def main():
             "_merge_windows_w" + str(parser.kmerSize) + \
             "_s" + str(parser.kmerSize) + ".bed")
     # Get the aligned k-mer coordinates for each k-mer that overlaps
-    # a genomic window along >= 1 bp of the aligned k-mer's length
+    # an excluded genomic window along >= 1 bp of the aligned k-mer's length
     get_egwol_kmers(
         excluded_windows_bed=outDir + "/" + \
             re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c) + \
@@ -1637,7 +1633,6 @@ def main():
     # Deduplicate downsampled accession-specific k-mers,
     # keeping the lexicographically smallest strand representation,
     # returned as a list
-    # NOTE: long run time
     acc2c_kmers_ds = dedup_kmers_fa(
         kmers_fa_noheaders=outDir + "/" + \
             parser.acc2c + "_specific_k" + \
