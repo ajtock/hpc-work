@@ -552,81 +552,92 @@ comp_tab = str.maketrans(base_for, base_rev)
 # keep the strand representation of each k-mer that is
 # lexicographically smallest, as was done for full k-mer set,
 # enabling subsequent test for membership of full set
-def dedup_kmers_fa_seqio(kmers_fa):
-    #kmers_fa=outDir + "/" + \
-    #    parser.acc1nc + "_specific_k" + \
-    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #    str(parser.overlapProp) + "_merge_omg.fa"
-    """
-    Deduplicate downsampled accession-specific k-mers,
-    keeping the lexicographically smallest strand representation.
-    """
-    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
-    kmers_list = []
-    for record in kmers_iter:
-        kmer_for = str(record.seq)
-        #kmer_rev = screed.rc(kmer_for)
-        kmer_rev = kmer_for.translate(comp_tab)[::-1]
-        if kmer_for < kmer_rev:
-            kmer = kmer_for
-        else:
-            kmer = kmer_rev
-        if kmer not in kmers_list:
-            kmers_list.append(kmer)
-    #
-    return kmers_list
-
-
-# Deduplicate downsampled accession-specific k-mers, and
-# keep the strand representation of each k-mer that is
-# lexicographically smallest, as was done for full k-mer set,
-# enabling subsequent test for membership of full set
-# NOTE: long run time of this function means that it
-# doesn't finish before 12-hour SLURM max job time,
-# so run as part of a separate script along with subsequent
-# get_members() function calls
-# (separate script name: kmers_in_acc1_not_in_acc2_dedup_kmers_check_members.py)
 def dedup_kmers_fa(kmers_fa_noheaders):
     #kmers_fa_noheaders=outDir + "/" + \
-    #    parser.acc1nc + "_specific_k" + \
+    #    parser.acc + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
     #    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
     """
     Deduplicate downsampled accession-specific k-mers,
     keeping the lexicographically smallest strand representation.
     """
-    kmers_list = []
     with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
-        for line in kmers_fa_noheaders_handle:
-            #if line[0] == ">": continue
-            kmer_for = line[:-1]
-            #kmer_rev = screed.rc(kmer_for)
-            kmer_rev = kmer_for.translate(comp_tab)[::-1]
-            if kmer_for < kmer_rev:
-                kmer = kmer_for
-            else:
-                kmer = kmer_rev
-            if kmer not in kmers_list:
-                kmers_list.append(kmer)
-    #
-    return kmers_list
+        lines = kmers_fa_noheaders_handle.read().splitlines()
+        lines_rc = list(map(screed.rc, lines))
+        lines_tuple = list(zip(lines, lines_rc))
+        kmers_list = list(map(min, lines_tuple))
+    # Dictionary approach to duplicate k-mer removal
+    # (1 representative k-mer retained where duplicates exist)
+    # will maintain the insertion order of the k-mers in the list
+    # (assumes use of Python >= 3.7; in previous Python versions,
+    # dictionaries were inherently unordered)
+    return list(dict.fromkeys(kmers_list))
 
 
-#kmers_fa_noheaders=outDir + "/" + \
-#    parser.acc1nc + "_specific_k" + \
-#    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    str(parser.overlapProp) + "_merge_omg_head200000.fa"
-#start = time()
-#acc1nc_kmers_ds = dedup_kmers_fa(kmers_fa_noheaders=kmers_fa_noheaders)
-#print(f"Done in {time() - start:.3f}s")
-#
-#kmers_fa=outDir + "/" + \
-#    parser.acc1nc + "_specific_k" + \
-#    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    str(parser.overlapProp) + "_merge_omg_head200000.fa"
-#start = time()
-#acc1nc_kmers_ds = dedup_kmers_fa_seqio(kmers_fa=kmers_fa)
-#print(f"Done in {time() - start:.3f}s")
+## Deduplicate downsampled accession-specific k-mers, and
+## keep the strand representation of each k-mer that is
+## lexicographically smallest, as was done for full k-mer set,
+## enabling subsequent test for membership of full set
+## NOTE: long run time of this function means that it
+## doesn't finish before 12-hour SLURM max job time,
+## so run as part of a separate script along with subsequent
+## get_members() function calls
+## (separate script name: kmers_in_acc1_not_in_acc2_dedup_kmers_check_members.py)
+## NOTE: This separate script approach was also too slow
+## so rewrote dedup_kmers_fa() in a more efficient way (above)
+#def dedup_kmers_fa_slow(kmers_fa_noheaders):
+#    #kmers_fa_noheaders=outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+#    #    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
+#    """
+#    Deduplicate downsampled accession-specific k-mers,
+#    keeping the lexicographically smallest strand representation.
+#    """
+#    kmers_list = []
+#    with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
+#        for line in kmers_fa_noheaders_handle:
+#            #if line[0] == ">": continue
+#            kmer_for = line[:-1]
+#            #kmer_rev = screed.rc(kmer_for)
+#            kmer_rev = kmer_for.translate(comp_tab)[::-1]
+#            if kmer_for < kmer_rev:
+#                kmer = kmer_for
+#            else:
+#                kmer = kmer_rev
+#            if kmer not in kmers_list:
+#                kmers_list.append(kmer)
+#    #
+#    return kmers_list
+
+
+## Deduplicate downsampled accession-specific k-mers, and
+## keep the strand representation of each k-mer that is
+## lexicographically smallest, as was done for full k-mer set,
+## enabling subsequent test for membership of full set
+#def dedup_kmers_fa_seqio(kmers_fa):
+#    #kmers_fa=outDir + "/" + \
+#    #    parser.acc1nc + "_specific_k" + \
+#    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+#    #    str(parser.overlapProp) + "_merge_omg.fa"
+#    """
+#    Deduplicate downsampled accession-specific k-mers,
+#    keeping the lexicographically smallest strand representation.
+#    """
+#    kmers_iter = SeqIO.parse(kmers_fa, "fasta")
+#    kmers_list = []
+#    for record in kmers_iter:
+#        kmer_for = str(record.seq)
+#        #kmer_rev = screed.rc(kmer_for)
+#        kmer_rev = kmer_for.translate(comp_tab)[::-1]
+#        if kmer_for < kmer_rev:
+#            kmer = kmer_for
+#        else:
+#            kmer = kmer_rev
+#        if kmer not in kmers_list:
+#            kmers_list.append(kmer)
+#    #
+#    return kmers_list
 
 
 # Check the downsampled (ds) kmers in the list output
@@ -1147,36 +1158,35 @@ def main():
             parser.acc1nc + "_specific_k" + \
             str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
             str(parser.overlapProp) + "_merge_omg.bed")
-    ## Deduplicate downsampled accession-specific k-mers,
-    ## keeping the lexicographically smallest strand representation,
-    ## returned as a list
-    ## NOTE: long run time
-    #acc1nc_kmers_ds = dedup_kmers_fa(
-    #    kmers_fa_noheaders=outDir + "/" + \
-    #        parser.acc1nc + "_specific_k" + \
-    #        str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #        str(parser.overlapProp) + "_merge_omg_noheaders.fa")
-    ## Make a sorted list containing the downsampled k-mers in the list output
-    ## from dedup_kmers_fa() that are members of the corresponding full
-    ## accession-specific k-mer set
-    #acc1nc_kmers_ds_members = get_members(
-    #    ds_kmers_list=acc1nc_kmers_ds,
-    #    full_kmers_list=acc1nc_kmers)
-    #del acc1nc_kmers, acc1nc_kmers_ds
-    ## Convert into dictionary
-    #acc1nc_kmers_ds_members_1tolen = list(range(1, len(acc1nc_kmers_ds_members)+1))
-    #acc1nc_kmers_ds_members_dict = dict(zip(acc1nc_kmers_ds_members_1tolen, acc1nc_kmers_ds_members))
-    #del acc1nc_kmers_ds_members, acc1nc_kmers_ds_members_1tolen
-    ## Write to FASTA
-    #write_fasta(
-    #    kmer_dict=acc1nc_kmers_ds_members_dict,
-    #    acc_name=parser.acc1nc[0:5],
-    #    outfile=outDir + "/" + \
-    #        parser.acc1nc + "_specific_k" + \
-    #        str(parser.kmerSize) + "_downsampled_op" + \
-    #        str(parser.overlapProp) + ".fa")
-    #del acc1nc_kmers_ds_members_dict
-    del acc1nc_kmers
+    # Deduplicate downsampled accession-specific k-mers,
+    # keeping the lexicographically smallest strand representation,
+    # returned as a list
+    # NOTE: long run time
+    acc1nc_kmers_ds = dedup_kmers_fa(
+        kmers_fa_noheaders=outDir + "/" + \
+            parser.acc1nc + "_specific_k" + \
+            str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+            str(parser.overlapProp) + "_merge_omg_noheaders.fa")
+    # Make a sorted list containing the downsampled k-mers in the list output
+    # from dedup_kmers_fa() that are members of the corresponding full
+    # accession-specific k-mer set
+    acc1nc_kmers_ds_members = get_members(
+        ds_kmers_list=acc1nc_kmers_ds,
+        full_kmers_list=acc1nc_kmers)
+    del acc1nc_kmers, acc1nc_kmers_ds
+    # Convert into dictionary
+    acc1nc_kmers_ds_members_1tolen = list(range(1, len(acc1nc_kmers_ds_members)+1))
+    acc1nc_kmers_ds_members_dict = dict(zip(acc1nc_kmers_ds_members_1tolen, acc1nc_kmers_ds_members))
+    del acc1nc_kmers_ds_members, acc1nc_kmers_ds_members_1tolen
+    # Write to FASTA
+    write_fasta(
+        kmer_dict=acc1nc_kmers_ds_members_dict,
+        acc_name=parser.acc1nc[0:5],
+        outfile=outDir + "/" + \
+            parser.acc1nc + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
+    del acc1nc_kmers_ds_members_dict
     
     
     ## acc2nc_kmers
@@ -1304,36 +1314,35 @@ def main():
             parser.acc2nc + "_specific_k" + \
             str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
             str(parser.overlapProp) + "_merge_omg.bed")
-    ## Deduplicate downsampled accession-specific k-mers,
-    ## keeping the lexicographically smallest strand representation,
-    ## returned as a list
-    ## NOTE: long run time
-    #acc2nc_kmers_ds = dedup_kmers_fa(
-    #    kmers_fa_noheaders=outDir + "/" + \
-    #        parser.acc2nc + "_specific_k" + \
-    #        str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #        str(parser.overlapProp) + "_merge_omg_noheaders.fa")
-    ## Make a sorted list containing the downsampled k-mers in the list output
-    ## from dedup_kmers_fa() that are members of the corresponding full
-    ## accession-specific k-mer set
-    #acc2nc_kmers_ds_members = get_members(
-    #    ds_kmers_list=acc2nc_kmers_ds,
-    #    full_kmers_list=acc2nc_kmers)
-    #del acc2nc_kmers, acc2nc_kmers_ds
-    ## Convert into dictionary
-    #acc2nc_kmers_ds_members_1tolen = list(range(1, len(acc2nc_kmers_ds_members)+1))
-    #acc2nc_kmers_ds_members_dict = dict(zip(acc2nc_kmers_ds_members_1tolen, acc2nc_kmers_ds_members))
-    #del acc2nc_kmers_ds_members, acc2nc_kmers_ds_members_1tolen
-    ## Write to FASTA
-    #write_fasta(
-    #    kmer_dict=acc2nc_kmers_ds_members_dict,
-    #    acc_name=parser.acc2nc[0:5],
-    #    outfile=outDir + "/" + \
-    #        parser.acc2nc + "_specific_k" + \
-    #        str(parser.kmerSize) + "_downsampled_op" + \
-    #        str(parser.overlapProp) + ".fa")
-    #del acc2nc_kmers_ds_members_dict
-    del acc2nc_kmers
+    # Deduplicate downsampled accession-specific k-mers,
+    # keeping the lexicographically smallest strand representation,
+    # returned as a list
+    # NOTE: long run time
+    acc2nc_kmers_ds = dedup_kmers_fa(
+        kmers_fa_noheaders=outDir + "/" + \
+            parser.acc2nc + "_specific_k" + \
+            str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+            str(parser.overlapProp) + "_merge_omg_noheaders.fa")
+    # Make a sorted list containing the downsampled k-mers in the list output
+    # from dedup_kmers_fa() that are members of the corresponding full
+    # accession-specific k-mer set
+    acc2nc_kmers_ds_members = get_members(
+        ds_kmers_list=acc2nc_kmers_ds,
+        full_kmers_list=acc2nc_kmers)
+    del acc2nc_kmers, acc2nc_kmers_ds
+    # Convert into dictionary
+    acc2nc_kmers_ds_members_1tolen = list(range(1, len(acc2nc_kmers_ds_members)+1))
+    acc2nc_kmers_ds_members_dict = dict(zip(acc2nc_kmers_ds_members_1tolen, acc2nc_kmers_ds_members))
+    del acc2nc_kmers_ds_members, acc2nc_kmers_ds_members_1tolen
+    # Write to FASTA
+    write_fasta(
+        kmer_dict=acc2nc_kmers_ds_members_dict,
+        acc_name=parser.acc2nc[0:5],
+        outfile=outDir + "/" + \
+            parser.acc2nc + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
+    del acc2nc_kmers_ds_members_dict
     
     
     ## acc1c_kmers
@@ -1461,36 +1470,35 @@ def main():
             parser.acc1c + "_specific_k" + \
             str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
             str(parser.overlapProp) + "_merge_omg.bed")
-    ## Deduplicate downsampled accession-specific k-mers,
-    ## keeping the lexicographically smallest strand representation,
-    ## returned as a list
-    ## NOTE: long run time
-    #acc1c_kmers_ds = dedup_kmers_fa(
-    #    kmers_fa_noheaders=outDir + "/" + \
-    #        parser.acc1c + "_specific_k" + \
-    #        str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #        str(parser.overlapProp) + "_merge_omg_noheaders.fa")
-    ## Make a sorted list containing the downsampled k-mers in the list output
-    ## from dedup_kmers_fa() that are members of the corresponding full
-    ## accession-specific k-mer set
-    #acc1c_kmers_ds_members = get_members(
-    #    ds_kmers_list=acc1c_kmers_ds,
-    #    full_kmers_list=acc1c_kmers)
-    #del acc1c_kmers, acc1c_kmers_ds
-    ## Convert into dictionary
-    #acc1c_kmers_ds_members_1tolen = list(range(1, len(acc1c_kmers_ds_members)+1))
-    #acc1c_kmers_ds_members_dict = dict(zip(acc1c_kmers_ds_members_1tolen, acc1c_kmers_ds_members))
-    #del acc1c_kmers_ds_members, acc1c_kmers_ds_members_1tolen
-    ## Write to FASTA
-    #write_fasta(
-    #    kmer_dict=acc1c_kmers_ds_members_dict,
-    #    acc_name=parser.acc1c[0:5],
-    #    outfile=outDir + "/" + \
-    #        parser.acc1c + "_specific_k" + \
-    #        str(parser.kmerSize) + "_downsampled_op" + \
-    #        str(parser.overlapProp) + ".fa")
-    #del acc1c_kmers_ds_members_dict
-    del acc1c_kmers
+    # Deduplicate downsampled accession-specific k-mers,
+    # keeping the lexicographically smallest strand representation,
+    # returned as a list
+    # NOTE: long run time
+    acc1c_kmers_ds = dedup_kmers_fa(
+        kmers_fa_noheaders=outDir + "/" + \
+            parser.acc1c + "_specific_k" + \
+            str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+            str(parser.overlapProp) + "_merge_omg_noheaders.fa")
+    # Make a sorted list containing the downsampled k-mers in the list output
+    # from dedup_kmers_fa() that are members of the corresponding full
+    # accession-specific k-mer set
+    acc1c_kmers_ds_members = get_members(
+        ds_kmers_list=acc1c_kmers_ds,
+        full_kmers_list=acc1c_kmers)
+    del acc1c_kmers, acc1c_kmers_ds
+    # Convert into dictionary
+    acc1c_kmers_ds_members_1tolen = list(range(1, len(acc1c_kmers_ds_members)+1))
+    acc1c_kmers_ds_members_dict = dict(zip(acc1c_kmers_ds_members_1tolen, acc1c_kmers_ds_members))
+    del acc1c_kmers_ds_members, acc1c_kmers_ds_members_1tolen
+    # Write to FASTA
+    write_fasta(
+        kmer_dict=acc1c_kmers_ds_members_dict,
+        acc_name=parser.acc1c[0:5],
+        outfile=outDir + "/" + \
+            parser.acc1c + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
+    del acc1c_kmers_ds_members_dict
     
     
     ## acc2c_kmers
@@ -1618,36 +1626,35 @@ def main():
             parser.acc2c + "_specific_k" + \
             str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
             str(parser.overlapProp) + "_merge_omg.bed")
-    ## Deduplicate downsampled accession-specific k-mers,
-    ## keeping the lexicographically smallest strand representation,
-    ## returned as a list
-    ## NOTE: long run time
-    #acc2c_kmers_ds = dedup_kmers_fa(
-    #    kmers_fa_noheaders=outDir + "/" + \
-    #        parser.acc2c + "_specific_k" + \
-    #        str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #        str(parser.overlapProp) + "_merge_omg_noheaders.fa")
-    ## Make a sorted list containing the downsampled k-mers in the list output
-    ## from dedup_kmers_fa() that are members of the corresponding full
-    ## accession-specific k-mer set
-    #acc2c_kmers_ds_members = get_members(
-    #    ds_kmers_list=acc2c_kmers_ds,
-    #    full_kmers_list=acc2c_kmers)
-    #del acc2c_kmers, acc2c_kmers_ds
-    ## Convert into dictionary
-    #acc2c_kmers_ds_members_1tolen = list(range(1, len(acc2c_kmers_ds_members)+1))
-    #acc2c_kmers_ds_members_dict = dict(zip(acc2c_kmers_ds_members_1tolen, acc2c_kmers_ds_members))
-    #del acc2c_kmers_ds_members, acc2c_kmers_ds_members_1tolen
-    ## Write to FASTA
-    #write_fasta(
-    #    kmer_dict=acc2c_kmers_ds_members_dict,
-    #    acc_name=parser.acc2c[0:5],
-    #    outfile=outDir + "/" + \
-    #        parser.acc2c + "_specific_k" + \
-    #        str(parser.kmerSize) + "_downsampled_op" + \
-    #        str(parser.overlapProp) + ".fa")
-    #del acc2c_kmers_ds_members_dict
-    del acc2c_kmers
+    # Deduplicate downsampled accession-specific k-mers,
+    # keeping the lexicographically smallest strand representation,
+    # returned as a list
+    # NOTE: long run time
+    acc2c_kmers_ds = dedup_kmers_fa(
+        kmers_fa_noheaders=outDir + "/" + \
+            parser.acc2c + "_specific_k" + \
+            str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+            str(parser.overlapProp) + "_merge_omg_noheaders.fa")
+    # Make a sorted list containing the downsampled k-mers in the list output
+    # from dedup_kmers_fa() that are members of the corresponding full
+    # accession-specific k-mer set
+    acc2c_kmers_ds_members = get_members(
+        ds_kmers_list=acc2c_kmers_ds,
+        full_kmers_list=acc2c_kmers)
+    del acc2c_kmers, acc2c_kmers_ds
+    # Convert into dictionary
+    acc2c_kmers_ds_members_1tolen = list(range(1, len(acc2c_kmers_ds_members)+1))
+    acc2c_kmers_ds_members_dict = dict(zip(acc2c_kmers_ds_members_1tolen, acc2c_kmers_ds_members))
+    del acc2c_kmers_ds_members, acc2c_kmers_ds_members_1tolen
+    # Write to FASTA
+    write_fasta(
+        kmer_dict=acc2c_kmers_ds_members_dict,
+        acc_name=parser.acc2c[0:5],
+        outfile=outDir + "/" + \
+            parser.acc2c + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
+    del acc2c_kmers_ds_members_dict
     
     
     # Plot chromosome-scale profiles of counts of k-mers

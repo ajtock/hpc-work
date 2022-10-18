@@ -111,6 +111,32 @@ def dedup_kmers_fa(kmers_fa_noheaders):
     Deduplicate downsampled accession-specific k-mers,
     keeping the lexicographically smallest strand representation.
     """
+    with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
+        lines = kmers_fa_noheaders_handle.read().splitlines()
+        lines_rc = list(map(screed.rc, lines))
+        lines_tuple = list(zip(lines, lines_rc))
+        kmers_list = list(map(min, lines_tuple))
+    # Dictionary approach to duplicate k-mer removal
+    # (1 representative k-mer retained where duplicates exist)
+    # will maintain the insertion order of the k-mers in the list
+    # (assumes use of Python >= 3.7; in previous Python versions,
+    # dictionaries were inherently unordered)
+    return list(dict.fromkeys(kmers_list))
+
+
+# Deduplicate downsampled accession-specific k-mers, and
+# keep the strand representation of each k-mer that is
+# lexicographically smallest, as was done for full k-mer set,
+# enabling subsequent test for membership of full set
+def dedup_kmers_fa_slow(kmers_fa_noheaders):
+    #kmers_fa_noheaders=outDir + "/" + \
+    #    parser.acc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
+    #    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
+    """
+    Deduplicate downsampled accession-specific k-mers,
+    keeping the lexicographically smallest strand representation.
+    """
     kmers_list = []
     with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
         for line in kmers_fa_noheaders_handle:
@@ -128,21 +154,27 @@ def dedup_kmers_fa(kmers_fa_noheaders):
     return kmers_list
 
 
+
 #kmers_fa_noheaders=outDir + "/" + \
 #    parser.acc + "_specific_k" + \
 #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    str(parser.overlapProp) + "_merge_omg_head200000.fa"
+#    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
 #start = time()
 #acc_kmers_ds = dedup_kmers_fa(kmers_fa_noheaders=kmers_fa_noheaders)
 #print(f"Done in {time() - start:.3f}s")
 #
-#kmers_fa=outDir + "/" + \
+#kmers_fa_noheaders=outDir + "/" + \
 #    parser.acc + "_specific_k" + \
 #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-#    str(parser.overlapProp) + "_merge_omg_head200000.fa"
+#    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
 #start = time()
-#acc_kmers_ds = dedup_kmers_fa(kmers_fa=kmers_fa)
+#acc_kmers_ds_slow = dedup_kmers_fa_slow(kmers_fa_noheaders=kmers_fa_noheaders)
 #print(f"Done in {time() - start:.3f}s")
+#
+#if acc_kmers_ds == acc_kmers_ds_slow:
+#    print("acc_kmers_ds is equal to acc_kmers_ds_slow")
+#else:
+#    raise AssertionError
 
 
 # Remove headers from full accession-specific k-mers FASTA
