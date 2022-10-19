@@ -602,6 +602,27 @@ def get_members(ds_kmers_list, full_kmers_list):
     return members_ds_kmers_list
 
 
+# Make downsampled accession-specific k-mers FASTA file without header lines
+def noheaders_fa(kmers_fa):
+    #kmers_fa=outDir + "/" + \
+    #    parser.acc1nc + "_specific_k" + \
+    #    str(parser.kmerSize) + "_downsampled_op" + \
+    #    str(parser.overlapProp) + ".fa"
+    """
+    Make k-mers FASTA without header lines.
+    """
+    out_fa = re.sub(".fa", "_noheaders.fa", kmers_fa)
+    out_fa_err = re.sub(".fa", "_noheaders.err", kmers_fa)
+    noheaders_cmd = ["grep", "-v"] + \
+                    ["^>", kmers_fa]
+    with open(out_fa, "w") as out_fa_handle, \
+        open(out_fa_err, "w") as out_fa_err_handle:
+        subprocess.run(noheaders_cmd, stdout=out_fa_handle, stderr=out_fa_err_handle)
+        # Delete empty error files
+        if os.stat(out_fa_err).st_size == 0:
+            subprocess.run(["rm", out_fa_err])
+
+
 # Plot chromosome-scale profiles of counts of k-mers
 # overlapping genomic windows
 def chr_kmer_profiles_plot(*coverage_beds):
@@ -1193,6 +1214,12 @@ def main():
             str(parser.kmerSize) + "_downsampled_op" + \
             str(parser.overlapProp) + ".fa")
     del acc1nc_kmers_ds_members_dict
+    # Write FASTA without headers
+    noheaders_fa(
+        kmers_fa=outDir + "/" + \
+            parser.acc1nc + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
     
     
     ## acc2nc_kmers
@@ -1348,6 +1375,12 @@ def main():
             str(parser.kmerSize) + "_downsampled_op" + \
             str(parser.overlapProp) + ".fa")
     del acc2nc_kmers_ds_members_dict
+    # Write FASTA without headers
+    noheaders_fa(
+        kmers_fa=outDir + "/" + \
+            parser.acc2nc + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
     
     
     ## acc1c_kmers
@@ -1503,6 +1536,12 @@ def main():
             str(parser.kmerSize) + "_downsampled_op" + \
             str(parser.overlapProp) + ".fa")
     del acc1c_kmers_ds_members_dict
+    # Write FASTA without headers
+    noheaders_fa(
+        kmers_fa=outDir + "/" + \
+            parser.acc1c + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
     
     
     ## acc2c_kmers
@@ -1658,6 +1697,12 @@ def main():
             str(parser.kmerSize) + "_downsampled_op" + \
             str(parser.overlapProp) + ".fa")
     del acc2c_kmers_ds_members_dict
+    # Write FASTA without headers
+    noheaders_fa(
+        kmers_fa=outDir + "/" + \
+            parser.acc2c + "_specific_k" + \
+            str(parser.kmerSize) + "_downsampled_op" + \
+            str(parser.overlapProp) + ".fa")
     
     
     # Plot chromosome-scale profiles of counts of k-mers

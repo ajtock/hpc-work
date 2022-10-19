@@ -89,27 +89,15 @@ acc2_outdir_nco = "segments/" + acc2_name + "/nco"
 input_fa = "fasta/" + parser.readsPrefix + \
     "_match_" + parser.acc1 + \
     "_specific_k" + str(parser.kmerSize) + \
+    "_downsampled_op" + str(parser.overlapProp) + \
     "_hits" + str(parser.minHits) + \
     "_match_" + parser.acc2 + \
     "_specific_k" + str(parser.kmerSize) + \
+    "_downsampled_op" + str(parser.overlapProp) + \
     "_hits" + str(parser.minHits) + \
     ".fa"
 # File exists sanity check
 Path(input_fa).resolve(strict=True)
-
-# Path to acc1-specific k-mers
-acc1_fa = "fasta/" + \
-    parser.acc1 + "_specific_k" + \
-    str(parser.kmerSize) + ".fa"
-# File exists sanity check
-Path(acc1_fa).resolve(strict=True)
-
-# Path to acc2-specific k-mers
-acc2_fa = "fasta/" + \
-    parser.acc2 + "_specific_k" + \
-    str(parser.kmerSize) + ".fa"
-# File exists sanity check
-Path(acc2_fa).resolve(strict=True)
 
 # Path to acc1-specific k-mers
 acc1_fa = "fasta/" + \
