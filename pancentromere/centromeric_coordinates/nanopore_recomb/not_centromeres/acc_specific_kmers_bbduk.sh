@@ -10,8 +10,8 @@
 # conda activate python_3.9.6
 # ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99 Col-0.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
 # ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99 Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
-# ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99_match_Col-0.ragtag_scaffolds_not_centromeres_specific_k24_hits10 Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
-# ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99_match_Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k24_hits10 Col-0.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
+# ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99_match_Col-0.ragtag_scaffolds_not_centromeres_specific_k24_downsampled_op0.9_hits10 Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
+# ./acc_specific_kmers_bbduk.sh 256g 76 Col_ler_f1_pollen_500bp_minq99_match_Ler-0_110x.ragtag_scaffolds_not_centromeres_specific_k24_downsampled_op0.9_hits10 Col-0.ragtag_scaffolds_not_centromeres_specific_k 24 0.9 10
 # conda deactivate
 
 #MEMORY=256g
