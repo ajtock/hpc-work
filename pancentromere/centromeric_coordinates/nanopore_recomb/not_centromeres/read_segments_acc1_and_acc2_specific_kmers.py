@@ -103,7 +103,7 @@ Path(input_fa).resolve(strict=True)
 acc1_fa = "fasta/" + \
     parser.acc1 + "_specific_k" + \
     str(parser.kmerSize) + "_downsampled_op" + \
-    str(parser.overlapProp) + "_noheaders.fa"
+    str(parser.overlapProp) + ".fa"
 # File exists sanity check
 Path(acc1_fa).resolve(strict=True)
 
@@ -111,7 +111,7 @@ Path(acc1_fa).resolve(strict=True)
 acc2_fa = "fasta/" + \
     parser.acc2 + "_specific_k" + \
     str(parser.kmerSize) + "_downsampled_op" + \
-    str(parser.overlapProp) + "_noheaders.fa"
+    str(parser.overlapProp) + ".fa"
 # File exists sanity check
 Path(acc2_fa).resolve(strict=True)
 
@@ -194,115 +194,89 @@ def flatten(lol):
 #
 #acc1_kmers_read_subset = get_kmer_subset(kmers=acc1_kmers, read=str(read.seq))
 
-# Deduplicate downsampled accession-specific k-mers, and
-# keep the strand representation of each k-mer that is
-# lexicographically smallest, as was done for full k-mer set,
-# enabling subsequent test for membership of full set
-def dedup_kmers_fa(kmers_fa_noheaders):
-    #kmers_fa_noheaders=outDir + "/" + \
-    #    parser.acc + "_specific_k" + \
-    #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
-    #    str(parser.overlapProp) + "_merge_omg_noheaders.fa"
-    """
-    Deduplicate downsampled accession-specific k-mers,
-    keeping the lexicographically smallest strand representation.
-    """
-    with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
-        lines = kmers_fa_noheaders_handle.read().splitlines()
-        lines_rc = list(map(screed.rc, lines))
-        lines_tuple = list(zip(lines, lines_rc))
-        kmers_list = list(map(min, lines_tuple))
-    # Dictionary approach to duplicate k-mer removal
-    # (1 representative k-mer retained where duplicates exist)
-    # will maintain the insertion order of the k-mers in the list
-    # (assumes use of Python >= 3.7; in previous Python versions,
-    # dictionaries were inherently unordered)
-    return list(dict.fromkeys(kmers_list))
 
-
-
-# Within a read, find the 0-based start location of all occurrences
-# of each accession-specific k-mer
-def get_kmer_loc_map(kmers_fa_noheaders, read_seq):
-kmers_fa_noheaders=acc1_fa
-kmers_fa=re.sub("_noheaders", "", kmers_fa_noheaders)
-read_seq=str(read.seq)
-"""
-For a given read, get the within-read 0-based start locations of all k-mer matches.
-"""
-kmers_fa_noheaders_handle = open(kmers_fa_noheaders, "r")
-kmers = kmers_fa_noheaders_handle.read().splitlines()
-
-def kmer_in_read_search(kmer_x):
-    if re.search(kmer_x, read_seq) or re.search(screed.rc(kmer_x), read_seq):
-        return True
-    else:
-        return False
-
-start = time()
-kmers_in_read = [kmer for kmer in kmers if
-                 re.search(kmer, read_seq) or
-                 re.search(screed.rc(kmer), read_seq)]
-print(f"Done in {time() - start:.3f}s")
-
-start = time()
-kmers_in_read_gc = (kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
-                    re.search(kmer[:-1], read_seq) or
-                    re.search(screed.rc(kmer[:-1]), read_seq))
-print(f"Done in {time() - start:.3f}s")
-
-start = time()
-kmers_in_read_lc = [kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
-                    re.search(kmer[:-1], read_seq) or
-                    re.search(screed.rc(kmer[:-1]), read_seq)]
-print(f"Done in {time() - start:.3f}s")
-
-
-kmers_in_read_v2 = map(lambda kmer: True if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq) else False, kmers)
-kmers_in_read_v2_list = []
-for x in kmers_in_read_v2:
-    kmers_in_read_v2_list.append(x)
-
-kmers_in_read_v2_list = list(map(lambda kmer: print(kmer) if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq), kmers))
-
-kmers_in_read_v3 = filter(kmer_in_read_search, kmers)
-kmers_in_read_v3_list = []
-for x in kmers_in_read_v3:
-    kmers_in_read_v3_list.append(x)
- 
-
-
-kmers_iter = SeqIO.parse(kmers_fa, "fasta")
-kmers = [record for record in kmers_iter if
-         re.search(str(record.seq), read_seq) or
-         re.search(screed.rc(str(record.seq)), read_seq)]
-del kmers_iter
-kmer_loc_dict_list = []
-for h in range(len(kmers)):
-    kmer_id = kmers[h].id
-    kmer_acc = kmers[h].id.split("_", 1)[1]
-    kmer_for = str(kmers[h].seq)
-    #kmer_rev = kmer_for.translate(comp_tab)[::-1] 
-    kmer_rev = screed.rc(kmer_for)
-    kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read_seq)]
-    kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read_seq)]
-    kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
-    if kmer_for < kmer_rev:
-        kmer = kmer_for
-    else:
-        kmer = kmer_rev
-    if kmer not in kmer_loc_dict_list:
-        if kmer_matches:
-            for k in range(len(kmer_matches)):
-                kmer_loc_dict_list.append({"kmer": kmer,
-                                           "id": kmer_id,
-                                           "acc": kmer_acc,
-                                           "hit_start": kmer_matches[k],
-                                           "hit_end": kmer_matches[k] + parser.kmerSize})
-    else:
-        print("k-mer already present in object")
+## Within a read, find the 0-based start location of all occurrences
+## of each accession-specific k-mer
+#def get_kmer_loc_map(kmers_fa_noheaders, read_seq):
+#kmers_fa_noheaders=acc1_fa
+#kmers_fa=re.sub("_noheaders", "", kmers_fa_noheaders)
+#read_seq=str(read.seq)
+#"""
+#For a given read, get the within-read 0-based start locations of all k-mer matches.
+#"""
+#kmers_fa_noheaders_handle = open(kmers_fa_noheaders, "r")
+#kmers = kmers_fa_noheaders_handle.read().splitlines()
 #
-return pd.DataFrame(kmer_loc_dict_list)
+#def kmer_in_read_search(kmer_x):
+#    if re.search(kmer_x, read_seq) or re.search(screed.rc(kmer_x), read_seq):
+#        return True
+#    else:
+#        return False
+#
+#start = time()
+#kmers_in_read = [kmer for kmer in kmers if
+#                 re.search(kmer, read_seq) or
+#                 re.search(screed.rc(kmer), read_seq)]
+#print(f"Done in {time() - start:.3f}s")
+#
+#start = time()
+#kmers_in_read_gc = (kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
+#                    re.search(kmer[:-1], read_seq) or
+#                    re.search(screed.rc(kmer[:-1]), read_seq))
+#print(f"Done in {time() - start:.3f}s")
+#
+#start = time()
+#kmers_in_read_lc = [kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
+#                    re.search(kmer[:-1], read_seq) or
+#                    re.search(screed.rc(kmer[:-1]), read_seq)]
+#print(f"Done in {time() - start:.3f}s")
+#
+#
+#kmers_in_read_v2 = map(lambda kmer: True if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq) else False, kmers)
+#kmers_in_read_v2_list = []
+#for x in kmers_in_read_v2:
+#    kmers_in_read_v2_list.append(x)
+#
+#kmers_in_read_v2_list = list(map(lambda kmer: print(kmer) if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq), kmers))
+#
+#kmers_in_read_v3 = filter(kmer_in_read_search, kmers)
+#kmers_in_read_v3_list = []
+#for x in kmers_in_read_v3:
+#    kmers_in_read_v3_list.append(x)
+# 
+#
+#
+#kmers_iter = SeqIO.parse(kmers_fa, "fasta")
+#kmers = [record for record in kmers_iter if
+#         re.search(str(record.seq), read_seq) or
+#         re.search(screed.rc(str(record.seq)), read_seq)]
+#del kmers_iter
+#kmer_loc_dict_list = []
+#for h in range(len(kmers)):
+#    kmer_id = kmers[h].id
+#    kmer_acc = kmers[h].id.split("_", 1)[1]
+#    kmer_for = str(kmers[h].seq)
+#    #kmer_rev = kmer_for.translate(comp_tab)[::-1] 
+#    kmer_rev = screed.rc(kmer_for)
+#    kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read_seq)]
+#    kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read_seq)]
+#    kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
+#    if kmer_for < kmer_rev:
+#        kmer = kmer_for
+#    else:
+#        kmer = kmer_rev
+#    if kmer not in kmer_loc_dict_list:
+#        if kmer_matches:
+#            for k in range(len(kmer_matches)):
+#                kmer_loc_dict_list.append({"kmer": kmer,
+#                                           "id": kmer_id,
+#                                           "acc": kmer_acc,
+#                                           "hit_start": kmer_matches[k],
+#                                           "hit_end": kmer_matches[k] + parser.kmerSize})
+#    else:
+#        print("k-mer already present in object")
+##
+#return pd.DataFrame(kmer_loc_dict_list)
 
 
 # Within a read, find the 0-based start location of all occurrences
