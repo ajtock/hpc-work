@@ -49,7 +49,7 @@ bbduk.sh -Xmx${MEMORY} \
          ref=fasta/${FA_PREFIX}${K}_downsampled_op${OP}.fa \
          maskmiddle=f \
          minkmerhits=${HITS} \
-         threads=${THREADS} &> ${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}_bbduk.log
+         threads=${THREADS} &> logs/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}_bbduk.log
 
 reformat.sh in=fastq/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}.fq \
-            out=fasta/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}.fa &> ${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}_reformat.log
+            out=fasta/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}.fa &> logs/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}_reformat.log
