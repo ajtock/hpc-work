@@ -470,10 +470,10 @@ def get_greatest_egwol_kmers(kmers_bed):
                                       axis = 0,
                                       ignore_index=True)
     kmers_DF_greatest_sort = kmers_DF_greatest.iloc[:,3:10].sort_values(by=["kmer_chr", "kmer_start0"],
-                                                                       axis=0,
-                                                                       ascending=[True, True],
-                                                                       kind="quicksort",
-                                                                       ignore_index=True)
+                                                                        axis=0,
+                                                                        ascending=[True, True],
+                                                                        kind="quicksort",
+                                                                        ignore_index=True)
     kmers_DF_greatest_sort.to_csv(out_bed, sep="\t", header=False, index=False)
  
 
