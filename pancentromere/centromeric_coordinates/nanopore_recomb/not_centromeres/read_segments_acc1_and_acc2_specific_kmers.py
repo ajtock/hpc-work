@@ -239,31 +239,37 @@ def kmer_in_read_search(kmer_x):
     else:
         return False
 
+start = time()
 kmers_in_read = [kmer for kmer in kmers if
                  re.search(kmer, read_seq) or
                  re.search(screed.rc(kmer), read_seq)]
-kmers_in_read_v2 = list(map(lambda kmer: re.search(kmer, read_seq), kmers))
+print(f"Done in {time() - start:.3f}s")
+
+start = time()
+kmers_in_read_gc = (kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
+                    re.search(kmer[:-1], read_seq) or
+                    re.search(screed.rc(kmer[:-1]), read_seq))
+print(f"Done in {time() - start:.3f}s")
+
+start = time()
+kmers_in_read_lc = [kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
+                    re.search(kmer[:-1], read_seq) or
+                    re.search(screed.rc(kmer[:-1]), read_seq)]
+print(f"Done in {time() - start:.3f}s")
+
+
+kmers_in_read_v2 = map(lambda kmer: True if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq) else False, kmers)
+kmers_in_read_v2_list = []
+for x in kmers_in_read_v2:
+    kmers_in_read_v2_list.append(x)
+
+kmers_in_read_v2_list = list(map(lambda kmer: print(kmer) if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq), kmers))
+
 kmers_in_read_v3 = filter(kmer_in_read_search, kmers)
 kmers_in_read_v3_list = []
 for x in kmers_in_read_v3:
     kmers_in_read_v3_list.append(x)
  
-
-tmp = list(map re.search(lines[0], read_seq)
-
-ages = [5, 12, 17, 18, 24, 32]
-
-def myFunc(x):
-  if x < 18:
-    return False
-  else:
-    return True
-
-adults = filter(myFunc, ages)
-
-adults_list = []
-for x in adults:
-  adults_list.append(x)
 
 
 kmers_iter = SeqIO.parse(kmers_fa, "fasta")
