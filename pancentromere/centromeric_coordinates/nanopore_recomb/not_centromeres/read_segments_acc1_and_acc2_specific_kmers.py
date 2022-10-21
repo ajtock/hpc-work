@@ -103,7 +103,7 @@ Path(input_fa).resolve(strict=True)
 acc1_fa = "fasta/" + \
     parser.acc1 + "_specific_k" + \
     str(parser.kmerSize) + "_downsampled_op" + \
-    str(parser.overlapProp) + ".fa"
+    str(parser.overlapProp) + "_noheaders.fa"
 # File exists sanity check
 Path(acc1_fa).resolve(strict=True)
 
@@ -111,7 +111,7 @@ Path(acc1_fa).resolve(strict=True)
 acc2_fa = "fasta/" + \
     parser.acc2 + "_specific_k" + \
     str(parser.kmerSize) + "_downsampled_op" + \
-    str(parser.overlapProp) + ".fa"
+    str(parser.overlapProp) + "_noheaders.fa"
 # File exists sanity check
 Path(acc2_fa).resolve(strict=True)
 
@@ -278,10 +278,40 @@ def flatten(lol):
 ##
 #return pd.DataFrame(kmer_loc_dict_list)
 
+# Within a read, find the 0-based start location of all occurrences
+# of each accession-specific k-mer
+def get_kmer_loc(kmers_fa_noheaders, read_seq):
+    """
+    For a given read, get the within-read 0-based start locations of all k-mer matches.
+    """
+    kmer_acc = re.sub("fasta/", "", kmers_fa_noheaders)
+    kmer_acc = kmer_acc[0:5] 
+    with open(kmers_fa_noheaders, "r") as kmers_fa_noheaders_handle:
+        kmers = [kmer[:-1] for kmer in kmers_fa_noheaders_handle if
+                 re.search(kmer[:-1], read_seq) or
+                 re.search(screed.rc(kmer[:-1]), read_seq)]
+    kmer_loc_dict_list = []
+    for h in range(len(kmers)):
+        kmer_for = kmers[h]
+        #kmer_rev = kmer_for.translate(comp_tab)[::-1] 
+        kmer_rev = screed.rc(kmer_for)
+        kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read_seq)]
+        kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read_seq)]
+        kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
+        kmer = min(kmer_for, kmer_rev)
+        if kmer_matches:
+            for i in range(len(kmer_matches)):
+                kmer_loc_dict_list.append({"kmer": kmer,
+                                           "acc": kmer_acc,
+                                           "hit_start": kmer_matches[i],
+                                           "hit_end": kmer_matches[i] + parser.kmerSize})
+    #
+    return pd.DataFrame(kmer_loc_dict_list)
+
 
 # Within a read, find the 0-based start location of all occurrences
 # of each accession-specific k-mer
-def get_kmer_loc(kmers_fa, read_seq):
+def get_kmer_loc_seqio(kmers_fa, read_seq):
     """
     For a given read, get the within-read 0-based start locations of all k-mer matches.
     """
@@ -300,20 +330,14 @@ def get_kmer_loc(kmers_fa, read_seq):
         kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read_seq)]
         kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read_seq)]
         kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
-        if kmer_for < kmer_rev:
-            kmer = kmer_for
-        else:
-            kmer = kmer_rev
-        if kmer not in kmer_loc_dict_list:
-            if kmer_matches:
-                for k in range(len(kmer_matches)):
-                    kmer_loc_dict_list.append({"kmer": kmer,
-                                               "id": kmer_id,
-                                               "acc": kmer_acc,
-                                               "hit_start": kmer_matches[k],
-                                               "hit_end": kmer_matches[k] + parser.kmerSize})
-        else:
-            print("k-mer already present in object")
+        kmer = min(kmer_for, kmer_rev)
+        if kmer_matches:
+            for i in range(len(kmer_matches)):
+                kmer_loc_dict_list.append({"kmer": kmer,
+                                           "id": kmer_id,
+                                           "acc": kmer_acc,
+                                           "hit_start": kmer_matches[i],
+                                           "hit_end": kmer_matches[i] + parser.kmerSize})
     #
     return pd.DataFrame(kmer_loc_dict_list)
 
@@ -338,16 +362,13 @@ def get_kmer_loc_ori(kmers, read):
             kmer = kmer_for
         else:
             kmer = kmer_rev
-        if kmer not in kmer_loc_dict_list:
-            if kmer_matches:
-                for k in range(len(kmer_matches)):
-                    kmer_loc_dict_list.append({"kmer": kmer,
-                                               "id": kmer_id,
-                                               "acc": kmer_acc,
-                                               "hit_start": kmer_matches[k],
-                                               "hit_end": kmer_matches[k] + parser.kmerSize})
-        else:
-            print("k-mer already present in object")
+        if kmer_matches:
+            for i in range(len(kmer_matches)):
+                kmer_loc_dict_list.append({"kmer": kmer,
+                                           "id": kmer_id,
+                                           "acc": kmer_acc,
+                                           "hit_start": kmer_matches[i],
+                                           "hit_end": kmer_matches[i] + parser.kmerSize})
     #
     return pd.DataFrame(kmer_loc_dict_list)
 
@@ -381,24 +402,26 @@ def remove_overlaps(DF1, DF2):
 
 
 # For a given read, get accession-specific read segments
-def get_read_segments(kmer_loc_df_sort):
+def get_read_segments_pass1(kmer_loc_df_sort):
     """
     For a given pandas DataFrame representing the sorted start locations of all
     accession-specific k-mers in a read, make a list in which each element is
     a subset of the DataFrame that represents an accession-specific read segment.
     This equates to extracting separate DataFrames where consecutive rows have the
     same value in the "acc" column.
-    This function should be called twice:
-    1. The first function call will exclude segments with < parser.minHits consecutive
+    This function should be called before get_read_segments_pass2(); i.e.:
+    1. get_read_segments_pass1() will exclude segments with < round(parser.minHits * 0.5) consecutive
        accession-specific k-mers, and the resulting list elements (retained segments)
        should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
-       separately (using concat_DF_list() on output), to be provided as the input to the second call.
-    2. The second function call will be applied to the concatenated DataFrame consisting
+       separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
+    2. get_read_segments_pass2() will be applied to the concatenated DataFrame consisting
        of filtered segments, in order to extract each segment DataFrame as a list element
        for segment length calculations. This second call will combine accession-specific
-       segments into one extended segment where, following the first function call,
+       segments into one extended segment where, following the get_read_segments_pass1() function call,
        there are no intervening short segments representing the other accession
-       (excluded segments with < parser.minHits consecutive accession-specific k-mers).
+       (excluded segments with < round(parser.minHits * 0.5) consecutive accession-specific k-mers).
+       get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
+       accession-specific k-mers.
     """
     segments_list = []
     segment = pd.DataFrame()
@@ -411,13 +434,13 @@ def get_read_segments(kmer_loc_df_sort):
             segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
                                 axis=0,
                                 ignore_index=True)
-        elif len(segment) >= parser.minHits:
+        elif len(segment) >= round(parser.minHits * 0.5):
             segments_list.append(segment)
             segment = pd.DataFrame()
         else:
             segment = pd.DataFrame()
     # Handle final segment in read
-    if len(segment) >= parser.minHits:
+    if len(segment) >= round(parser.minHits * 0.5):
         segments_list.append(segment)
     #
     return segments_list
@@ -444,6 +467,51 @@ def concat_DF_list(DF_list):
                                            ignore_index=True)
     #
     return concat_DF_sort
+
+
+# For a given read, get accession-specific read segments
+def get_read_segments_pass2(kmer_loc_df_sort):
+    """
+    For a given pandas DataFrame representing the sorted start locations of all
+    accession-specific k-mers in a read, make a list in which each element is
+    a subset of the DataFrame that represents an accession-specific read segment.
+    This equates to extracting separate DataFrames where consecutive rows have the
+    same value in the "acc" column.
+    This function should be called after get_read_segments_pass1(); i.e.:
+    1. get_read_segments_pass1() will exclude segments with < round(parser.minHits * 0.5) consecutive
+       accession-specific k-mers, and the resulting list elements (retained segments)
+       should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
+       separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
+    2. get_read_segments_pass2() will be applied to the concatenated DataFrame consisting
+       of filtered segments, in order to extract each segment DataFrame as a list element
+       for segment length calculations. This second call will combine accession-specific
+       segments into one extended segment where, following the get_read_segments_pass1() function call,
+       there are no intervening short segments representing the other accession
+       (excluded segments with < round(parser.minHits * 0.5) consecutive accession-specific k-mers).
+       get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
+       accession-specific k-mers.
+    """
+    segments_list = []
+    segment = pd.DataFrame()
+    for h in range(len(kmer_loc_df_sort)-1):
+        if len(segment) == 0:
+            segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h:h+1,:]],
+                                axis=0,
+                                ignore_index=True)
+        if kmer_loc_df_sort.iloc[h+1].acc == kmer_loc_df_sort.iloc[h].acc:
+            segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
+                                axis=0,
+                                ignore_index=True)
+        elif len(segment) >= parser.minHits:
+            segments_list.append(segment)
+            segment = pd.DataFrame()
+        else:
+            segment = pd.DataFrame()
+    # Handle final segment in read
+    if len(segment) >= parser.minHits:
+        segments_list.append(segment)
+    #
+    return segments_list
 
 
 # Get the longest accession-specific read segment
@@ -491,8 +559,8 @@ def align_read_segment_wm_ont(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outpaf = re.sub(".fasta", "_wm_ont.paf", segment_fasta)
-    outerr = re.sub(".fasta", "_wm_ont.err", segment_fasta)
+    outpaf = re.sub(".fa", "_wm_ont.paf", segment_fasta)
+    outerr = re.sub(".fa", "_wm_ont.err", segment_fasta)
     with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle) 
     # Delete file(s) if unmapped
@@ -521,8 +589,8 @@ def align_read_segment_mm_ont(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outpaf = re.sub(".fasta", "_mm_ont.paf", segment_fasta)
-    outerr = re.sub(".fasta", "_mm_ont.err", segment_fasta)
+    outpaf = re.sub(".fa", "_mm_ont.paf", segment_fasta)
+    outerr = re.sub(".fa", "_mm_ont.err", segment_fasta)
     with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
     # Delete file(s) if unmapped
@@ -542,8 +610,8 @@ def align_read_segment_mm_sr(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outpaf = re.sub(".fasta", "_mm_sr.paf", segment_fasta)
-    outerr = re.sub(".fasta", "_mm_sr.err", segment_fasta)
+    outpaf = re.sub(".fa", "_mm_sr.paf", segment_fasta)
+    outerr = re.sub(".fa", "_mm_sr.err", segment_fasta)
     with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
     # Delete file(s) if unmapped
@@ -576,18 +644,19 @@ def main():
     
     
     # Get the within-read start locations of accession-specific k-mer matches
-    acc1_kmer_loc_df_tmp = get_kmer_loc(kmers_fa=acc1_fa, read_seq=str(read.seq)) 
-    acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa=acc2_fa, read_seq=str(read.seq)) 
+    #acc1_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
+    #acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
+    acc1_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
+    acc2_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
     
-    
-    # Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
-    # overlap any of those in acc2_kmer_loc_df, and vice versa
-    # NOTE: requires two reciprocal function calls
-    acc1_kmer_loc_df = remove_overlaps(DF1=acc1_kmer_loc_df_tmp,
-                                       DF2=acc2_kmer_loc_df_tmp)
-    acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
-                                       DF2=acc1_kmer_loc_df_tmp)
-    del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
+    ## Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
+    ## overlap any of those in acc2_kmer_loc_df, and vice versa
+    ## NOTE: requires two reciprocal function calls
+    #acc1_kmer_loc_df = remove_overlaps(DF1=acc1_kmer_loc_df_tmp,
+    #                                   DF2=acc2_kmer_loc_df_tmp)
+    #acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
+    #                                   DF2=acc1_kmer_loc_df_tmp)
+    #del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
     
     
     # Stop main execution if acc1_kmer_loc_df or acc2_kmer_loc_df have < parser.minHits
@@ -622,14 +691,14 @@ def main():
     # accession-specific k-mers, and the resulting list elements (retained segments)
     # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
     # separately (using concat_DF_list() on output), to be provided as the input to the second call
-    acc_read_segments_list_tmp = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
+    acc_read_segments_list_pass1 = get_read_segments_pass1(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
     del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
     
     
     # Concatenate acc_read_segments_list_tmp into a single DataFrame,
     # sorted by k-mer hit_start location in read
-    acc_kmer_loc_df_sort = concat_DF_list(DF_list=acc_read_segments_list_tmp)
-    del acc_read_segments_list_tmp
+    acc_kmer_loc_df_sort = concat_DF_list(DF_list=acc_read_segments_list_pass1)
+    del acc_read_segments_list_pass1
     
     
     # For a given read, get accession-specific read segments
@@ -640,7 +709,7 @@ def main():
     # segments into one extended segment where, following the first function call,
     # there are no intervening short segments representing the other accession
     # (excluded segments with < parser.minHits consecutive accession-specific k-mers)
-    acc_read_segments_list = get_read_segments(kmer_loc_df_sort=acc_kmer_loc_df_sort)
+    acc_read_segments_list = get_read_segments_pass2(kmer_loc_df_sort=acc_kmer_loc_df_sort)
     
     
     # Stop main execution if acc_read_segments_list has < 2 elements
@@ -699,8 +768,8 @@ def main():
     
     
     # Define output FASTA file names for writing read segments 
-    acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fasta"
-    acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fasta"
+    acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fa"
+    acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fa"
     
     
     # Write accession-specific read segment to FASTA
@@ -715,19 +784,19 @@ def main():
     
     # Align accession-specific read segments to respective genome
     align_read_segment_wm_ont(segment_fasta=acc1_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1))
+                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
     align_read_segment_wm_ont(segment_fasta=acc2_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2))
+                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
     
     align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1))
+                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
     align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2))
+                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
     
     align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                             genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1))
+                             genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
     align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                             genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2))
+                             genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
     
     
     # Delete accession-specific segment alignment file if the equivalent
