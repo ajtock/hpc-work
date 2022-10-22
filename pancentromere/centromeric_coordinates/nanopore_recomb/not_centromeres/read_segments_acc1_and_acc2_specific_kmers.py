@@ -559,8 +559,8 @@ def align_read_segment_wm_ont(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outpaf = re.sub(".fa", "_wm_ont.paf", segment_fasta)
-    outerr = re.sub(".fa", "_wm_ont.err", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_wm_ont.paf", segment_fasta)
+    outerr = re.sub(r"\.fa", "_wm_ont.err", segment_fasta)
     with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle) 
     # Delete file(s) if unmapped
@@ -589,8 +589,8 @@ def align_read_segment_mm_ont(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outpaf = re.sub(".fa", "_mm_ont.paf", segment_fasta)
-    outerr = re.sub(".fa", "_mm_ont.err", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_mm_ont.paf", segment_fasta)
+    outerr = re.sub(r"\.fa", "_mm_ont.err", segment_fasta)
     with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
     # Delete file(s) if unmapped
@@ -610,8 +610,8 @@ def align_read_segment_mm_sr(segment_fasta, genome):
               ["-N", "10"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
-    outpaf = re.sub(".fa", "_mm_sr.paf", segment_fasta)
-    outerr = re.sub(".fa", "_mm_sr.err", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_mm_sr.paf", segment_fasta)
+    outerr = re.sub(r"\.fa", "_mm_sr.err", segment_fasta)
     with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
         subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
     # Delete file(s) if unmapped
