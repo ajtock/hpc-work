@@ -284,7 +284,7 @@ write.table(aln_best_pair_DF,
                    acc1, "_", acc2,
                    "_putative_", recombType, "_best_segment_pairs",
                    "_alnTo_", alnTo, "_",
-                   paste0(chrName, collapse = "_"), "_", date, ".tsv"),
+                   paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
             quote = F, sep = "\t", col.names = T, row.names = F)
 
 write.table(aln_best_pair_hom_DF,
@@ -292,7 +292,7 @@ write.table(aln_best_pair_hom_DF,
                    acc1, "_", acc2,
                    "_putative_homologous_", recombType, "_best_segment_pairs",
                    "_alnTo_", alnTo, "_",
-                   paste0(chrName, collapse = "_"), "_", date, ".tsv"),
+                   paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
             quote = F, sep = "\t", col.names = T, row.names = F)
 
 write.table(aln_best_pair_hom_maxDist_DF,
@@ -300,19 +300,8 @@ write.table(aln_best_pair_hom_maxDist_DF,
                    acc1, "_", acc2,
                    "_putative_homologous_within_", maxDistName, "_", recombType, "_best_segment_pairs",
                    "_alnTo_", alnTo, "_",
-                   paste0(chrName, collapse = "_"), "_", date, ".tsv"),
+                   paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
             quote = F, sep = "\t", col.names = T, row.names = F)
-
-
-#pdf(paste0(outDir,
-#           acc1, "_", acc2, "_all_",
-#           "putative_not_centromeric_", recombType, "_",
-#           paste0(chrName, collapse = "_"), "_circlize_v", date, ".pdf"))                                                                
-#circlize_plot(acc1_bed = acc1_all_bed,
-#              acc2_bed = acc2_all_bed,
-#              genome_DF = genome_DF)
-#draw(lgd_list1, x = unit(1, "npc") - unit(2, "mm"), y = unit(4, "mm"), just = c("right", "bottom"))
-#dev.off()
 
 
 
