@@ -232,20 +232,29 @@ print(paste0(nrow(aln_best_pair_hom_DF), " putative ", recombType, " events betw
 
 # Filter to retain putative recombination events between homologous chromosomes and with
 # the per-accession segments aligning to within maxDist of one another in the same reference assembly
-aln_dists_acc1_tstart_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tstart)
-aln_dists_acc1_tstart_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tend)
-aln_dists_acc1_tend_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tstart)
-aln_dists_acc1_tend_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tend)
+aln_dist_acc1_tstart_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tstart)
+aln_dist_acc1_tstart_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tend)
+aln_dist_acc1_tend_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tstart)
+aln_dist_acc1_tend_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tend)
 
-aln_dists_min = pmin(aln_dists_acc1_tstart_acc2_tstart, aln_dists_acc1_tstart_acc2_tend, aln_dists_acc1_tend_acc2_tstart, aln_dists_acc1_tend_acc2_tend)
-aln_dists_max = pmax(aln_dists_acc1_tstart_acc2_tstart, aln_dists_acc1_tstart_acc2_tend, aln_dists_acc1_tend_acc2_tstart, aln_dists_acc1_tend_acc2_tend)
+aln_dist_min = pmin(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
+                    aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend)
+aln_dist_max = pmax(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
+                    aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend)
 
-aln_best_pair_hom_DF$aln_dists_min = aln_dists_min
-aln_best_pair_hom_DF$aln_dists_max = aln_dists_max
+event_start = pmin(aln_best_pair_hom_DF$acc1_tstart, aln_best_pair_hom_DF$acc1_tend,
+                   aln_best_pair_hom_DF$acc2_tstart, aln_best_pair_hom_DF$acc2_tend)
+event_end = pmax(aln_best_pair_hom_DF$acc1_tstart, aln_best_pair_hom_DF$acc1_tend,
+                 aln_best_pair_hom_DF$acc2_tstart, aln_best_pair_hom_DF$acc2_tend)
+event_midpoint = round((event_start + event_end) / 2)
+event_length = event_end - event_start
+
+aln_best_pair_hom_DF$aln_dist_min = aln_dist_min
+aln_best_pair_hom_DF$aln_dist_max = aln_dist_max
 
 aln_best_pair_hom_maxDist_DF = data.frame()
 for(x in 1:nrow(aln_best_pair_hom_DF)) {
-    if(aln_best_pair_hom_DF[x, ]$aln_dists_min <= maxDist) {
+    if(aln_best_pair_hom_DF[x, ]$aln_dist_min <= maxDist) {
         aln_best_pair_hom_maxDist_DF = rbind(aln_best_pair_hom_maxDist_DF, aln_best_pair_hom_DF[x, ])
     }
 }
