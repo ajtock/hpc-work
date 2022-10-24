@@ -14,7 +14,7 @@
 
 #chrName = unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
 #                           split=","))
-#genomeBinSize = 10000
+#maxDist = 10000
 #acc1 = "Col-0.ragtag_scaffolds"
 #acc2 = "Ler-0_110x.ragtag_scaffolds"
 #alnTo = "Col-0.ragtag_scaffolds_Chr"
@@ -24,20 +24,20 @@
 args = commandArgs(trailingOnly=T)
 chrName = unlist(strsplit(args[1],
                            split=","))
-genomeBinSize = as.integer(args[2])
+maxDist = as.integer(args[2])
 acc1 = args[3]
 acc2 = args[4]
 alnTo = args[5]
 recombType = args[6]
 date = as.character(args[7])
 
-if(floor(log10(genomeBinSize)) + 1 < 4) {
-    genomeBinName = paste0(genomeBinSize, "bp")
-} else if(floor(log10(genomeBinSize)) + 1 >= 4 &
-          floor(log10(genomeBinSize)) + 1 <= 6) {
-    genomeBinName = paste0(genomeBinSize/1e3, "kb")
-} else if(floor(log10(genomeBinSize)) + 1 >= 7) {
-    genomeBinName = paste0(genomeBinSize/1e6, "Mb")
+if(floor(log10(maxDist)) + 1 < 4) {
+    maxDistName = paste0(maxDist, "bp")
+} else if(floor(log10(maxDist)) + 1 >= 4 &
+          floor(log10(maxDist)) + 1 <= 6) {
+    maxDistName = paste0(maxDist/1e3, "kb")
+} else if(floor(log10(maxDist)) + 1 >= 7) {
+    maxDistName = paste0(maxDist/1e6, "Mb")
 }
 
 options(stringsAsFactors=F)
@@ -206,7 +206,6 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
     aln_best_pair_DF = cbind(acc1_aln_DF_best, acc2_aln_DF_best)
 
     return(aln_best_pair_DF)
-
 }
 
 
@@ -221,19 +220,40 @@ stopifnot(identical(aln_best_pair_DF$acc1_qname, aln_best_pair_DF$acc2_qname))
 #    dplyr::filter(acc2_alen >= 200)
 
 print(paste0(nrow(aln_best_pair_DF), " putative ", recombType, " events"))
-#[1] "213 putative co events"
-#[1] "966 putative nco events"
+#[1] "# putative co events
+#[1] "178 putative nco events"
 
 # Filter to retain putative recombination events between homologous chromosomes only
 aln_best_pair_hom_DF = aln_best_pair_DF[ which(aln_best_pair_DF$acc1_tname == aln_best_pair_DF$acc2_tname), ]
 
 print(paste0(nrow(aln_best_pair_hom_DF), " putative ", recombType, " events between homologous chromosomes"))
-#[1] "135 putative co events between homologous chromosomes"
-#[1] "559 putative nco events between homologous chromosomes"
+#[1] "# putative co events between homologous chromosomes"
+#[1] "57 putative nco events between homologous chromosomes"
+
+# Filter to retain putative recombination events between homologous chromosomes and with
+# the per-accession segments aligning to within maxDist of one another in the same reference assembly
+aln_dists_acc1_tstart_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tstart)
+aln_dists_acc1_tstart_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tend)
+aln_dists_acc1_tend_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tstart)
+aln_dists_acc1_tend_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tend)
+
+aln_dists_min = pmin(aln_dists_acc1_tstart_acc2_tstart, aln_dists_acc1_tstart_acc2_tend, aln_dists_acc1_tend_acc2_tstart, aln_dists_acc1_tend_acc2_tend)
+aln_dists_max = pmax(aln_dists_acc1_tstart_acc2_tstart, aln_dists_acc1_tstart_acc2_tend, aln_dists_acc1_tend_acc2_tstart, aln_dists_acc1_tend_acc2_tend)
+
+aln_best_pair_hom_DF$aln_dists_min = aln_dists_min
+aln_best_pair_hom_DF$aln_dists_max = aln_dists_max
+
+aln_best_pair_hom_maxDist_DF = data.frame()
+for(x in 1:nrow(aln_best_pair_hom_DF)) {
+    if(aln_best_pair_hom_DF[x, ]$aln_dists_min <= maxDist) {
+        aln_best_pair_hom_maxDist_DF = rbind(aln_best_pair_hom_maxDist_DF, aln_best_pair_hom_DF[x, ])
+    }
+}
+
 
 print(paste0( round( ( nrow(aln_best_pair_hom_DF) / nrow(aln_best_pair_DF) ), 2 ) * 100, "% of putative ", recombType, " events between homologous chromosomes"))
-#[1] "63% of putative co events between homologous chromosomes"
-#[1] "58% of putative nco events between homologous chromosomes"
+#[1] "# of putative co events between homologous chromosomes"
+#[1] "32% of putative nco events between homologous chromosomes"
 
 
 # circlize
@@ -605,7 +625,7 @@ dev.off()
 #
 #
 #pdf(paste0(plotDir,
-#           "CEN180_frequency_per_", genomeBinName,
+#           "CEN180_frequency_per_", maxDistName,
 #           "_", quantileDef, "_", quantiles, "quantiles",
 #           "_of_CEN180_in_t2t-col.20210610_",
 #           paste0(chrName, collapse = "_"), "_circlize_zoom_v", date, ".pdf"))                                                                
