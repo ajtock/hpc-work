@@ -213,7 +213,6 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
     colnames(aln_best_pair_DF)[which(colnames(aln_best_pair_DF) == "acc1_qname")] = "qname"
     aln_best_pair_DF = aln_best_pair_DF[ with(aln_best_pair_DF,
                                               order(acc1_tname, acc1_tstart, acc1_tend, decreasing=F)), ]
-    rownames(aln_best_pair_DF) = 1:nrow(aln_best_pair_DF)
 
     return(aln_best_pair_DF)
 }
