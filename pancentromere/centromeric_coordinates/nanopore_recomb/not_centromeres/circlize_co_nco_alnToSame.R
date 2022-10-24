@@ -1,15 +1,15 @@
 #!/usr/bin/env Rscript
 
 # Author: Andy Tock (ajt200@cam.ac.uk)
-# Date: 09/09/2022
+# Date: 24/10/2022
 
-# Plot putative crossover events detected in Col-0/Ler-0
+# Extract and plot putative recombination events detected in Col-0/Ler-0
 # hybrid ONT reads
 
 
 # Usage:
 # conda activate python_3.9.6
-# ./circlize_co_nco.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 10000 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds co 201022
+# ./circlize_co_nco_alnToSame.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 10000 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds Col-0.ragtag_scaffolds_Chr co 241022
 # conda deactivate
 
 #chrName = unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
@@ -17,8 +17,9 @@
 #genomeBinSize = 10000
 #acc1 = "Col-0.ragtag_scaffolds"
 #acc2 = "Ler-0_110x.ragtag_scaffolds"
+#alnTo = "Col-0.ragtag_scaffolds_Chr"
 #recombType = "nco"
-#date = "201022"
+#date = "241022"
 
 args = commandArgs(trailingOnly=T)
 chrName = unlist(strsplit(args[1],
@@ -26,8 +27,9 @@ chrName = unlist(strsplit(args[1],
 genomeBinSize = as.integer(args[2])
 acc1 = args[3]
 acc2 = args[4]
-recombType = args[5]
-date = as.character(args[6])
+alnTo = args[5]
+recombType = args[6]
+date = as.character(args[7])
 
 if(floor(log10(genomeBinSize)) + 1 < 4) {
     genomeBinName = paste0(genomeBinSize, "bp")
@@ -117,10 +119,10 @@ acc2_chrs = paste0(acc2_name, "_", acc2_chrs)
 
 
 # Load read segment alignment files as a combined data.frame
-load_pafs = function(indir, acc_name, suffix, aligner) {
+load_pafs = function(indir, acc_name, aln_acc, suffix, aligner) {
     #indir=acc1_indir
     #acc_name=acc1_name
-    #suffix="_wm_ont.paf"
+    #suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf")
     #aligner="wm"
     files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
     aln_DF = data.frame()
@@ -139,16 +141,16 @@ load_pafs = function(indir, acc_name, suffix, aligner) {
 
 
 # wm alignments
-acc1_wm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_wm_ont.paf", aligner="wm")
-acc2_wm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_wm_ont.paf", aligner="wm")
+acc1_wm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
+acc2_wm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
 
 # mm alignments
-acc1_mm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_ont.paf", aligner="mm")
-acc2_mm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_ont.paf", aligner="mm")
+acc1_mm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_mm_ont.paf"), aligner="mm")
+acc2_mm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_mm_ont.paf"), aligner="mm")
 
 # sr alignments
-acc1_sr = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix="_mm_sr.paf", aligner="sr")
-acc2_sr = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix="_mm_sr.paf", aligner="sr")
+acc1_sr = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_mm_sr.paf"), aligner="sr")
+acc2_sr = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_mm_sr.paf"), aligner="sr")
 
 # acc alignments list
 acc1_aln_list = list(acc1_wm, acc1_mm, acc1_sr)
@@ -157,194 +159,51 @@ names(acc1_aln_list) = c("wm", "mm", "sr")
 names(acc2_aln_list) = c("wm", "mm", "sr")
 
 # Get best pair of acc1 and acc2 read segment alignments, based on:
-# 1. The alignment chromosome
-# 2. The aligner:
-#   Prioritise:
-#     1. acc1_wm : acc2_wm, 2. acc1_wm : acc2_mm, 3. acc1_mm : acc2_wm,
-#     4. acc1_wm : acc2_sr, 5. acc1_sr : acc2_wm, 6. acc1_mm : acc2_mm,
-#     7. acc1_mm : acc2_sr, 8. acc1_sr : acc2_mm, 9. acc1_sr : acc2_sr
-# 3. The alignment type (atype)
-# 4. The alignment mapq score (mapq)
-# 5. The alignment length (alen)
-# 6. The alignment number of matching bases (nmatch)
+# 1. The alignment length (alen)
+# 2. The alignment number of matching bases (nmatch)
+# 3. The alignment strand
 aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
     #acc1_aln_DF_list=acc1_aln_list
     #acc2_aln_DF_list=acc2_aln_list
-    # Each of the 3 list elements in acc1_aln_DF_list is a
-    # a data.frame of alignments done by wm_ont, mm_ont or mm_sr.
-    aligner_list = lapply(1:length(acc1_aln_DF_list), function(l) {
+    # Each of the 3 list elements in acc1_aln_DF_list and acc2_aln_DF_list is a
+    # a data.frame of alignments done by wm_ont, mm_ont or mm_sr
+    acc1_aln_DF_bind_rows = dplyr::bind_rows(acc1_aln_DF_list)
+    acc2_aln_DF_bind_rows = dplyr::bind_rows(acc2_aln_DF_list)
 
-        acc1_aln_DF_list_l = acc1_aln_DF_list[[l]]
+    # Get the best alignment from acc1_aln_DF and corresponding row from acc2_aln_DF
+    acc1_aln_DF_best = data.frame()
+    acc2_aln_DF_best = data.frame()
+    for(read_id in unique(acc1_aln_DF_bind_rows$qname)) {
+        acc1_aln_DF_read_id = acc1_aln_DF_bind_rows %>%
+            dplyr::filter(qname == read_id)
+        acc1_aln_DF_read_id = acc1_aln_DF_read_id[ with(acc1_aln_DF_read_id,
+                                                        order(alen, nmatch, decreasing=T)), ]
+        acc1_aln_DF_read_id_select = acc1_aln_DF_read_id[1, ]
+        acc1_aln_DF_best = rbind(acc1_aln_DF_best, acc1_aln_DF_read_id_select)
 
-        # For each read segment alignment in data.frame acc1_aln_DF_list_l,
-        # get the best read segment alignment from acc2 corresponding to
-        # the same read
-        # For many read IDs, this will give more than 1 pair of
-        # read segment alignments to subsequently select 1 from in the next loop
-        acc1_aln_DF = data.frame()
-        acc2_aln_DF = data.frame()
-        for(m in 1:nrow(acc1_aln_DF_list_l)) {
-
-            print(m)
-            acc1_aln_m = acc1_aln_DF_list_l[m, ]
-            acc1_aln_DF = rbind(acc1_aln_DF, acc1_aln_m)
-
-            qname_match_acc2_aln_DF_list = lapply(1:length(acc2_aln_DF_list), function(x) {
-
-                tmp = acc2_aln_DF_list[[x]] %>%
-                    dplyr::filter(qname == acc1_aln_m$qname)
-                tmp = tmp[ with(tmp,
-                                order(mapq, alen, nmatch, decreasing=T)), ]
-                tmp_chr = tmp[which(tmp$tname == acc1_aln_m$tname),]
-                if(nrow(tmp_chr) > 0) {
-                    if("tp:A:P" %in% tmp_chr$atype) {
-                        tmp_select = tmp_chr[ which(tmp_chr$atype == "tp:A:P"), ][1, ]
-                    } else {
-                        tmp_select = tmp_chr[1, ]
-                    }
-                } else if(nrow(tmp) > 0) {
-                    if("tp:A:P" %in% tmp$atype) {
-                        tmp_select = tmp[ which(tmp$atype == "tp:A:P"), ][1, ]
-                    } else {
-                        tmp_select = tmp[1, ]
-                    }
-                } else {
-                    tmp_select = tmp
-                }
- 
-                tmp_select
-
-            })
-
-            acc2_aln_m_DF = dplyr::bind_rows(qname_match_acc2_aln_DF_list)
-            acc2_aln_m_DF = acc2_aln_m_DF[ with(acc2_aln_m_DF,
-                                                order(mapq, alen, nmatch, decreasing=T)), ]
-
-            if(acc1_aln_m$tname %in% acc2_aln_m_DF$tname) {
-                acc2_aln_m_DF = acc2_aln_m_DF[ which(acc2_aln_m_DF$tname == acc1_aln_m$tname), ]
-            }
-
-            if("wm" %in% acc2_aln_m_DF$aligner) {
-                acc2_aln_m = acc2_aln_m_DF[ which(acc2_aln_m_DF$aligner == "wm"), ][1, ]
-            } else if("mm" %in% acc2_aln_m_DF$aligner) {
-                acc2_aln_m = acc2_aln_m_DF[ which(acc2_aln_m_DF$aligner == "mm"), ][1, ]
+        acc2_aln_DF_read_id = acc2_aln_DF_bind_rows %>%
+            dplyr::filter(qname == read_id)
+        acc2_aln_DF_read_id = acc2_aln_DF_read_id[ with(acc2_aln_DF_read_id,
+                                                        order(alen, nmatch, decreasing=T)), ]
+        acc2_aln_DF_read_id_strand = acc2_aln_DF_read_id[ which(acc2_aln_DF_read_id$strand == acc1_aln_DF_read_id_select$strand), ]
+        if(nrow(acc2_aln_DF_read_id_strand) > 0) {
+            if(acc2_aln_DF_read_id_strand[1, ]$alen == acc2_aln_DF_read_id[1, ]$alen &
+               acc2_aln_DF_read_id_strand[1, ]$nmatch == acc2_aln_DF_read_id[1, ]$nmatch) {
+                acc2_aln_DF_read_id_select = acc2_aln_DF_read_id_strand[1, ]
             } else {
-                acc2_aln_m = acc2_aln_m_DF[ which(acc2_aln_m_DF$aligner == "sr"), ][1, ]
-            }
- 
-            acc2_aln_DF = rbind(acc2_aln_DF, acc2_aln_m)
-
-        }
-
-        # Get the best alignment from acc1_aln_DF and corresponding row from acc2_aln_DF
-        acc1_aln_DF_best = data.frame()
-        acc2_aln_DF_best = data.frame()
-        for(read_id in unique(acc1_aln_DF$qname)) {
-
-            acc1_aln_DF_read_id = acc1_aln_DF[ which(acc1_aln_DF$qname == read_id), ]
-            acc2_aln_DF_read_id = acc2_aln_DF[ which(acc2_aln_DF$qname == read_id), ]
-
-            acc1_aln_DF_read_id_order =  with(acc1_aln_DF_read_id,
-                                              order(mapq, alen, nmatch, decreasing=T))
-
-            acc1_aln_DF_read_id = acc1_aln_DF_read_id[acc1_aln_DF_read_id_order, ]
-            acc2_aln_DF_read_id = acc2_aln_DF_read_id[acc1_aln_DF_read_id_order, ]
-
-            tname_match_row_idx = which(acc1_aln_DF_read_id$tname %in%
-                                        acc2_aln_DF_read_id$tname)
-            if(length(tname_match_row_idx) > 0) {
-                acc1_aln_DF_read_id = acc1_aln_DF_read_id[ tname_match_row_idx, ]
-                acc2_aln_DF_read_id = acc2_aln_DF_read_id[ tname_match_row_idx, ]
-            }
-
-            atype_match_row_idx = which(acc1_aln_DF_read_id$atype == "tp:A:P")
-            if(length(atype_match_row_idx) > 0) {
-                acc1_aln_DF_read_id = acc1_aln_DF_read_id[ atype_match_row_idx, ][1, ]
-                acc2_aln_DF_read_id = acc2_aln_DF_read_id[ atype_match_row_idx, ][1, ]
-            } else {
-                acc1_aln_DF_read_id = acc1_aln_DF_read_id[1, ]
-                acc2_aln_DF_read_id = acc2_aln_DF_read_id[1, ]
-            }
-
-            acc1_aln_DF_best = rbind(acc1_aln_DF_best, acc1_aln_DF_read_id)
-            acc2_aln_DF_best = rbind(acc2_aln_DF_best, acc2_aln_DF_read_id)
-
-        }
-
-        colnames(acc1_aln_DF_best) = paste0("acc1_", colnames(acc1_aln_DF_best))
-        colnames(acc2_aln_DF_best) = paste0("acc2_", colnames(acc2_aln_DF_best))
-        stopifnot(identical(acc1_aln_DF_best$acc1_qname, acc2_aln_DF_best$acc2_qname))
-
-        cbind(acc1_aln_DF_best, acc2_aln_DF_best)
-
-    })
-
-    names(aligner_list) = c("wm", "mm", "sr")
-
-    aligner_bind_rows = dplyr::bind_rows(aligner_list, .id="id")
-    stopifnot(identical(aligner_bind_rows$id, aligner_bind_rows$acc1_aligner))
-
-    # Up to 3 read segment alignment pairs have been selected for each read
-    # (potentially one pair for each of the 3 aligners used to align the acc1 segment)
-    # Select the best pair based on the criteria described at the top of the function definition
-    aln_best_pair_DF = data.frame()
-    for(uniq_qname in unique(aligner_bind_rows$acc1_qname)) {
-
-        tmp = aligner_bind_rows %>%
-            dplyr::filter(acc1_qname == uniq_qname)
-        tmp = tmp[ with(tmp,
-                        order(acc1_mapq, acc2_mapq,
-                              acc1_alen, acc2_alen,
-                              acc1_nmatch, acc2_nmatch,
-                              decreasing=T)), ]
-
-        # Prioritise alignment pairs where both read segments align to the same chromosome
-        tmp_chr = tmp[ which(tmp$acc1_tname == tmp$acc2_tname), ]
-        if(nrow(tmp_chr) > 0) {
-            tmp_chr_wm_wm = tmp_chr[ which(tmp_chr$acc1_aligner == "wm" &
-                                           tmp_chr$acc2_aligner == "wm"), ]
-            tmp_chr_wm = tmp_chr[ which(tmp_chr$acc1_aligner == "wm" |
-                                        tmp_chr$acc2_aligner == "wm"), ]
-            tmp_chr_mm_mm = tmp_chr[ which(tmp_chr$acc1_aligner == "mm" &
-                                           tmp_chr$acc2_aligner == "mm"), ]
-            tmp_chr_mm = tmp_chr[ which(tmp_chr$acc1_aligner == "mm" |
-                                        tmp_chr$acc2_aligner == "mm"), ]
-            if(nrow(tmp_chr_wm_wm) > 0) {
-                tmp = tmp_chr_wm_wm[1, ]
-            } else if(nrow(tmp_chr_wm) > 0) {
-                tmp = tmp_chr_wm[1, ]
-            } else if(nrow(tmp_chr_mm_mm) > 0) {
-                tmp = tmp_chr_mm_mm[1, ]
-            } else if(nrow(tmp_chr_mm) > 0) {
-                tmp = tmp_chr_mm[1, ]
-            } else {
-                tmp = tmp_chr[1, ]
+                acc2_aln_DF_read_id_select = acc2_aln_DF_read_id[1, ]
             }
         } else {
-            tmp_wm_wm = tmp[ which(tmp$acc1_aligner == "wm" &
-                                   tmp$acc2_aligner == "wm"), ]
-            tmp_wm = tmp[ which(tmp$acc1_aligner == "wm" |
-                                tmp$acc2_aligner == "wm"), ]
-            tmp_mm_mm = tmp[ which(tmp$acc1_aligner == "mm" &
-                                   tmp$acc2_aligner == "mm"), ]
-            tmp_mm = tmp[ which(tmp$acc1_aligner == "mm" |
-                                tmp$acc2_aligner == "mm"), ]
-            if(nrow(tmp_wm_wm) > 0) {
-                tmp = tmp_wm_wm[1, ]
-            } else if(nrow(tmp_wm) > 0) {
-                tmp = tmp_wm[1, ]
-            } else if(nrow(tmp_mm_mm) > 0) {
-                tmp = tmp_mm_mm[1, ]
-            } else if(nrow(tmp_mm) > 0) {
-                tmp = tmp_mm[1, ]
-            } else {
-                tmp = tmp[1, ]
-            }
+            acc2_aln_DF_read_id_select = acc2_aln_DF_read_id[1, ]
         }
-
-        aln_best_pair_DF = rbind(aln_best_pair_DF, tmp)
-
+        acc2_aln_DF_best = rbind(acc2_aln_DF_best, acc2_aln_DF_read_id_select)
     }
+
+    colnames(acc1_aln_DF_best) = paste0("acc1_", colnames(acc1_aln_DF_best))
+    colnames(acc2_aln_DF_best) = paste0("acc2_", colnames(acc2_aln_DF_best))
+    stopifnot(identical(acc1_aln_DF_best$acc1_qname, acc2_aln_DF_best$acc2_qname))
+
+    aln_best_pair_DF = cbind(acc1_aln_DF_best, acc2_aln_DF_best)
 
     return(aln_best_pair_DF)
 
