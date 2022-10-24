@@ -1,0 +1,311 @@
+#!/usr/bin/env Rscript
+
+# Author: Andy Tock (ajt200@cam.ac.uk)
+# Date: 24/10/2022
+
+# Extract and plot putative recombination events detected in Col-0/Ler-0
+# hybrid ONT reads
+
+# Usage:
+# conda activate python_3.9.6
+# ./get_segment_pairs_alnToSame.R 'Chr1,Chr2,Chr3,Chr4,Chr5' 10000 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds Col-0.ragtag_scaffolds_Chr co 241022
+# conda deactivate
+
+#chrName = unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
+#                           split=","))
+#maxDist = 10000
+#acc1 = "Col-0.ragtag_scaffolds"
+#acc2 = "Ler-0_110x.ragtag_scaffolds"
+#alnTo = "Col-0.ragtag_scaffolds_Chr"
+#recombType = "nco"
+#date = "241022"
+
+args = commandArgs(trailingOnly=T)
+chrName = unlist(strsplit(args[1],
+                           split=","))
+maxDist = as.integer(args[2])
+acc1 = args[3]
+acc2 = args[4]
+alnTo = args[5]
+recombType = args[6]
+date = as.character(args[7])
+
+if(floor(log10(maxDist)) + 1 < 4) {
+    maxDistName = paste0(maxDist, "bp")
+} else if(floor(log10(maxDist)) + 1 >= 4 &
+          floor(log10(maxDist)) + 1 <= 6) {
+    maxDistName = paste0(maxDist/1e3, "kb")
+} else if(floor(log10(maxDist)) + 1 >= 7) {
+    maxDistName = paste0(maxDist/1e6, "Mb")
+}
+
+options(stringsAsFactors=F)
+options(scipen=999)
+library(parallel)
+library(GenomicRanges)
+library(circlize)
+library(ComplexHeatmap)
+library(gridBase)
+library(viridis)
+library(colorspace)
+library(data.table)
+library(dplyr)
+
+outDir = paste0("segment_pairs/")
+system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
+
+# Accession names
+acc1_name = strsplit( strsplit(acc1, split="\\.")[[1]][1],
+                      split="_" )[[1]][1]
+acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
+                      split="_" )[[1]][1]
+
+# Directories containing read segment alignment files
+acc1_indir = paste0("segments/", acc1_name, "/", recombType, "/")
+acc2_indir = paste0("segments/", acc2_name, "/", recombType, "/")
+
+# CEN coordinates
+CEN = read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
+                      "centromere_manual_EDTA4_fa.csv"),
+               header=T)
+CEN$fasta.name = gsub(".fa", "", CEN$fasta.name)
+
+# Genomic definitions
+
+#acc1
+acc1_fai = read.table(paste0("index/", acc1, ".fa.fai"), header=F)
+acc1_chrs = acc1_fai[which(acc1_fai$V1 %in% chrName),]$V1
+acc1_chrLens = acc1_fai[which(acc1_fai$V1 %in% chrName),]$V2
+
+acc1_CEN = CEN[grep(acc1, CEN$fasta.name),]
+acc1_CEN = acc1_CEN[,which(colnames(acc1_CEN) %in% c("chr", "start", "end"))]
+acc1_CEN_new = data.frame()
+for(i in 1:length(acc1_chrs)) {
+    acc1_CEN_chr = acc1_CEN[which(acc1_CEN$chr == acc1_chrs[i]),]
+    if(nrow(acc1_CEN_chr) > 1) {
+        acc1_CEN_chr = data.frame(chr=acc1_CEN_chr$chr[1],
+                                  start=acc1_CEN_chr$start[1],
+                                  end=acc1_CEN_chr$end[nrow(acc1_CEN_chr)])
+    }
+    acc1_CEN_new = rbind(acc1_CEN_new, acc1_CEN_chr)
+}
+acc1_CEN = acc1_CEN_new
+acc1_CENstart = acc1_CEN$start
+acc1_CENend = acc1_CEN$end
+acc1_chrs = paste0(acc1_name, "_", acc1_chrs)
+
+#acc2
+acc2_fai = read.table(paste0("index/", acc2, ".fa.fai"), header=F)
+acc2_chrs = acc2_fai[which(acc2_fai$V1 %in% chrName),]$V1
+acc2_chrLens = acc2_fai[which(acc2_fai$V1 %in% chrName),]$V2
+
+acc2_CEN = CEN[grep(acc2, CEN$fasta.name),]
+acc2_CEN = acc2_CEN[,which(colnames(acc2_CEN) %in% c("chr", "start", "end"))]
+acc2_CEN_new = data.frame()
+for(i in 1:length(acc2_chrs)) {
+    acc2_CEN_chr = acc2_CEN[which(acc2_CEN$chr == acc2_chrs[i]),]
+    if(nrow(acc2_CEN_chr) > 1) {
+        acc2_CEN_chr = data.frame(chr=acc2_CEN_chr$chr[1],
+                                  start=acc2_CEN_chr$start[1],
+                                  end=acc2_CEN_chr$end[nrow(acc2_CEN_chr)])
+    }
+    acc2_CEN_new = rbind(acc2_CEN_new, acc2_CEN_chr)
+}
+acc2_CEN = acc2_CEN_new
+acc2_CENstart = acc2_CEN$start
+acc2_CENend = acc2_CEN$end
+acc2_chrs = paste0(acc2_name, "_", acc2_chrs)
+
+
+# Load read segment alignment files as a combined data.frame
+load_pafs = function(indir, acc_name, aln_acc, suffix, aligner) {
+    #indir=acc1_indir
+    #acc_name=acc1_name
+    #suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf")
+    #aligner="wm"
+    files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
+    aln_DF = data.frame()
+    for(h in 1:length(files)) {
+        aln = fread(files[h],
+                    header=F, fill=T, sep="\t", data.table=F)[,1:13]
+        aln_DF = rbind(aln_DF, aln)
+    }
+    aln_DF$aligner = aligner
+    colnames(aln_DF) = c("qname", "qlen", "qstart0", "qend0",
+                         "strand", "tname", "tlen", "tstart", "tend",
+                         "nmatch", "alen", "mapq", "atype", "aligner")
+ 
+    return(aln_DF)
+}
+
+
+# wm alignments
+acc1_wm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
+acc2_wm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
+
+# mm alignments
+acc1_mm = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_mm_ont.paf"), aligner="mm")
+acc2_mm = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_mm_ont.paf"), aligner="mm")
+
+# sr alignments
+acc1_sr = load_pafs(indir=acc1_indir, acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_mm_sr.paf"), aligner="sr")
+acc2_sr = load_pafs(indir=acc2_indir, acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_mm_sr.paf"), aligner="sr")
+
+# acc alignments list
+acc1_aln_list = list(acc1_wm, acc1_mm, acc1_sr)
+acc2_aln_list = list(acc2_wm, acc2_mm, acc2_sr)
+names(acc1_aln_list) = c("wm", "mm", "sr")
+names(acc2_aln_list) = c("wm", "mm", "sr")
+
+# Get best pair of acc1 and acc2 read segment alignments, based on:
+# 1. The alignment length (alen)
+# 2. The alignment number of matching bases (nmatch)
+# 3. The alignment strand
+aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
+    #acc1_aln_DF_list=acc1_aln_list
+    #acc2_aln_DF_list=acc2_aln_list
+    # Each of the 3 list elements in acc1_aln_DF_list and acc2_aln_DF_list is a
+    # a data.frame of alignments done by wm_ont, mm_ont or mm_sr
+    acc1_aln_DF_bind_rows = dplyr::bind_rows(acc1_aln_DF_list)
+    acc2_aln_DF_bind_rows = dplyr::bind_rows(acc2_aln_DF_list)
+
+    # Get the best alignment from acc1_aln_DF and corresponding row from acc2_aln_DF
+    acc1_aln_DF_best = data.frame()
+    acc2_aln_DF_best = data.frame()
+    for(read_id in unique(acc1_aln_DF_bind_rows$qname)) {
+        acc1_aln_DF_read_id = acc1_aln_DF_bind_rows %>%
+            dplyr::filter(qname == read_id)
+        acc1_aln_DF_read_id = acc1_aln_DF_read_id[ with(acc1_aln_DF_read_id,
+                                                        order(alen, nmatch, decreasing=T)), ]
+        acc1_aln_DF_read_id_select = acc1_aln_DF_read_id[1, ]
+        acc1_aln_DF_best = rbind(acc1_aln_DF_best, acc1_aln_DF_read_id_select)
+
+        acc2_aln_DF_read_id = acc2_aln_DF_bind_rows %>%
+            dplyr::filter(qname == read_id)
+        acc2_aln_DF_read_id = acc2_aln_DF_read_id[ with(acc2_aln_DF_read_id,
+                                                        order(alen, nmatch, decreasing=T)), ]
+        acc2_aln_DF_read_id_strand = acc2_aln_DF_read_id[ which(acc2_aln_DF_read_id$strand == acc1_aln_DF_read_id_select$strand), ]
+        if(nrow(acc2_aln_DF_read_id_strand) > 0) {
+            if(acc2_aln_DF_read_id_strand[1, ]$alen == acc2_aln_DF_read_id[1, ]$alen &
+               acc2_aln_DF_read_id_strand[1, ]$nmatch == acc2_aln_DF_read_id[1, ]$nmatch) {
+                acc2_aln_DF_read_id_select = acc2_aln_DF_read_id_strand[1, ]
+            } else {
+                acc2_aln_DF_read_id_select = acc2_aln_DF_read_id[1, ]
+            }
+        } else {
+            acc2_aln_DF_read_id_select = acc2_aln_DF_read_id[1, ]
+        }
+        acc2_aln_DF_best = rbind(acc2_aln_DF_best, acc2_aln_DF_read_id_select)
+    }
+
+    colnames(acc1_aln_DF_best) = paste0("acc1_", colnames(acc1_aln_DF_best))
+    colnames(acc2_aln_DF_best) = paste0("acc2_", colnames(acc2_aln_DF_best))
+    stopifnot(identical(acc1_aln_DF_best$acc1_qname, acc2_aln_DF_best$acc2_qname))
+
+    #aln_best_pair_DF = cbind(acc1_aln_DF_best, acc2_aln_DF_best)
+    #aln_best_pair_DF = aln_best_pair_DF[ , -which(colnames(aln_best_pair_DF) == "acc2_qname") ]
+
+    aln_best_pair_DF = base::merge(x = acc1_aln_DF_best,
+                                   y = acc2_aln_DF_best,
+                                   by.x = "acc1_qname",
+                                   by.y = "acc2_qname")
+
+    colnames(aln_best_pair_DF)[which(colnames(aln_best_pair_DF) == "acc1_qname")] = "qname"
+    aln_best_pair_DF = aln_best_pair_DF[ with(aln_best_pair_DF,
+                                              order(acc1_tname, acc1_tstart, acc1_tend, decreasing=F)), ]
+    rownames(aln_best_pair_DF) = 1:nrow(aln_best_pair_DF)
+
+    return(aln_best_pair_DF)
+}
+
+
+# Get best pair of aligned read segments for each read
+aln_best_pair_DF = aln_best_pair(acc1_aln_DF_list=acc1_aln_list, acc2_aln_DF_list=acc2_aln_list)
+
+#aln_best_pair_DF = aln_best_pair_DF %>%
+#    dplyr::filter(acc1_alen >= 200) %>%
+#    dplyr::filter(acc2_alen >= 200)
+
+print(paste0(nrow(aln_best_pair_DF), " putative ", recombType, " events"))
+#[1] "# putative co events
+#[1] "178 putative nco events"
+
+# Filter to retain putative recombination events between homologous chromosomes only
+aln_best_pair_hom_DF = aln_best_pair_DF[ which(aln_best_pair_DF$acc1_tname == aln_best_pair_DF$acc2_tname), ]
+
+print(paste0(nrow(aln_best_pair_hom_DF), " putative ", recombType, " events are between homologous chromosomes"))
+#[1] "# putative co events are between homologous chromosomes"
+#[1] "57 putative nco events are between homologous chromosomes"
+
+print(paste0( round( ( nrow(aln_best_pair_hom_DF) / nrow(aln_best_pair_DF) ), 2 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes"))
+#[1] "# of putative co events are between homologous chromosomes"
+#[1] "32% of putative nco events are between homologous chromosomes"
+
+# Filter to retain putative recombination events between homologous chromosomes where
+# the per-accession read segments align to within maxDist bp of each other in the same reference assembly
+aln_dist_acc1_tstart_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tstart) + 1
+aln_dist_acc1_tstart_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tend) + 1
+aln_dist_acc1_tend_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tstart) + 1
+aln_dist_acc1_tend_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tend) + 1
+
+aln_dist_min = pmin(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
+                    aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend, na.rm = T)
+aln_dist_max = pmax(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
+                    aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend, na.rm = T)
+
+event_start = pmin(aln_best_pair_hom_DF$acc1_tstart, aln_best_pair_hom_DF$acc1_tend,
+                   aln_best_pair_hom_DF$acc2_tstart, aln_best_pair_hom_DF$acc2_tend, na.rm = T)
+event_end = pmax(aln_best_pair_hom_DF$acc1_tstart, aln_best_pair_hom_DF$acc1_tend,
+                 aln_best_pair_hom_DF$acc2_tstart, aln_best_pair_hom_DF$acc2_tend, na.rm = T)
+event_midpoint = round((event_start + event_end) / 2)
+
+aln_best_pair_hom_DF$aln_dist_min = aln_dist_min
+aln_best_pair_hom_DF$aln_dist_max = aln_dist_max
+aln_best_pair_hom_DF$event_start = event_start
+aln_best_pair_hom_DF$event_end = event_end
+aln_best_pair_hom_DF$event_midpoint = event_midpoint
+
+aln_best_pair_hom_maxDist_DF = data.frame()
+for(x in 1:nrow(aln_best_pair_hom_DF)) {
+    if(aln_best_pair_hom_DF[x, ]$aln_dist_min <= maxDist) {
+        aln_best_pair_hom_maxDist_DF = rbind(aln_best_pair_hom_maxDist_DF, aln_best_pair_hom_DF[x, ])
+    }
+}
+
+
+print(paste0(nrow(aln_best_pair_hom_maxDist_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly"))
+#[1] "7 putative nco events are between homologous chromosomes where the per-accession read segments align to within 10000 bp of each other in the same reference assembly"
+
+print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_DF) ), 2 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly"))
+#[1] "#% of putative co events are between homologous chromosomes where the per-accession read segments align to within 10000 bp of each other in the same reference assembly"
+#[1] "4% of putative nco events are between homologous chromosomes where the per-accession read segments align to within 10000 bp of each other in the same reference assembly"
+
+print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_hom_DF) ), 2 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly"))
+#[1] "#% of putative co events that are between homologous chromosomes are those where the per-accession read segments align to within 10000 bp of each other in the same reference assembly"
+#[1] "12% of putative nco events that are between homologous chromosomes are those where the per-accession read segments align to within 10000 bp of each other in the same reference assembly"
+
+
+write.table(aln_best_pair_DF,
+            paste0(outDir,
+                   acc1, "_", acc2,
+                   "_putative_", recombType, "_best_segment_pairs",
+                   "_alnTo_", alnTo, "_",
+                   paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
+            quote = F, sep = "\t", col.names = T, row.names = F)
+
+write.table(aln_best_pair_hom_DF,
+            paste0(outDir,
+                   acc1, "_", acc2,
+                   "_putative_homologous_", recombType, "_best_segment_pairs",
+                   "_alnTo_", alnTo, "_",
+                   paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
+            quote = F, sep = "\t", col.names = T, row.names = F)
+
+write.table(aln_best_pair_hom_maxDist_DF,
+            paste0(outDir,
+                   acc1, "_", acc2,
+                   "_putative_homologous_within_", maxDistName, "_", recombType, "_best_segment_pairs",
+                   "_alnTo_", alnTo, "_",
+                   paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
+            quote = F, sep = "\t", col.names = T, row.names = F)
+
