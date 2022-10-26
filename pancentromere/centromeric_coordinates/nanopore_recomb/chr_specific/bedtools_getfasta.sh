@@ -11,18 +11,17 @@
 # see https://genome.ucsc.edu/FAQ/FAQformat.html#format1
 
 # Usage:
-# ./bedtools_getfasta.sh /home/ajt200/rds/hpc-work/pancentromere/assemblies/Col-0.ragtag_scaffolds.fa Col-0.ragtag_scaffolds_centromere_Chr1 
-# ./bedtools_getfasta.sh /home/ajt200/rds/hpc-work/pancentromere/assemblies/Ler-0_110x.ragtag_scaffolds.fa Ler-0_110x.ragtag_scaffolds_centromere_Chr1
-# ./bedtools_getfasta.sh /home/ajt200/rds/hpc-work/pancentromere/assemblies/Col-0.ragtag_scaffolds.fa Col-0.ragtag_scaffolds_not_centromere_Chr1 
-# ./bedtools_getfasta.sh /home/ajt200/rds/hpc-work/pancentromere/assemblies/Ler-0_110x.ragtag_scaffolds.fa Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1
-# ./bedtools_getfasta.sh /home/ajt200/rds/hpc-work/pancentromere/assemblies/t2t-col.20210610.fasta t2t-col.20210610_ChrM_ChrC 
+# ./bedtools_getfasta.sh index/Col-0.ragtag_scaffolds.fa Col-0.ragtag_scaffolds_centromere_Chr1 
+# ./bedtools_getfasta.sh index/Ler-0_110x.ragtag_scaffolds.fa Ler-0_110x.ragtag_scaffolds_centromere_Chr1
+# ./bedtools_getfasta.sh index/Col-0.ragtag_scaffolds.fa Col-0.ragtag_scaffolds_not_centromere_Chr1 
+# ./bedtools_getfasta.sh index/Ler-0_110x.ragtag_scaffolds.fa Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1
+# ./bedtools_getfasta.sh index/t2t-col.20210610.fasta t2t-col.20210610_ChrM_ChrC 
+
+source ~/.bashrc
+conda activate python_3.9.6
 
 genome=$1
 prefix=$2
-
-source ~/.bashrc
-
-conda activate python_3.9.6
 
 [ -d fasta/ ] || mkdir -p fasta/
 

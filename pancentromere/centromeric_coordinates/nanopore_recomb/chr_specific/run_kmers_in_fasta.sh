@@ -1,7 +1,6 @@
 #!/bin/bash
 
 source ~/.bashrc
-
 conda activate python_3.9.6
 
 ./kmers_in_fasta.py -f Col-0.ragtag_scaffolds_centromere_Chr1.fa -k 24
