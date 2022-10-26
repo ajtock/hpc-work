@@ -16,8 +16,8 @@ cut -f1,2 ${GENOME}.fa.fai > ${GENOME}.fa.chrom.sizes
 ln -s ${GENOME}.fa.chrom.sizes ${GENOME}.fa.sizes 
 for CHROM in `cut -f 1 ${GENOME}.fa.sizes`;
 do
-  echo ${CHROM}
-  grep "^${CHROM}" ${GENOME}.fa.sizes > ${GENOME}_${CHROM}.fa.sizes
+    echo ${CHROM}
+    grep "^${CHROM}" ${GENOME}.fa.sizes > ${GENOME}_${CHROM}.fa.sizes
 done
 
 conda deactivate
