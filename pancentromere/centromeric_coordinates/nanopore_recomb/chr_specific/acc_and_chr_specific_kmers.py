@@ -226,14 +226,14 @@ def hash_kmers(kmers):
 def genomic_windows(window_size, step_size, acc_name):
     #window_size=parser.kmerSize
     #step_size=parser.kmerSize
-    #acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc)
+    #acc_name=re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc)
     """
     Make BED of genomic windows.
     NOTE: Requires that the genome FASTA chromosome sizes file (genome_Chr.fa.fai.size)
     is in the index/ subfolder of the current working directory.
     """
-    out_bed = outDir + "/" + acc_name + "_Chr_windows_w" + str(window_size) + "_s" + str(step_size) + ".bed"
-    chr_sizes_file = "index/" + acc_name + "_Chr.fa.sizes"
+    out_bed = outDir + "/" + acc_name + "_" + parser.chrom + "_windows_w" + str(window_size) + "_s" + str(step_size) + ".bed"
+    chr_sizes_file = "index/" + acc_name + "_" + parser.chrom + ".fa.sizes"
     windows = BedTool().window_maker(g=chr_sizes_file, w=window_size, s=step_size)
     windows.saveas(out_bed)
 
@@ -249,7 +249,7 @@ def align_kmers_bowtie(kmers_fasta):
     keeping zero-mismatch alignments only, including multi-mappers,
     and convert SAM into sorted BAM.
     """
-    acc_name = re.sub(r"(_scaffolds)_.+", r"\1", kmers_fasta)
+    acc_name = re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", kmers_fasta)
     acc_name = re.sub("fasta/", "", acc_name)
     out_sam_err = re.sub(".fa", "_bowtie.err", kmers_fasta)
     out_bam = re.sub(".fa", "_bowtie_sorted.bam", kmers_fasta)
@@ -315,8 +315,8 @@ def bam_to_bed(in_bam):
 # variant site, whereas increasing it would do the opposite
 def get_gwol_kmers(windows_bed, kmers_bed):
     #windows_bed=outDir + "/" + \
-    #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-    #    "_Chr_windows_w" + str(parser.kmerSize) + \
+    #    re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+    #    "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
     #    "_s" + str(parser.kmerSize) + ".bed"
     #kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
@@ -415,13 +415,13 @@ def union_filt_kmers(gwol_kmers_bed, singleton_kmers_bed):
 # overlapping genomic windows
 def chr_kmer_profiles(windows_bed, kmers_bed):
     #windows_bed=outDir + "/" + \
-    #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-    #    "_Chr_windows_w" + str(parser.kmerSize) + \
+    #    re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+    #    "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
     #    "_s" + str(parser.kmerSize) + ".bed"
     ## OR:
     #windows_bed=outDir + "/" + \
-    #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-    #    "_Chr_windows_w100000_s10000.bed"
+    #    re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+    #    "_" + parser.chrom + "_windows_w100000_s10000.bed"
     #
     #kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
@@ -436,7 +436,7 @@ def chr_kmer_profiles(windows_bed, kmers_bed):
     overlapping genomic windows.
     """
     out_bed = re.sub(".bed",
-                     re.sub("fasta.+Chr", "", windows_bed),
+                     re.sub("fasta.+Chr_", "_", windows_bed),
                      kmers_bed)
     out_bed_err = re.sub(".bed", ".err", out_bed)
     coverage_cmd = ["bedtools", "coverage"] + \
@@ -457,20 +457,20 @@ def chr_kmer_profiles(windows_bed, kmers_bed):
 def get_excluded_windows(full_kmers_windows, ds_kmers_windows):
     #full_kmers_windows=outDir + "/" + \
     #    parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
-    #    str(parser.kmerSize) + "_bowtie_sorted_windows_w" + str(parser.kmerSize) + \
+    #    str(parser.kmerSize) + "_bowtie_sorted_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
     #    "_s" + str(parser.kmerSize) + ".bed"
     #ds_kmers_windows=outDir + "/" + \
     #    parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
     #    str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
     #    str(parser.overlapProp) + \
-    #    "_merge_windows_w" + str(parser.kmerSize) + \
+    #    "_merge_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
     #    "_s" + str(parser.kmerSize) + ".bed"
     """
     Get genomic windows that are covered by >= 1 k-mer in the full k-mer set
     but not in the downsampled k-mer set.
     """
-    out_bed = re.sub(r"(_scaffolds)_.+", r"\1", full_kmers_windows) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+    out_bed = re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", full_kmers_windows) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + "_excluded_windows.bed"
     ds_kmers_windows_DF = pd.read_csv(ds_kmers_windows, sep="\t", header=None)
     full_kmers_windows_DF = pd.read_csv(full_kmers_windows, sep="\t", header=None)
@@ -493,8 +493,8 @@ def get_excluded_windows(full_kmers_windows, ds_kmers_windows):
 # along >= 1 bp of the aligned k-mer's length
 def get_egwol_kmers(excluded_windows_bed, kmers_bed):
     #excluded_windows_bed=outDir + "/" + \
-    #    re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-    #    "_Chr_windows_w" + str(parser.kmerSize) + \
+    #    re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+    #    "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
     #    "_s" + str(parser.kmerSize) + "_excluded_windows.bed"
     #kmers_bed=outDir + "/" + \
     #    parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
@@ -709,19 +709,19 @@ def chr_kmer_profiles_plot(*coverage_beds):
     #    outDir + "/" + \
     #    parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
     #    str(parser.kmerSize) + \
-    #    "_bowtie_sorted_windows_w100000_s10000.bed",
+    #    "_bowtie_sorted_" + parser.chrom + "_windows_w100000_s10000.bed",
     #    outDir + "/" + \
     #    parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
     #    str(parser.kmerSize) + \
-    #    "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed",
+    #    "_bowtie_sorted_intersect_op0.9_merge_omg_" + parser.chrom + "_windows_w100000_s10000.bed",
     #    outDir + "/" + \
     #    parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
     #    str(parser.kmerSize) + \
-    #    "_bowtie_sorted_windows_w100000_s10000.bed",
+    #    "_bowtie_sorted_" + parser.chrom + "_windows_w100000_s10000.bed",
     #    outDir + "/" + \
     #    parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
     #    str(parser.kmerSize) + \
-    #    "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed"
+    #    "_bowtie_sorted_intersect_op0.9_merge_omg_" + parser.chrom + "_windows_w100000_s10000.bed"
     #]
     """
     Plot chromosome-scale profiles of counts of k-mers
@@ -756,7 +756,9 @@ def chr_kmer_profiles_plot(*coverage_beds):
                                 hue="k-mer set",
                                 alpha=0.8,
                                 row="Accession",
-                                col="Chromosome")
+                                col="Chromosome",
+                                height=5,
+                                aspect=8/5)
     plt.savefig(out_pdf, dpi=300)
 
 
@@ -917,11 +919,11 @@ acc2nc_kmers = get_acc_chr_specific_kmers(iacc_ireg=parser.acc2nc,
 # acc1
 genomic_windows(window_size=parser.kmerSize,
                 step_size=parser.kmerSize,
-                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc))
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc))
 # acc2
 genomic_windows(window_size=parser.kmerSize,
                 step_size=parser.kmerSize,
-                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc))
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc))
 
 
 # Also make BED of genomic windows to be used for making chromosome-scale
@@ -929,11 +931,11 @@ genomic_windows(window_size=parser.kmerSize,
 # acc1
 genomic_windows(window_size=100000,
                 step_size=10000,
-                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc))
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc))
 # acc2
 genomic_windows(window_size=100000,
                 step_size=10000,
-                acc_name=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc))
+                acc_name=re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc))
 
 
 ## acc1nc_kmers
@@ -950,8 +952,8 @@ bam_to_bed(
 # Get genomic-window-overlapping (gwol) k-mers
 get_gwol_kmers(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
@@ -976,8 +978,8 @@ union_filt_kmers(
 # Get counts of k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
@@ -985,8 +987,8 @@ chr_kmer_profiles(
 # Get counts of downsampled k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
@@ -997,20 +999,20 @@ chr_kmer_profiles(
 get_excluded_windows(
     full_kmers_windows=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
-        str(parser.kmerSize) + "_bowtie_sorted_windows_w" + str(parser.kmerSize) + \
+        str(parser.kmerSize) + "_bowtie_sorted_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     ds_kmers_windows=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
         str(parser.overlapProp) + \
-        "_merge_windows_w" + str(parser.kmerSize) + \
+        "_merge_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed")
 # Get the aligned k-mer coordinates for each k-mer that overlaps
 # an excluded genomic window along >= 1 bp of the aligned k-mer's length
 get_egwol_kmers(
     excluded_windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + "_excluded_windows.bed",
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
@@ -1046,8 +1048,8 @@ make_kmers_fa(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
@@ -1055,8 +1057,8 @@ chr_kmer_profiles(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1nc) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1nc) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
@@ -1111,8 +1113,8 @@ bam_to_bed(
 # Get genomic-window-overlapping (gwol) k-mers
 get_gwol_kmers(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
@@ -1137,8 +1139,8 @@ union_filt_kmers(
 # Get counts of k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
@@ -1146,8 +1148,8 @@ chr_kmer_profiles(
 # Get counts of downsampled k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
@@ -1158,20 +1160,20 @@ chr_kmer_profiles(
 get_excluded_windows(
     full_kmers_windows=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
-        str(parser.kmerSize) + "_bowtie_sorted_windows_w" + str(parser.kmerSize) + \
+        str(parser.kmerSize) + "_bowtie_sorted_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     ds_kmers_windows=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
         str(parser.overlapProp) + \
-        "_merge_windows_w" + str(parser.kmerSize) + \
+        "_merge_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed")
 # Get the aligned k-mer coordinates for each k-mer that overlaps
 # an excluded genomic window along >= 1 bp of the aligned k-mer's length
 get_egwol_kmers(
     excluded_windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + "_excluded_windows.bed",
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
@@ -1207,8 +1209,8 @@ make_kmers_fa(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
@@ -1216,8 +1218,8 @@ chr_kmer_profiles(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2nc) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2nc) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
@@ -1272,8 +1274,8 @@ bam_to_bed(
 # Get genomic-window-overlapping (gwol) k-mers
 get_gwol_kmers(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
@@ -1298,8 +1300,8 @@ union_filt_kmers(
 # Get counts of k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
@@ -1307,8 +1309,8 @@ chr_kmer_profiles(
 # Get counts of downsampled k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
@@ -1319,20 +1321,20 @@ chr_kmer_profiles(
 get_excluded_windows(
     full_kmers_windows=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
-        str(parser.kmerSize) + "_bowtie_sorted_windows_w" + str(parser.kmerSize) + \
+        str(parser.kmerSize) + "_bowtie_sorted_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     ds_kmers_windows=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
         str(parser.overlapProp) + \
-        "_merge_windows_w" + str(parser.kmerSize) + \
+        "_merge_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed")
 # Get the aligned k-mer coordinates for each k-mer that overlaps
 # an excluded genomic window along >= 1 bp of the aligned k-mer's length
 get_egwol_kmers(
     excluded_windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + "_excluded_windows.bed",
     kmers_bed=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
@@ -1368,8 +1370,8 @@ make_kmers_fa(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1c) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
@@ -1377,8 +1379,8 @@ chr_kmer_profiles(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1c) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc1c) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc1c + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
@@ -1433,8 +1435,8 @@ bam_to_bed(
 # Get genomic-window-overlapping (gwol) k-mers
 get_gwol_kmers(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
@@ -1459,8 +1461,8 @@ union_filt_kmers(
 # Get counts of k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
@@ -1468,8 +1470,8 @@ chr_kmer_profiles(
 # Get counts of downsampled k-mers overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     kmers_bed=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
@@ -1480,20 +1482,20 @@ chr_kmer_profiles(
 get_excluded_windows(
     full_kmers_windows=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
-        str(parser.kmerSize) + "_bowtie_sorted_windows_w" + str(parser.kmerSize) + \
+        str(parser.kmerSize) + "_bowtie_sorted_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed",
     ds_kmers_windows=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
         str(parser.overlapProp) + \
-        "_merge_windows_w" + str(parser.kmerSize) + \
+        "_merge_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + ".bed")
 # Get the aligned k-mer coordinates for each k-mer that overlaps
 # an excluded genomic window along >= 1 bp of the aligned k-mer's length
 get_egwol_kmers(
     excluded_windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c) + \
-        "_Chr_windows_w" + str(parser.kmerSize) + \
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2c) + \
+        "_" + parser.chrom + "_windows_w" + str(parser.kmerSize) + \
         "_s" + str(parser.kmerSize) + "_excluded_windows.bed",
     kmers_bed=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
@@ -1529,8 +1531,8 @@ make_kmers_fa(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2c) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted.bed")
@@ -1538,8 +1540,8 @@ chr_kmer_profiles(
 # overlapping genomic windows
 chr_kmer_profiles(
     windows_bed=outDir + "/" + \
-        re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2c) + \
-        "_Chr_windows_w100000_s10000.bed",
+        re.sub(r"(_scaffolds)_.+", r"\1" + "_Chr", parser.acc2c) + \
+        "_" + parser.chrom + "_windows_w100000_s10000.bed",
     kmers_bed=outDir + "/" + \
         parser.acc2c + "_" + parser.chrom + "_specific_k" + \
         str(parser.kmerSize) + "_bowtie_sorted_intersect_op" + \
@@ -1586,19 +1588,19 @@ chr_kmer_profiles_plot(
     outDir + "/" + \
     parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_windows_w100000_s10000.bed",
+    "_bowtie_sorted_" + parser.chrom + "_windows_w100000_s10000.bed",
     outDir + "/" + \
     parser.acc1nc + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed",
+    "_bowtie_sorted_intersect_op0.9_merge_omg_" + parser.chrom + "_windows_w100000_s10000.bed",
     outDir + "/" + \
     parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_windows_w100000_s10000.bed",
+    "_bowtie_sorted_" + parser.chrom + "_windows_w100000_s10000.bed",
     outDir + "/" + \
     parser.acc2nc + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed")
+    "_bowtie_sorted_intersect_op0.9_merge_omg_" + parser.chrom + "_windows_w100000_s10000.bed")
 
 
 # Plot chromosome-scale profiles of counts of k-mers
@@ -1607,19 +1609,19 @@ chr_kmer_profiles_plot(
     outDir + "/" + \
     parser.acc1c + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_windows_w100000_s10000.bed",
+    "_bowtie_sorted_" + parser.chrom + "_windows_w100000_s10000.bed",
     outDir + "/" + \
     parser.acc1c + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed",
+    "_bowtie_sorted_intersect_op0.9_merge_omg_" + parser.chrom + "_windows_w100000_s10000.bed",
     outDir + "/" + \
     parser.acc2c + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_windows_w100000_s10000.bed",
+    "_bowtie_sorted_" + parser.chrom + "_windows_w100000_s10000.bed",
     outDir + "/" + \
     parser.acc2c + "_" + parser.chrom + "_specific_k" + \
     str(parser.kmerSize) + \
-    "_bowtie_sorted_intersect_op0.9_merge_omg_windows_w100000_s10000.bed")
+    "_bowtie_sorted_intersect_op0.9_merge_omg_" + parser.chrom + "_windows_w100000_s10000.bed")
 
 
 
