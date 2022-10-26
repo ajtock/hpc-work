@@ -178,7 +178,7 @@ def get_acc_chr_specific_kmers(iacc_ireg, iacc_oreg, oacc_ireg, oacc_oreg):
     # Write to FASTA
     write_fasta(kmer_dict=iacc_ireg_kmers_dict,
                 acc_name=iacc_ireg[0:5],
-                outfile=outDir + "/" + iacc_ireg + "_" + parser.chrom + "_" + parser.chrom + "_specific_k" + str(parser.kmerSize) + ".fa")
+                outfile=outDir + "/" + iacc_ireg + "_" + parser.chrom + "_specific_k" + str(parser.kmerSize) + ".fa")
     del iacc_ireg_kmers_dict
     #
     return iacc_ireg_kmers
@@ -261,9 +261,9 @@ def align_kmers_bowtie(kmers_fasta):
               ["-a", "--best", "--strata"] + \
               ["--sam"] + \
               ["--no-unal"] + \
-              ["--threads", "32"]
+              ["--threads", "16"]
     bam_cmd = ["samtools", "sort"] + \
-              ["-@", "32"] + \
+              ["-@", "16"] + \
               ["-m", "3G"] + \
               ["-o", out_bam]
     with open(out_sam_err, "w") as out_sam_err_handle, open(out_bam_err, "w") as out_bam_err_handle:
