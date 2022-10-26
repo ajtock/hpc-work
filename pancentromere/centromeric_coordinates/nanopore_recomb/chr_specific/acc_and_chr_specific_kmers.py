@@ -117,26 +117,6 @@ def write_fasta(kmer_dict, acc_name, outfile):
             fa_object.write(kmer_dict[s] + "\n")
 
 
-#    out_fa_noheaders = re.sub(".fa", "_noheaders.fa", out_fa)
-#    out_fa_noheaders_err = re.sub(".err", "_noheaders.err", out_fa_err)
-#    getfasta_cmd = ["bedtools", "getfasta"] + \
-#                   ["-fi", "index/" + acc_name + ".fa"] + \
-#                   ["-bed", kmers_bed] + \
-#                   ["-fo", out_fa] + \
-#                   ["-name"]
-#    noheaders_cmd = ["grep", "-v"] + \
-#                    ["^>", out_fa]
-#    with open(out_fa_err, "w") as out_fa_err_handle, \
-#        open(out_fa_noheaders, "w") as out_fa_noheaders_handle, \
-#        open(out_fa_noheaders_err, "w") as out_fa_noheaders_err_handle:
-#        subprocess.run(getfasta_cmd, stderr=out_fa_err_handle)
-#        subprocess.run(noheaders_cmd, stdout=out_fa_noheaders_handle, stderr=out_fa_noheaders_err_handle)
-#        # Delete empty error files
-#        if os.stat(out_fa_err).st_size == 0:
-#            subprocess.run(["rm", out_fa_err])
-#        if os.stat(out_fa_noheaders_err).st_size == 0:
-#            subprocess.run(["rm", out_fa_noheaders_err])
-
 # Get accession-specific, chromosome-specific k-mers and write to FASTA
 # to supply to bbduk.sh as input k-mer database file
 def get_acc_chr_specific_kmers(iacc_ireg, iacc_oreg, oacc_ireg, oacc_oreg):
