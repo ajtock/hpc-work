@@ -63,5 +63,7 @@ reformat.sh in=fastq/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hit
             out=fasta/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}.fa &> logs/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}_reformat.log
 
 if [[ fasta/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}.fa == *"scaffolds_${REGION}_${CHROM}_"* ]]; then
-    ln -s fasta/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}.fa  ${REGION}/${CHROM}/fasta/
+    cd ${REGION}/${CHROM}/fasta/
+    ln -s ../../../fasta/${FQ_PREFIX}_match_${FA_PREFIX}${K}_downsampled_op${OP}_hits${HITS}.fa .
+    cd  ../../../
 fi
