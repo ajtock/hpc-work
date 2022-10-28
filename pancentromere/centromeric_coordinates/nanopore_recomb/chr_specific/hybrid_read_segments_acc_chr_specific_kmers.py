@@ -7,12 +7,14 @@
 # conda activate python_3.9.6
 # ./hybrid_read_segments_acc_chr_specific_kmers.py \
 #  -r Col_Ler_F1_pollen_500bp_minq99 \
-#  -a1 Col-0.ragtag_scaffolds_not_centromeres \
-#  -a2 Ler-0_110x.ragtag_scaffolds_not_centromeres \ 
+#  -a1 Col-0.ragtag_scaffolds_not_centromere_Chr1 \
+#  -a2 Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1 \
+###  -reg not_centromere \
+###  -chrom Chr1 \
 #  -k 24 \
 #  -op 0.9 \
 #  -mh 10 \
-#  -hr 2
+#  -hr 0
 # conda deactivate
 
 # For each "hybrid" read containing acc1- AND acc2-specific k-mers,
@@ -46,10 +48,14 @@ def create_parser():
     #### Define command-line arguments
     parser.add_argument("-r", "--readsPrefix", type=str, default="Col_Ler_F1_pollen_500bp_minq99",
                         help="The prefix of the FASTQ file name. Default: Col_Ler_F1_pollen_500bp_minq99")
-    parser.add_argument("-a1", "--acc1", type=str, default="Col-0.ragtag_scaffolds_not_centromeres",
-                        help="The prefix of the first accession's sequences. Default: Col-0.ragtag_scaffolds_not_centromeres")
-    parser.add_argument("-a2", "--acc2", type=str, default="Ler-0_110x.ragtag_scaffolds_not_centromeres",
-                        help="The prefix of the second accession's sequences. Default: Ler-0_110x.ragtag_scaffolds_not_centromeres")
+    parser.add_argument("-a1", "--acc1", type=str, default="Col-0.ragtag_scaffolds_not_centromere_Chr1",
+                        help="The prefix of the first accession's sequences. Default: Col-0.ragtag_scaffolds_not_centromere_Chr1")
+    parser.add_argument("-a2", "--acc2", type=str, default="Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1",
+                        help="The prefix of the second accession's sequences. Default: Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1")
+    ##parser.add_argument("-reg", "--region", type=str, default="not_centromere",
+    ##                    help="Region from which to get accession-specific, chromosome-specific k-mers. Default: not_centromere")
+    ##parser.add_argument("-c", "--chrom", type=str, default="Chr1",
+    ##                    help="Name of chromosome from which to get accession-specific, chromosome-specific k-mers. Default: Chr1")
     parser.add_argument("-k", "--kmerSize", type=int, default="24",
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
     parser.add_argument("-op", "--overlapProp", type=float, default="0.9",
@@ -64,13 +70,26 @@ parser = create_parser().parse_args()
 print(parser)
 
 
+region = re.sub(".+_scaffolds_", "", parser.acc1)
+region = re.sub("_Chr.+", "", region)
+chrom = re.sub(".+_scaffolds_" + region + "_", "", parser.acc1)
+
+outdir = region + "/" + chrom
+kmer_loc_outdir = outdir + "/kmer_loc_tsv"
+
+#if not os.path.exists(outdir):
+#    os.makedirs(outdir)
+
+#if not os.path.exists(kmer_loc_outdir):
+#    os.makedirs(kmer_loc_outdir)
+
 acc1_name = parser.acc1.split(".")[0].split("_")[0]
 acc2_name = parser.acc2.split(".")[0].split("_")[0]
 
-acc1_outdir_co = "segments/" + acc1_name + "/co"
-acc2_outdir_co = "segments/" + acc2_name + "/co"
-acc1_outdir_nco = "segments/" + acc1_name + "/nco"
-acc2_outdir_nco = "segments/" + acc2_name + "/nco"
+acc1_outdir_co = outdir + "/segments/" + acc1_name + "/co"
+acc2_outdir_co = outdir + "/segments/" + acc2_name + "/co"
+acc1_outdir_nco = outdir + "/segments/" + acc1_name + "/nco"
+acc2_outdir_nco = outdir + "/segments/" + acc2_name + "/nco"
 
 #if not os.path.exists(acc1_outdir_co):
 #    os.makedirs(acc1_outdir_co)
@@ -165,118 +184,6 @@ def flatten(lol):
     """
     return [item for sublist in lol for item in sublist]
 
-
-## From the list acc1_kmers or acc2_kmers, define a new list of kmers
-## (of class 'Bio.SeqRecord.SeqRecord') that is the subset found in read
-#def get_kmer_subset(kmers, read):
-#    """
-#    From the list acc1_kmers or acc2_kmers, define a new list of kmers
-#    (of class 'Bio.SeqRecord.SeqRecord') that is the subset found in read.
-#    """
-#seqrecord_list2 = [record for record in acc1_kmers_iter if re.search(str(record.seq), str(read.seq)) or re.search(screed.rc(str(record.seq)), str(read.seq))]
-#seqrecord_list = []
-#
-#SeqIO.write(seqrecord_iterator, acc1_subset_fa, "fasta")
-#
-#for record in seqrecord_iterator:
-#    seqrecord_list.append(record)
-#
-#    kmer_seqrecord_list = []
-#    for h in range(len(kmers)):
-#        kmer_for = str(kmers[h].seq)
-#        kmer_rev = screed.rc(kmer_for)
-#        kmer_for_match = re.search(kmer_for, read)
-#        kmer_rev_match = re.search(kmer_rev, read)
-#        if kmer_for_match or kmer_rev_match:
-#            kmer_seqrecord_list.append(kmers[h])
-#    #
-#    return kmer_seqrecord_list
-#
-#acc1_kmers_read_subset = get_kmer_subset(kmers=acc1_kmers, read=str(read.seq))
-
-
-## Within a read, find the 0-based start location of all occurrences
-## of each accession-specific k-mer
-#def get_kmer_loc_map(kmers_fa_noheaders, read_seq):
-#kmers_fa_noheaders=acc1_fa
-#kmers_fa=re.sub("_noheaders", "", kmers_fa_noheaders)
-#read_seq=str(read.seq)
-#"""
-#For a given read, get the within-read 0-based start locations of all k-mer matches.
-#"""
-#kmers_fa_noheaders_handle = open(kmers_fa_noheaders, "r")
-#kmers = kmers_fa_noheaders_handle.read().splitlines()
-#
-#def kmer_in_read_search(kmer_x):
-#    if re.search(kmer_x, read_seq) or re.search(screed.rc(kmer_x), read_seq):
-#        return True
-#    else:
-#        return False
-#
-#start = time()
-#kmers_in_read = [kmer for kmer in kmers if
-#                 re.search(kmer, read_seq) or
-#                 re.search(screed.rc(kmer), read_seq)]
-#print(f"Done in {time() - start:.3f}s")
-#
-#start = time()
-#kmers_in_read_gc = (kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
-#                    re.search(kmer[:-1], read_seq) or
-#                    re.search(screed.rc(kmer[:-1]), read_seq))
-#print(f"Done in {time() - start:.3f}s")
-#
-#start = time()
-#kmers_in_read_lc = [kmer[:-1] for kmer in open(kmers_fa_noheaders, "r") if
-#                    re.search(kmer[:-1], read_seq) or
-#                    re.search(screed.rc(kmer[:-1]), read_seq)]
-#print(f"Done in {time() - start:.3f}s")
-#
-#
-#kmers_in_read_v2 = map(lambda kmer: True if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq) else False, kmers)
-#kmers_in_read_v2_list = []
-#for x in kmers_in_read_v2:
-#    kmers_in_read_v2_list.append(x)
-#
-#kmers_in_read_v2_list = list(map(lambda kmer: print(kmer) if re.search(kmer, read_seq) or re.search(screed.rc(kmer), read_seq), kmers))
-#
-#kmers_in_read_v3 = filter(kmer_in_read_search, kmers)
-#kmers_in_read_v3_list = []
-#for x in kmers_in_read_v3:
-#    kmers_in_read_v3_list.append(x)
-# 
-#
-#
-#kmers_iter = SeqIO.parse(kmers_fa, "fasta")
-#kmers = [record for record in kmers_iter if
-#         re.search(str(record.seq), read_seq) or
-#         re.search(screed.rc(str(record.seq)), read_seq)]
-#del kmers_iter
-#kmer_loc_dict_list = []
-#for h in range(len(kmers)):
-#    kmer_id = kmers[h].id
-#    kmer_acc = kmers[h].id.split("_", 1)[1]
-#    kmer_for = str(kmers[h].seq)
-#    #kmer_rev = kmer_for.translate(comp_tab)[::-1] 
-#    kmer_rev = screed.rc(kmer_for)
-#    kmer_for_matches = [match.start() for match in re.finditer(kmer_for, read_seq)]
-#    kmer_rev_matches = [match.start() for match in re.finditer(kmer_rev, read_seq)]
-#    kmer_matches = sorted(union_lists(kmer_for_matches, kmer_rev_matches))
-#    if kmer_for < kmer_rev:
-#        kmer = kmer_for
-#    else:
-#        kmer = kmer_rev
-#    if kmer not in kmer_loc_dict_list:
-#        if kmer_matches:
-#            for k in range(len(kmer_matches)):
-#                kmer_loc_dict_list.append({"kmer": kmer,
-#                                           "id": kmer_id,
-#                                           "acc": kmer_acc,
-#                                           "hit_start": kmer_matches[k],
-#                                           "hit_end": kmer_matches[k] + parser.kmerSize})
-#    else:
-#        print("k-mer already present in object")
-##
-#return pd.DataFrame(kmer_loc_dict_list)
 
 # Within a read, find the 0-based start location of all occurrences
 # of each accession-specific k-mer
@@ -642,7 +549,6 @@ def main():
     the longest accession-specific read segment.
     """
     
-    
     # Get the within-read start locations of accession-specific k-mer matches
     #acc1_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
     #acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
@@ -683,10 +589,17 @@ def main():
                                                            ascending=True,
                                                            kind="quicksort",
                                                            ignore_index=True)
+    kmer_loc_outfile = kmer_loc_outdir + "/" + \
+        read.id + "__kmer_loc.tsv"
+    acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
     
     
     # For a given read, get accession-specific read segments
-    # get_read_segments function call 1:
+    # get_read_segments_pass1() will exclude segments with < round(parser.minHits * 0.5) consecutive
+    # accession-specific k-mers, and the resulting list elements (retained segments)
+    # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
+    # separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
+    
     # The first function call will exclude segments with < parser.minHits consecutive
     # accession-specific k-mers, and the resulting list elements (retained segments)
     # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
@@ -702,13 +615,14 @@ def main():
     
     
     # For a given read, get accession-specific read segments
-    # get_read_segments function call 2:
-    # The second function call will be applied to the concatenated DataFrame consisting
+    # get_read_segments_pass2() will be applied to the concatenated DataFrame consisting
     # of filtered segments, in order to extract each segment DataFrame as a list element
     # for segment length calculations. This second call will combine accession-specific
-    # segments into one extended segment where, following the first function call,
+    # segments into one extended segment where, following the get_read_segments_pass1() function call,
     # there are no intervening short segments representing the other accession
-    # (excluded segments with < parser.minHits consecutive accession-specific k-mers)
+    # (excluded segments with < round(parser.minHits * 0.5) consecutive accession-specific k-mers).
+    # get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
+    # accession-specific k-mers.
     acc_read_segments_list = get_read_segments_pass2(kmer_loc_df_sort=acc_kmer_loc_df_sort)
     
     
