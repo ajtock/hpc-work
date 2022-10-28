@@ -13,7 +13,7 @@
 #SBATCH -J hybrid_reads_acc_chr_specific_kmers_bbduk_icelake_slurm
 #! Which project should be charged:
 #SBATCH -A HENDERSON-SL3-CPU
-#SBATCH -p icelake-himem
+#SBATCH -p icelake
 #! How many whole nodes should be allocated?
 #SBATCH --nodes=1
 #! How many (MPI) tasks will there be in total? (<= nodes*76)
@@ -22,7 +22,7 @@
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
 #! Number of CPUs per task. Default: 1
-#SBATCH --cpus-per-task=76
+#SBATCH --cpus-per-task=16
 #! How much wallclock time will be required?
 #SBATCH --time=12:00:00
 #! What types of email messages do you wish to receive?
@@ -36,7 +36,7 @@
 #! error file (NOTE: enclosing directory must exist)
 #SBATCH --error=logs/hybrid_reads_acc_chr_specific_kmers_bbduk_icelake_slurm_%A_%a.err
 #! Array task IDs
-#SBATCH --array=1-4
+#SBATCH --array=3-5,7-10
 
 #! sbatch directives end here (put any additional directives above this line)
 
