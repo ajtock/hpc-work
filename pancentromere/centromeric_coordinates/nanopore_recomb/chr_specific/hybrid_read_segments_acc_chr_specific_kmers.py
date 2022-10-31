@@ -210,6 +210,7 @@ def get_kmer_loc(kmers_fa_noheaders, read_seq):
             for i in range(len(kmer_matches)):
                 kmer_loc_dict_list.append({"kmer": kmer,
                                            "acc": kmer_acc,
+                                           "chr": chrom,
                                            "hit_start": kmer_matches[i],
                                            "hit_end": kmer_matches[i] + parser.kmerSize})
     #
@@ -243,6 +244,7 @@ def get_kmer_loc_seqio(kmers_fa, read_seq):
                 kmer_loc_dict_list.append({"kmer": kmer,
                                            "id": kmer_id,
                                            "acc": kmer_acc,
+                                           "chr": chrom,
                                            "hit_start": kmer_matches[i],
                                            "hit_end": kmer_matches[i] + parser.kmerSize})
     #
@@ -274,6 +276,7 @@ def get_kmer_loc_ori(kmers, read):
                 kmer_loc_dict_list.append({"kmer": kmer,
                                            "id": kmer_id,
                                            "acc": kmer_acc,
+                                           "chr": chrom,
                                            "hit_start": kmer_matches[i],
                                            "hit_end": kmer_matches[i] + parser.kmerSize})
     #
@@ -697,31 +700,62 @@ def main():
     
     
     # Align accession-specific read segments to respective genome
-    align_read_segment_wm_ont(segment_fasta=acc1_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-    align_read_segment_wm_ont(segment_fasta=acc2_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-    
-    align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-    align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                              genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-    
-    align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                             genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-    align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                             genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-    
+    if region == "centromere":
+        align_read_segment_wm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_wm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc1_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc2_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+    else: 
+        align_read_segment_wm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_wm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc1_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc2_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_wm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_wm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc1_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc2_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
     
     # Delete accession-specific segment alignment file if the equivalent
     # file for the other accession doesn't exist (indicating an unmapped segment)
-    acc1_alignment_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_"
-    acc2_alignment_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_"
+    acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
+    acc2_alignment_to_acc1_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
     
-    delete_alignment(alignment_prefix1=acc1_alignment_prefix,
-                     alignment_prefix2=acc2_alignment_prefix)
-    delete_alignment(alignment_prefix1=acc2_alignment_prefix,
-                     alignment_prefix2=acc1_alignment_prefix)
+    acc1_alignment_to_acc2_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr_"
+    acc2_alignment_to_acc2_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr_"
+    
+    delete_alignment(alignment_prefix1=acc1_alignment_to_acc1_prefix,
+                     alignment_prefix2=acc2_alignment_to_acc1_prefix)
+    delete_alignment(alignment_prefix1=acc2_alignment_to_acc1_prefix,
+                     alignment_prefix2=acc1_alignment_to_acc1_prefix)
+    
+    delete_alignment(alignment_prefix1=acc1_alignment_to_acc2_prefix,
+                     alignment_prefix2=acc2_alignment_to_acc2_prefix)
+    delete_alignment(alignment_prefix1=acc2_alignment_to_acc2_prefix,
+                     alignment_prefix2=acc1_alignment_to_acc2_prefix)
 
 
 
