@@ -33,13 +33,13 @@
 #! interrupted by node failure or system downtime):
 #SBATCH --no-requeue
 #! log file (NOTE: enclosing directory must exist)
-#SBATCH --output=logs/segments/not_centromere_Chr1_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.out
+#SBATCH --output=logs/segments/not_centromere_Chr4_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.out
 #! error file (NOTE: enclosing directory must exist)
-#SBATCH --error=logs/segments/not_centromere_Chr1_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.err
+#SBATCH --error=logs/segments/not_centromere_Chr4_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.err
 #! Array task IDs
 #! NOTE: this array range needs to be determined based on the number of
 #! hybrid reads found by reads_acc_chr_specific_kmers_bbduk.sh 
-#SBATCH --array=0-228
+#SBATCH --array=0-132
 #! SBATCH --array=0-9999
 #! SBATCH --array=0-749
 
@@ -72,7 +72,7 @@ module load rhel8/default-icl              # REQUIRED - loads the basic environm
 #! Insert additional module load commands after this line if needed:
 
 #! "head -n #" should reflect chromosome number
-PARAMS=$(cat slurm_params/hybrid_read_segments_acc_chr_specific_kmers_py_slurm_params.tsv | head -n 1 | tail -n 1)
+PARAMS=$(cat slurm_params/hybrid_read_segments_acc_chr_specific_kmers_py_slurm_params.tsv | head -n 4 | tail -n 1)
 
 #! Get each parameter
 READS_PREFIX=$(echo $PARAMS | cut -d ' ' -f 1)
