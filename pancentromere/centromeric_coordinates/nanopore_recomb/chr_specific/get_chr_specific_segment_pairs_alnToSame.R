@@ -56,6 +56,7 @@ library(data.table)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(seqinr)
 
 
 outDir = paste0("segment_pairs/")
@@ -301,25 +302,55 @@ aln_best_pair_hom_DF$event_start = event_start
 aln_best_pair_hom_DF$event_end = event_end
 aln_best_pair_hom_DF$event_midpoint = event_midpoint
 
+# Get read lengths for hybrid read IDs in aln_best_pair_hom_DF$qname
+# to be used for retaining alignment pairs where the Col and Ler
+# read segments align to within a given distance of each other
+# (e.g., the given hybrid read length) in the same assembly
+hybrid_read_lengths = distinct(dplyr::bind_rows(
+    mclapply(1:length(chrName), function(x) {
+        tmp_list = read.fasta(paste0("fasta/Col_Ler_F1_pollen_500bp_minq99",
+                                     "_match_", acc1, "_not_centromere_", chrName[x],
+                                     "_specific_k24_downsampled_op0.9_hits10",
+                                     "_match_", acc2, "_not_centromere_", chrName[x],
+                                     "_specific_k24_downsampled_op0.9_hits10",
+                                     ".fa"),
+                              forceDNAtolower=F)
+        read_length_DF = data.frame()
+        for(i in 1:length(tmp_list)) {
+            if( attr(tmp_list[[i]], which="name", exact=T) %in% aln_best_pair_hom_DF$qname ) {
+                read_length_DF_i = data.frame(read_id = attr(tmp_list[[i]], which="name", exact=T),
+                                              read_len = length(getSequence(tmp_list[[i]])))
+                read_length_DF = rbind(read_length_DF, read_length_DF_i)
+            } 
+        }                                                              
+        read_length_DF
+    }, mc.preschedule=F, mc.cores=length(chrName))
+))
+
+aln_best_pair_hom_DF = base::merge(x = aln_best_pair_hom_DF,
+                                   y = hybrid_read_lengths,
+                                   by.x = "qname",
+                                   by.y = "read_id",
+                                   sort = F)
+
 aln_best_pair_hom_maxDist_DF = data.frame()
 for(x in 1:nrow(aln_best_pair_hom_DF)) {
-    if(aln_best_pair_hom_DF[x, ]$aln_dist_min <= maxDist) {
+    if(aln_best_pair_hom_DF[x, ]$aln_dist_min <= aln_best_pair_hom_DF[x, ]$read_len) {
         aln_best_pair_hom_maxDist_DF = rbind(aln_best_pair_hom_maxDist_DF, aln_best_pair_hom_DF[x, ])
     }
 }
 
+print(paste0(nrow(aln_best_pair_hom_maxDist_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
+#[1] "10 putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
+#[1] "## putative nco events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
 
-print(paste0(nrow(aln_best_pair_hom_maxDist_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly"))
-#[1] "12 putative co events are between homologous chromosomes where the per-accession read segments align to within 30000 bp of each other in the same reference assembly"
-#[1] "## putative nco events are between homologous chromosomes where the per-accession read segments align to within 30000 bp of each other in the same reference assembly"
+print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
+#[1] "1.41% of putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
+#[1] "##% of putative nco events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
 
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly"))
-#[1] "1.69% of putative co events are between homologous chromosomes where the per-accession read segments align to within 30000 bp of each other in the same reference assembly"
-#[1] "##% of putative nco events are between homologous chromosomes where the per-accession read segments align to within 30000 bp of each other in the same reference assembly"
-
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_hom_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly"))
-#[1] "1.73% of putative co events that are between homologous chromosomes are those where the per-accession read segments align to within 30000 bp of each other in the same reference assembly"
-#[1] "##% of putative nco events that are between homologous chromosomes are those where the per-accession read segments align to within 30000 bp of each other in the same reference assembly"
+print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_hom_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
+#[1] "1.45% of putative co events that are between homologous chromosomes are those where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
+#[1] "##% of putative nco events that are between homologous chromosomes are those where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
 
 
 
@@ -331,14 +362,14 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF[ which(al
                                                                               aln_best_pair_hom_maxDist_DF$acc2_alen /
                                                                               aln_best_pair_hom_maxDist_DF$acc2_qlen >= alenTOqlen), ]
 
-print(paste0(nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-#[1] "5 putative co events are between homologous chromosomes where the per-accession read segments align to within 30000 bp of each other in the same reference assembly, and where the per-accession alignment length is >= 95% of the segment length"
+print(paste0(nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
+#[1] "5 putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= 95% of the segment length"
 
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-#[1] "0.15% of putative co events are between homologous chromosomes where the per-accession read segments align to within 30000 bp of each other in the same reference assembly, and where the per-accession alignment length is >= 95% of the segment length"
+print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
+#[1] "0.71% of putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= 95% of the segment length"
 
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_hom_maxDist_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes and where the per-accession read segments align to within ", maxDist, " bp of each other in the same reference assembly, are those where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-#[1] "25% of putative co events that are between homologous chromosomes and where the per-accession read segments align to within 30000 bp of each other in the same reference assembly, are those where the per-accession alignment length is >= 95% of the segment length"
+print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_hom_maxDist_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes and where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, are those where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
+#[1] "50% of putative co events that are between homologous chromosomes and where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, are those where the per-accession alignment length is >= 95% of the segment length"
 
 
 
@@ -359,14 +390,14 @@ write.table(aln_best_pair_hom_DF,
 write.table(aln_best_pair_hom_maxDist_DF,
             paste0(outDir,
                    acc1, "_", acc2,
-                   "_putative_homologous_within_", maxDistName, "_", recombType, "_best_segment_pairs",
+                   "_putative_homologous_within_hybreadlenbp_", recombType, "_best_segment_pairs",
                    "_alnTo_", alnTo, "_",
                    paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
             quote = F, sep = "\t", col.names = T, row.names = F)
 write.table(aln_best_pair_hom_maxDist_alenTOqlen_DF,
             paste0(outDir,
                    acc1, "_", acc2,
-                   "_putative_homologous_within_", maxDistName, "_alenTOqlen", alenTOqlen, "_", recombType, "_best_segment_pairs",
+                   "_putative_homologous_within_hybreadlenbp_alenTOqlen", alenTOqlen, "_", recombType, "_best_segment_pairs",
                    "_alnTo_", alnTo, "_",
                    paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
             quote = F, sep = "\t", col.names = T, row.names = F)
@@ -386,13 +417,13 @@ aln_best_pair_hom_DF <- read.table(paste0(outDir,
                                    header = T)
 aln_best_pair_hom_maxDist_DF <- read.table(paste0(outDir,
                                                   acc1, "_", acc2,
-                                                  "_putative_homologous_within_", maxDistName, "_", recombType, "_best_segment_pairs",
+                                                  "_putative_homologous_within_hybreadlenbp_", recombType, "_best_segment_pairs",
                                                   "_alnTo_", alnTo, "_",
                                                   paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
                                            header = T)
 aln_best_pair_hom_maxDist_alenTOqlen_DF <- read.table(paste0(outDir,
                                                              acc1, "_", acc2,
-                                                             "_putative_homologous_within_", maxDistName, "_alenTOqlen", alenTOqlen, "_", recombType, "_best_segment_pairs",
+                                                             "_putative_homologous_within_hybreadlenbp_alenTOqlen", alenTOqlen, "_", recombType, "_best_segment_pairs",
                                                              "_alnTo_", alnTo, "_",
                                                              paste0(chrName, collapse = "_"), "_v", date, ".tsv"),
                                                       header = T)
