@@ -59,7 +59,7 @@ library(ggplot2)
 library(seqinr)
 
 
-outDir = paste0("segment_pairs/")
+outDir = paste0("not_centromere/segment_pairs/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 
 # Accession names
