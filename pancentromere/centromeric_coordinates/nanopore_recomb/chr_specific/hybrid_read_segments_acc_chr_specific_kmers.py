@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 import subprocess
 import screed
+import math
 
 from Bio import SeqIO
 from pathlib import Path
@@ -320,7 +321,7 @@ def get_read_segments_pass1(kmer_loc_df_sort):
     This equates to extracting separate DataFrames where consecutive rows have the
     same value in the "acc" column.
     This function should be called before get_read_segments_pass2(); i.e.:
-    1. get_read_segments_pass1() will exclude segments with < round(parser.minHits * 0.5) consecutive
+    1. get_read_segments_pass1() will exclude segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive
        accession-specific k-mers, and the resulting list elements (retained segments)
        should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
        separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
@@ -329,7 +330,7 @@ def get_read_segments_pass1(kmer_loc_df_sort):
        for segment length calculations. This second call will combine accession-specific
        segments into one extended segment where, following the get_read_segments_pass1() function call,
        there are no intervening short segments representing the other accession
-       (excluded segments with < round(parser.minHits * 0.5) consecutive accession-specific k-mers).
+       (excluded segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive accession-specific k-mers).
        get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
        accession-specific k-mers.
     """
@@ -344,13 +345,13 @@ def get_read_segments_pass1(kmer_loc_df_sort):
             segment = pd.concat(objs=[segment, kmer_loc_df_sort.iloc[h+1:h+2,:]],
                                 axis=0,
                                 ignore_index=True)
-        elif len(segment) >= round(parser.minHits * 0.5):
+        elif len(segment) > (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1):
             segments_list.append(segment)
             segment = pd.DataFrame()
         else:
             segment = pd.DataFrame()
     # Handle final segment in read
-    if len(segment) >= round(parser.minHits * 0.5):
+    if len(segment) > (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1):
         segments_list.append(segment)
     #
     return segments_list
@@ -388,7 +389,7 @@ def get_read_segments_pass2(kmer_loc_df_sort):
     This equates to extracting separate DataFrames where consecutive rows have the
     same value in the "acc" column.
     This function should be called after get_read_segments_pass1(); i.e.:
-    1. get_read_segments_pass1() will exclude segments with < round(parser.minHits * 0.5) consecutive
+    1. get_read_segments_pass1() will exclude segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive
        accession-specific k-mers, and the resulting list elements (retained segments)
        should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
        separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
@@ -397,7 +398,7 @@ def get_read_segments_pass2(kmer_loc_df_sort):
        for segment length calculations. This second call will combine accession-specific
        segments into one extended segment where, following the get_read_segments_pass1() function call,
        there are no intervening short segments representing the other accession
-       (excluded segments with < round(parser.minHits * 0.5) consecutive accession-specific k-mers).
+       (excluded segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive accession-specific k-mers).
        get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
        accession-specific k-mers.
     """
@@ -598,7 +599,7 @@ def main():
     
     
     # For a given read, get accession-specific read segments
-    # get_read_segments_pass1() will exclude segments with < round(parser.minHits * 0.5) consecutive
+    # get_read_segments_pass1() will exclude segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive
     # accession-specific k-mers, and the resulting list elements (retained segments)
     # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
     # separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
@@ -623,7 +624,7 @@ def main():
     # for segment length calculations. This second call will combine accession-specific
     # segments into one extended segment where, following the get_read_segments_pass1() function call,
     # there are no intervening short segments representing the other accession
-    # (excluded segments with < round(parser.minHits * 0.5) consecutive accession-specific k-mers).
+    # (excluded segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive accession-specific k-mers).
     # get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
     # accession-specific k-mers.
     acc_read_segments_list = get_read_segments_pass2(kmer_loc_df_sort=acc_kmer_loc_df_sort)
