@@ -386,52 +386,52 @@ print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_
 #                   "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
 #                   "_", recombType,
 #                   "_alnTo_", alnTo, "_",
-#                   paste0(chrName, collapse = "_"), ".tsv"),
-#            quote = F, sep = "\t", col.names = T, row.names = F)
+#                   paste0(chrName, collapse="_"), ".tsv"),
+#            quote=F, sep="\t", col.names=T, row.names=F)
 #write.table(aln_best_pair_hom_DF,
 #            paste0(outDir, readsPrefix,
 #                   "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
 #                   "_hom_", recombType,
 #                   "_alnTo_", alnTo, "_",
-#                   paste0(chrName, collapse = "_"), ".tsv"),
-#            quote = F, sep = "\t", col.names = T, row.names = F)
+#                   paste0(chrName, collapse="_"), ".tsv"),
+#            quote=F, sep="\t", col.names=T, row.names=F)
 write.table(aln_best_pair_hom_maxDist_DF,
             paste0(outDir, readsPrefix,
                    "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
                    "_hom_maxDist_", recombType,
                    "_alnTo_", alnTo, "_",
-                   paste0(chrName, collapse = "_"), ".tsv"),
-            quote = F, sep = "\t", col.names = T, row.names = F)
+                   paste0(chrName, collapse="_"), ".tsv"),
+            quote=F, sep="\t", col.names=T, row.names=F)
 write.table(aln_best_pair_hom_maxDist_alenTOqlen_DF,
             paste0(outDir, readsPrefix,
                    "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
                    "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
                    "_alnTo_", alnTo, "_",
-                   paste0(chrName, collapse = "_"), ".tsv"),
-            quote = F, sep = "\t", col.names = T, row.names = F)
+                   paste0(chrName, collapse="_"), ".tsv"),
+            quote=F, sep="\t", col.names=T, row.names=F)
 
 
-#aln_best_pair_DF <- read.table(paste0(outDir, readsPrefix,
+#aln_best_pair_DF = read.table(paste0(outDir, readsPrefix,
 #                                      "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
 #                                      "_", recombType,
 #                                      "_alnTo_", alnTo, "_",
-#                                      paste0(chrName, collapse = "_"), ".tsv"),
-#                               header = T)
-#aln_best_pair_hom_DF <- read.table(paste0(outDir, readsPrefix,
+#                                      paste0(chrName, collapse="_"), ".tsv"),
+#                               header=T)
+#aln_best_pair_hom_DF = read.table(paste0(outDir, readsPrefix,
 #                                          "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
 #                                          "_hom_", recombType,
 #                                          "_alnTo_", alnTo, "_",
-#                                          paste0(chrName, collapse = "_"), ".tsv"),
-#                                   header = T)
-aln_best_pair_hom_maxDist_DF <- read.table(paste0(outDir, readsPrefix,
+#                                          paste0(chrName, collapse="_"), ".tsv"),
+#                                   header=T)
+aln_best_pair_hom_maxDist_DF = read.table(paste0(outDir, readsPrefix,
                                                   "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
                                                   "_hom_maxDist_", recombType,
                                                   "_alnTo_", alnTo, "_",
-                                                  paste0(chrName, collapse = "_"), ".tsv"),
-                                           header = T)
-aln_best_pair_hom_maxDist_alenTOqlen_DF <- read.table(paste0(outDir, readsPrefix,
+                                                  paste0(chrName, collapse="_"), ".tsv"),
+                                           header=T)
+aln_best_pair_hom_maxDist_alenTOqlen_DF = read.table(paste0(outDir, readsPrefix,
                                                              "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
                                                              "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
                                                              "_alnTo_", alnTo, "_",
-                                                             paste0(chrName, collapse = "_"), ".tsv"),
-                                                      header = T)
+                                                             paste0(chrName, collapse="_"), ".tsv"),
+                                                      header=T)
