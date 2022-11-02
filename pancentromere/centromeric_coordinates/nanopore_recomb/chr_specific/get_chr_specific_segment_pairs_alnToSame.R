@@ -65,7 +65,7 @@ library(ggplot2)
 library(seqinr)
 
 
-outDir = paste0("not_centromere/segment_pairs/")
+outDir = paste0("not_centromere/segment_pairs/", recombType, "/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 
 # Accession names
@@ -141,18 +141,20 @@ load_pafs = function(indir, acc_name, aln_acc, suffix, aligner) {
     #suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf")
     #aligner="wm"
     files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
-    aln_DF = data.frame()
-    for(h in 1:length(files)) {
-        aln = fread(files[h],
-                    header=F, fill=T, sep="\t", data.table=F)[,1:13]
-        aln_DF = rbind(aln_DF, aln)
-    }
-    aln_DF$aligner = aligner
-    colnames(aln_DF) = c("qname", "qlen", "qstart0", "qend0",
-                         "strand", "tname", "tlen", "tstart", "tend",
-                         "nmatch", "alen", "mapq", "atype", "aligner")
- 
+    if(length(files) > 0) {
+        aln_DF = data.frame()
+        for(h in 1:length(files)) {
+            aln = fread(files[h],
+                        header=F, fill=T, sep="\t", data.table=F)[,1:13]
+            aln_DF = rbind(aln_DF, aln)
+        }
+        aln_DF$aligner = aligner
+        colnames(aln_DF) = c("qname", "qlen", "qstart0", "qend0",
+                             "strand", "tname", "tlen", "tstart", "tend",
+                             "nmatch", "alen", "mapq", "atype", "aligner")
+
     return(aln_DF)
+    }
 }
 
 
