@@ -9,7 +9,7 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./get_chr_specific_segment_pairs_alnToSame.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
+# ./plot_recombinant_reads.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
 # conda deactivate
 
 #readsPrefix = "Col_Ler_F1_pollen_500bp_minq99"
@@ -63,7 +63,7 @@ library(Cairo)
 #library(dplyr)
 #library(tidyr)
 #library(ggplot2)
-#library(seqinr)
+library(seqinr)
 
 
 outDir = paste0("not_centromere/segment_pairs/", recombType, "/")
@@ -91,13 +91,30 @@ aln_best_pair_hom_maxDist_DF = read.table(paste0(outDir, readsPrefix,
 #                                                             paste0(chrName, collapse="_"), ".tsv"),
 #                                                      header=T)
 
+# Create list of all hybrid reads
+hybrid_reads_list = list()
+for(x in 1:length(chrName)) {
+    hybrid_reads_list_chr = read.fasta(paste0("fasta/", readsPrefix,
+                                              "_match_", acc1, "_not_centromere_", chrName[x],
+                                              "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
+                                              "_match_", acc2, "_not_centromere_", chrName[x],
+                                              "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
+                                              ".fa"),
+                                       forceDNAtolower=F)
+    hybrid_reads_list = c(hybrid_reads_list, hybrid_reads_list_chr)
+}
 
-make_haplo_mat_list = function(aln_pair_DF) {
+# Make haplotype data.frames of reads based on k-mer locations
+make_haplo_DF_list = function(aln_pair_DF, hybrid_reads_list) {
     #aln_pair_DF = aln_best_pair_hom_maxDist_DF
-    mat_list = lapply(1:nrow(aln_pair_DF), function(x) {
+    #hybrid_reads_list = hybrid_reads_list
+    DF_list = lapply(1:nrow(aln_pair_DF), function(x) {
+        print(x)
         read_id = aln_pair_DF[x, ]$qname
         read_chr = aln_pair_DF[x, ]$acc1_tname
-        read_len = aln_pair_DF[x, ]$read_len
+        read_rfa = hybrid_reads_list[[which(names(hybrid_reads_list) == read_id)]]
+        read_seq = getSequence(read_rfa)
+        read_len = length(read_seq)
         read_kmer_loc = read.table(paste0("not_centromere/", read_chr, "/kmer_loc_tsv/",
                                           read_id, "__kmer_loc.tsv"), header=T)
         read_haplo_DF = data.frame()
@@ -112,59 +129,47 @@ make_haplo_mat_list = function(aln_pair_DF) {
             }
             read_haplo_DF = rbind(read_haplo_DF, pos_geno_DF)
         }
-        matrix(read_haplo_DF$acc,
-               ncol=nrow(read_haplo_DF))
+        read_haplo_DF = data.frame(pos = read_haplo_DF$pos,
+                                   seq = read_seq,
+                                   acc = read_haplo_DF$acc)
+        read_haplo_DF
     })
 
-    return(mat_list)
+    return(DF_list)
 }
-     
-haplo_mat_list = make_haplo_mat_list(aln_pair_DF=aln_best_pair_hom_maxDist_DF) 
 
+haplo_DF_list = make_haplo_DF_list(aln_pair_DF=aln_best_pair_hom_maxDist_DF,
+                                   hybrid_reads_list=hybrid_reads_list) 
 
-
-
-
-# Plot a haplotype heat map for matches to each COGC haplotype
-#for(x in seq_along(ABAmat_list)) {
-for(x in 1:13) {
-  ABAhtmp <- Heatmap(ABAmat_list[[x]][ ,1:(dim(tplpHapVar)[2]-1)],
-                     name = "Allele",
-                     col = c("A" = "red", "B" = "blue",
-                             "X" = "goldenrod1", "I" = "green2", "N" = "black", "." = "grey60"),                                              
-                     row_split = factor(data.frame(ABAmat_list[[x]], stringsAsFactors = F)$hap,                                               
-                                        levels = unique(as.character(data.frame(ABAmat_list[[x]], stringsAsFactors = F)$hap))),               
-                     row_gap = unit(1.5, "mm"),
-                     row_title = paste0(sprintf('%2.0f', ABAmat_list_frequencies[[x]])),                                                      
-                     row_title_rot = 0,
-                     row_title_gp = gpar(fontsize = 10),
-                     row_order = ABAmat_list_row_order[[x]],
-                     show_row_names = F,
-                     #column_split = colnames(mat1[ ,1:(dim(tplpHap_quant)[2]-1)]),                                                           
-                     #column_gap = unit(1.0, "mm"),
-                     #column_title = rep("", length(colnames(mat1[ ,1:(dim(tplpHap_quant)[2]-1)]))),                                          
-                     column_title = paste0(ABAmat_list_patterns[x],
-                                           " haplotype matches in ", sample, " ONT (ratio = ",                                                
-                                           round(ABAmat_list_ratios[x], digits = 2), ")"),                                                    
-                     column_title_gp = gpar(fontsize = 20, fontface = "bold"),                                                                
-                     show_column_names = T,
-                     column_names_side = "bottom",
-                     column_names_gp = gpar(fontsize = 16),
-                     heatmap_legend_param = list(title = bquote(bolditalic("3a") ~ bold("marker allele")),                                    
-                                                 title_gp = gpar(fontsize = 16),                                                              
-                                                 title_position = "topcenter",                                                                
-                                                 grid_height = unit(6, "mm"),                                                                 
-                                                 grid_width = unit(10, "mm"),                                                                 
-                                                 at = c("A", "B", "X", "."),                                                                  
-#                                                        "X", "I", "N", "."),                                                                 
-                                                 labels = c("Col-0", "Ws-4", "Nonparental SNV", "Any"),                                       
-#                                                            "Nonparental SNV", "Nonparental indel", "Missing", "Any"),                       
-                                                 labels_gp = gpar(fontsize = 16),                                                             
-                                                 ncol = 4, by_row = T),
-                     raster_device = "CairoPNG"
-                    )
-  pdf(paste0(plotDir, sample, "_ONT_ABA_patterns_", ABAmat_list_patterns[x], "_matches_recombo_heatmap_v140120.pdf"), height = 18, width = 10)
-  draw(ABAhtmp,
+# Plot a haplotype heat map for each read
+for(x in 1:length(haplo_DF_list)) {
+  htmp = Heatmap(t(haplo_DF_list[[x]][ , 2:3]),
+                 name = "Accession",
+                 col = c("Col-0"="dodgerblue3", "Ler-0"="darkgoldenrod", "X"="grey60",
+                         "A"="firebrick3", "T"="forestgreen", "G"="darkgoldenrod1", "C"="blue3"),
+                 show_row_names = F,
+                 column_title = paste0(aln_best_pair_hom_maxDist_DF$acc1_tname[x], " read ID: ", aln_best_pair_hom_maxDist_DF$qname[x]),
+                 column_title_gp = gpar(fontsize = 20, fontface = "bold"),                                                                
+                 show_column_names = T,
+                 column_names_side = "bottom",
+                 column_names_gp = gpar(fontsize = 16),
+                 heatmap_legend_param = list(title = bquote(bold("Accession-specific, chromosome-specific") ~ bold(.(kmerSize)) * bold("-mer")),
+                                             title_gp = gpar(fontsize = 16),
+                                             title_position = "topleft",
+                                             grid_height = unit(6, "mm"),
+                                             grid_width = unit(10, "mm"),
+                                             at = c("Col-0", "Ler-0", "X",
+                                                    "A", "T", "G", "C"),
+                                             labels = c("Col-0", "Ler-0", "Nonspecific",
+                                                        "A", "T", "G", "C"),
+                                             labels_gp = gpar(fontsize = 16),
+                                             ncol = 7, by_row = T),
+                 raster_device = "CairoPNG"
+                )
+  pdf(paste0(plotDir, aln_best_pair_hom_maxDist_DF$qname[x], "__", aln_best_pair_hom_maxDist_DF$acc1_tname[x],
+             "_alnTo_", alnTo, "_haplo_heatmap.pdf"),
+      height = 2, width = 100)
+  draw(htmp,
        heatmap_legend_side = "bottom")
   dev.off()
 }
