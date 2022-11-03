@@ -23,13 +23,13 @@ outDir = "bed/"
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 
 # Define chromosomes and chromosome lengths
-acc_chrs = read.table(paste0("/home/ajt200/rds/hpc-work/pancentromere/assemblies/",
+acc_chrs = read.table(paste0("/rds/project/rds-O5Ty9yVfQKg/pancentromere/assemblies/",
                              accName, ".fa.fai"),
                       header = F)[,1]
 acc_chrs = gsub("_RagTag_RagTag", "", acc_chrs)
 acc_chrs = gsub("chr", "Chr", acc_chrs)
 acc_chrs = gsub("SUPER_", "Chr", acc_chrs)
-acc_chrLens = read.table(paste0("/home/ajt200/rds/hpc-work/pancentromere/assemblies/",
+acc_chrLens = read.table(paste0("/rds/project/rds-O5Ty9yVfQKg/pancentromere/assemblies/",
                                 accName, ".fa.fai"),
                          header = F)[,2]
 acc_ptgs = acc_chrs[-grep("Chr", acc_chrs)]
@@ -50,7 +50,7 @@ print(acc_chrs)
 print(acc_chrLens)
 
 # Load CEN coordinates
-CEN = read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
+CEN = read.csv(paste0("/rds/project/rds-O5Ty9yVfQKg/pancentromere/centromeric_coordinates/",
                       "centromere_manual_EDTA4_fa.csv"),
                header = T)
 CEN$fasta.name = gsub(".fa", "", CEN$fasta.name)
