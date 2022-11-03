@@ -9,12 +9,13 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./get_chr_specific_segment_pairs_alnToSame.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
+# ./get_chr_specific_segment_pairs_alnToSame.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds not_centromere Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
 # conda deactivate
 
 #readsPrefix = "Col_Ler_F1_pollen_500bp_minq99"
 #acc1 = "Col-0.ragtag_scaffolds"
 #acc2 = "Ler-0_110x.ragtag_scaffolds"
+#region = "not_centromere"
 #alnTo = "Col-0.ragtag_scaffolds_Chr"
 #kmerSize = 24
 #overlapProp = 0.9
@@ -29,14 +30,15 @@ args = commandArgs(trailingOnly=T)
 readsPrefix = args[1]
 acc1 = args[2]
 acc2 = args[3]
-alnTo = args[4]
-kmerSize = as.integer(args[5])
-overlapProp = as.numeric(args[6])
-minHits = as.integer(args[7])
-maxDist = as.integer(args[8])
-alenTOqlen = as.numeric(args[9])
-recombType = args[10]
-chrName = unlist(strsplit(args[11],
+region = args[4]
+alnTo = args[5]
+kmerSize = as.integer(args[6])
+overlapProp = as.numeric(args[7])
+minHits = as.integer(args[8])
+maxDist = as.integer(args[9])
+alenTOqlen = as.numeric(args[10])
+recombType = args[11]
+chrName = unlist(strsplit(args[12],
                           split=","))
 
 
@@ -65,7 +67,7 @@ library(ggplot2)
 library(seqinr)
 
 
-outDir = paste0("not_centromere/segment_pairs/", recombType, "/")
+outDir = paste0(region, "/segment_pairs/", recombType, "/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 
 # Accession names
@@ -76,10 +78,10 @@ acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
 
 # Directories containing read segment alignment files
 acc1_indir_list = lapply(1:length(chrName), function(x) {
-    paste0("not_centromere/", chrName[x], "/segments/", acc1_name, "/", recombType, "/")
+    paste0(region, "/", chrName[x], "/segments/", acc1_name, "/", recombType, "/")
 })
 acc2_indir_list = lapply(1:length(chrName), function(x) {
-    paste0("not_centromere/", chrName[x], "/segments/", acc2_name, "/", recombType, "/")
+    paste0(region, "/", chrName[x], "/segments/", acc2_name, "/", recombType, "/")
 })
 
 # CEN coordinates
@@ -272,19 +274,13 @@ aln_best_pair_DF = dplyr::bind_rows(
 #    dplyr::filter(acc2_alen >= 200)
 
 print(paste0(nrow(aln_best_pair_DF), " putative ", recombType, " events"))
-#[1] "709 putative co events
-#[1] "## putative nco events"
 
 # Filter to retain putative recombination events between homologous chromosomes only
 aln_best_pair_hom_DF = aln_best_pair_DF[ which(aln_best_pair_DF$acc1_tname == aln_best_pair_DF$acc2_tname), ]
 
 print(paste0(nrow(aln_best_pair_hom_DF), " putative ", recombType, " events are between homologous chromosomes"))
-#[1] "692 putative co events are between homologous chromosomes"
-#[1] "## putative nco events are between homologous chromosomes"
 
 print(paste0( round( ( nrow(aln_best_pair_hom_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes"))
-#[1] "97.6% of putative co events are between homologous chromosomes"
-#[1] "##% of putative nco events are between homologous chromosomes"
 
 # Filter to retain putative recombination events between homologous chromosomes where
 # the per-accession read segments align to within maxDist bp of each other in the same reference assembly
@@ -317,9 +313,9 @@ aln_best_pair_hom_DF$event_midpoint = event_midpoint
 hybrid_read_lengths = distinct(dplyr::bind_rows(
     mclapply(1:length(chrName), function(x) {
         tmp_list = read.fasta(paste0("fasta/", readsPrefix,
-                                     "_match_", acc1, "_not_centromere_", chrName[x],
+                                     "_match_", acc1, "_", region, "_", chrName[x],
                                      "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
-                                     "_match_", acc2, "_not_centromere_", chrName[x],
+                                     "_match_", acc2, "_", region, "_", chrName[x],
                                      "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
                                      ".fa"),
                               forceDNAtolower=F)
@@ -343,22 +339,16 @@ aln_best_pair_hom_DF = base::merge(x = aln_best_pair_hom_DF,
 
 aln_best_pair_hom_maxDist_DF = data.frame()
 for(x in 1:nrow(aln_best_pair_hom_DF)) {
-    if(aln_best_pair_hom_DF[x, ]$aln_dist_min <= aln_best_pair_hom_DF[x, ]$read_len) {
+    if(aln_best_pair_hom_DF[x, ]$aln_dist_min <= aln_best_pair_hom_DF[x, ]$read_len * 2) {
         aln_best_pair_hom_maxDist_DF = rbind(aln_best_pair_hom_maxDist_DF, aln_best_pair_hom_DF[x, ])
     }
 }
 
 print(paste0(nrow(aln_best_pair_hom_maxDist_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
-#[1] "10 putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
-#[1] "## putative nco events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
 
 print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
-#[1] "1.41% of putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
-#[1] "##% of putative nco events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
 
 print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_hom_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
-#[1] "1.45% of putative co events that are between homologous chromosomes are those where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
-#[1] "##% of putative nco events that are between homologous chromosomes are those where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"
 
 
 
@@ -371,13 +361,10 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF[ which(al
                                                                               aln_best_pair_hom_maxDist_DF$acc2_qlen >= alenTOqlen), ]
 
 print(paste0(nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-#[1] "5 putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= 90% of the segment length"
 
 print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-#[1] "0.71% of putative co events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= 90% of the segment length"
 
 print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_hom_maxDist_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes and where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, are those where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-#[1] "50% of putative co events that are between homologous chromosomes and where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, are those where the per-accession alignment length is >= 90% of the segment length"
 
 
 
@@ -412,26 +399,26 @@ write.table(aln_best_pair_hom_maxDist_alenTOqlen_DF,
 
 
 #aln_best_pair_DF = read.table(paste0(outDir, readsPrefix,
-#                                      "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-#                                      "_", recombType,
-#                                      "_alnTo_", alnTo, "_",
-#                                      paste0(chrName, collapse="_"), ".tsv"),
-#                               header=T)
+#                                     "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+#                                     "_", recombType,
+#                                     "_alnTo_", alnTo, "_",
+#                                     paste0(chrName, collapse="_"), ".tsv"),
+#                              header=T)
 #aln_best_pair_hom_DF = read.table(paste0(outDir, readsPrefix,
-#                                          "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-#                                          "_hom_", recombType,
-#                                          "_alnTo_", alnTo, "_",
-#                                          paste0(chrName, collapse="_"), ".tsv"),
-#                                   header=T)
+#                                         "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+#                                         "_hom_", recombType,
+#                                         "_alnTo_", alnTo, "_",
+#                                         paste0(chrName, collapse="_"), ".tsv"),
+#                                  header=T)
 aln_best_pair_hom_maxDist_DF = read.table(paste0(outDir, readsPrefix,
-                                                  "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                                                  "_hom_maxDist_", recombType,
-                                                  "_alnTo_", alnTo, "_",
-                                                  paste0(chrName, collapse="_"), ".tsv"),
-                                           header=T)
+                                                 "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                                                 "_hom_maxDist_", recombType,
+                                                 "_alnTo_", alnTo, "_",
+                                                 paste0(chrName, collapse="_"), ".tsv"),
+                                          header=T)
 aln_best_pair_hom_maxDist_alenTOqlen_DF = read.table(paste0(outDir, readsPrefix,
-                                                             "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                                                             "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
-                                                             "_alnTo_", alnTo, "_",
-                                                             paste0(chrName, collapse="_"), ".tsv"),
-                                                      header=T)
+                                                            "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                                                            "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
+                                                            "_alnTo_", alnTo, "_",
+                                                            paste0(chrName, collapse="_"), ".tsv"),
+                                                     header=T)

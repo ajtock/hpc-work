@@ -9,12 +9,13 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./plot_recombinant_reads.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
+# ./plot_recombinant_reads.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds not_centromere Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
 # conda deactivate
 
 #readsPrefix = "Col_Ler_F1_pollen_500bp_minq99"
 #acc1 = "Col-0.ragtag_scaffolds"
 #acc2 = "Ler-0_110x.ragtag_scaffolds"
+#region = "not_centromere"
 #alnTo = "Col-0.ragtag_scaffolds_Chr"
 #kmerSize = 24
 #overlapProp = 0.9
@@ -29,14 +30,15 @@ args = commandArgs(trailingOnly=T)
 readsPrefix = args[1]
 acc1 = args[2]
 acc2 = args[3]
-alnTo = args[4]
-kmerSize = as.integer(args[5])
-overlapProp = as.numeric(args[6])
-minHits = as.integer(args[7])
-maxDist = as.integer(args[8])
-alenTOqlen = as.numeric(args[9])
-recombType = args[10]
-chrName = unlist(strsplit(args[11],
+region = args[4]
+alnTo = args[5]
+kmerSize = as.integer(args[6])
+overlapProp = as.numeric(args[7])
+minHits = as.integer(args[8])
+maxDist = as.integer(args[9])
+alenTOqlen = as.numeric(args[10])
+recombType = args[11]
+chrName = unlist(strsplit(args[12],
                           split=","))
 
 
@@ -51,22 +53,12 @@ if(floor(log10(maxDist)) + 1 < 4) {
 
 options(stringsAsFactors=F)
 options(scipen=999)
-#library(parallel)
-#library(GenomicRanges)
-#library(circlize)
 library(ComplexHeatmap)
 library(Cairo)
-#library(gridBase)
-#library(viridis)
-#library(colorspace)
-#library(data.table)
-#library(dplyr)
-#library(tidyr)
-#library(ggplot2)
 library(seqinr)
 
 
-outDir = paste0("not_centromere/segment_pairs/", recombType, "/")
+outDir = paste0(region, "/segment_pairs/", recombType, "/")
 plotDir = paste0(outDir, "recombinant_read_plots/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
@@ -79,25 +71,27 @@ acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
 
 
 aln_best_pair_hom_maxDist_DF = read.table(paste0(outDir, readsPrefix,
-                                                  "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                                                  "_hom_maxDist_", recombType,
-                                                  "_alnTo_", alnTo, "_",
-                                                  paste0(chrName, collapse="_"), ".tsv"),
-                                           header=T)
-#aln_best_pair_hom_maxDist_alenTOqlen_DF = read.table(paste0(outDir, readsPrefix,
-#                                                             "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-#                                                             "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
-#                                                             "_alnTo_", alnTo, "_",
-#                                                             paste0(chrName, collapse="_"), ".tsv"),
-#                                                      header=T)
+                                                 "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                                                 "_hom_maxDist_", recombType,
+                                                 "_alnTo_", alnTo, "_",
+                                                 paste0(chrName, collapse="_"), ".tsv"),
+                                          header=T)
+aln_best_pair_hom_maxDist_alenTOqlen_DF = read.table(paste0(outDir, readsPrefix,
+                                                            "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                                                            "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
+                                                            "_alnTo_", alnTo, "_",
+                                                            paste0(chrName, collapse="_"), ".tsv"),
+                                                     header=T)
+
+aln_DF = aln_best_pair_hom_maxDist_alenTOqlen_DF
 
 # Create list of all hybrid reads
 hybrid_reads_list = list()
 for(x in 1:length(chrName)) {
     hybrid_reads_list_chr = read.fasta(paste0("fasta/", readsPrefix,
-                                              "_match_", acc1, "_not_centromere_", chrName[x],
+                                              "_match_", acc1, "_", region, "_", chrName[x],
                                               "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
-                                              "_match_", acc2, "_not_centromere_", chrName[x],
+                                              "_match_", acc2, "_", region, "_", chrName[x],
                                               "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
                                               ".fa"),
                                        forceDNAtolower=F)
@@ -106,8 +100,6 @@ for(x in 1:length(chrName)) {
 
 # Make haplotype data.frames of reads based on k-mer locations
 make_haplo_DF_list = function(aln_pair_DF, hybrid_reads_list) {
-    #aln_pair_DF = aln_best_pair_hom_maxDist_DF
-    #hybrid_reads_list = hybrid_reads_list
     DF_list = lapply(1:nrow(aln_pair_DF), function(x) {
         print(x)
         read_id = aln_pair_DF[x, ]$qname
@@ -115,7 +107,7 @@ make_haplo_DF_list = function(aln_pair_DF, hybrid_reads_list) {
         read_rfa = hybrid_reads_list[[which(names(hybrid_reads_list) == read_id)]]
         read_seq = getSequence(read_rfa)
         read_len = length(read_seq)
-        read_kmer_loc = read.table(paste0("not_centromere/", read_chr, "/kmer_loc_tsv/",
+        read_kmer_loc = read.table(paste0(region, "/", read_chr, "/kmer_loc_tsv/",
                                           read_id, "__kmer_loc.tsv"), header=T)
         read_haplo_DF = data.frame()
         for(h in 1:read_len) {
@@ -138,39 +130,50 @@ make_haplo_DF_list = function(aln_pair_DF, hybrid_reads_list) {
     return(DF_list)
 }
 
-haplo_DF_list = make_haplo_DF_list(aln_pair_DF=aln_best_pair_hom_maxDist_DF,
-                                   hybrid_reads_list=hybrid_reads_list) 
+haplo_DF_list = make_haplo_DF_list(aln_pair_DF = aln_DF,
+                                   hybrid_reads_list = hybrid_reads_list) 
 
-# Plot a haplotype heat map for each read
-for(x in 1:length(haplo_DF_list)) {
-  htmp = Heatmap(t(haplo_DF_list[[x]][ , 2:3]),
-                 name = "Accession",
-                 col = c("Col-0"="dodgerblue3", "Ler-0"="darkgoldenrod", "X"="grey60",
-                         "A"="firebrick3", "T"="forestgreen", "G"="darkgoldenrod1", "C"="blue3"),
-                 show_row_names = F,
-                 column_title = paste0(aln_best_pair_hom_maxDist_DF$acc1_tname[x], " read ID: ", aln_best_pair_hom_maxDist_DF$qname[x]),
-                 column_title_gp = gpar(fontsize = 20, fontface = "bold"),                                                                
-                 show_column_names = T,
-                 column_names_side = "bottom",
-                 column_names_gp = gpar(fontsize = 16),
-                 heatmap_legend_param = list(title = bquote(bold("Accession-specific, chromosome-specific") ~ bold(.(kmerSize)) * bold("-mer")),
-                                             title_gp = gpar(fontsize = 16),
-                                             title_position = "topleft",
-                                             grid_height = unit(6, "mm"),
-                                             grid_width = unit(10, "mm"),
-                                             at = c("Col-0", "Ler-0", "X",
-                                                    "A", "T", "G", "C"),
-                                             labels = c("Col-0", "Ler-0", "Nonspecific",
-                                                        "A", "T", "G", "C"),
-                                             labels_gp = gpar(fontsize = 16),
-                                             ncol = 7, by_row = T),
-                 raster_device = "CairoPNG"
-                )
-  pdf(paste0(plotDir, aln_best_pair_hom_maxDist_DF$qname[x], "__", aln_best_pair_hom_maxDist_DF$acc1_tname[x],
-             "_alnTo_", alnTo, "_haplo_heatmap.pdf"),
-      height = 2, width = 100)
-  draw(htmp,
-       heatmap_legend_side = "bottom")
-  dev.off()
+# Plot haplotype of recombinant read
+haplo_heatmap = function(haplo_DF, aln_DF) {
+  haplo_mat = t(haplo_DF[ , 2:3])
+  colnames(haplo_mat) = 1:ncol(haplo_mat)
+  Heatmap(
+          haplo_mat,
+          col = c("Col-0"="dodgerblue3", "Ler-0"="darkgoldenrod", "X"="grey70",
+                  "A"="firebrick3", "T"="forestgreen", "G"="darkgoldenrod1", "C"="blue3"),
+          show_row_names = F,
+          column_title = paste0(aln_DF$acc1_tname[x], " read ID: ", aln_DF$qname[x]),
+          column_title_gp = gpar(fontsize = 16, fontface = "bold"),
+          column_labels = colnames(haplo_mat),
+          column_names_rot = 90,
+          column_names_centered = F,
+          show_column_names = T,
+          column_names_side = "top",
+          column_names_gp = gpar(fontsize = 4),
+          heatmap_legend_param = list(title = bquote(bold("Accession-specific, chromosome-specific" ~ .(as.character(kmerSize)) * "-mer")),
+                                      title_gp = gpar(fontsize = 16),
+                                      title_position = "topleft",
+                                      grid_height = unit(6, "mm"),
+                                      grid_width = unit(10, "mm"),
+                                      at = c("Col-0", "Ler-0", "X",
+                                             "A", "T", "G", "C"),
+                                      labels = c("Col-0", "Ler-0", "Nonspecific",
+                                                 "A", "T", "G", "C"),
+                                      labels_gp = gpar(fontsize = 16),
+                                      ncol = 7, by_row = T),
+          #height = unit(2, "npc"),
+          #width = unit(100, "npc"),
+          rect_gp = gpar(col = "white", lwd = 0.01),
+          raster_device = "CairoPNG"
+         )
 }
 
+for(x in 1:length(haplo_DF_list)) {
+    haplo_htmp = haplo_heatmap(haplo_DF = haplo_DF_list[[x]], aln_DF=aln_DF)
+    pdf(paste0(plotDir, aln_DF$acc1_tname[x], "_", aln_DF$qname[x],
+               "_alnTo_", alnTo, "_haplo_heatmap.pdf"),
+        height = 2, width = 0.05 * nrow(haplo_DF_list[[x]]))
+    draw(haplo_htmp,
+         heatmap_legend_side = "bottom")
+dev.off()
+}
