@@ -8,19 +8,17 @@
 # sbatch hybrid_reads_acc_chr_specific_kmers_bbduk_icelake_slurm
 # sbatch hybrid_reads_acc1_AND_acc2_chr_specific_kmers_bbduk_icelake_slurm ):
 # conda activate python_3.9.6
-# ./hybrid_reads_acc_chr_specific_kmers_bbduk.sh 256g 76 Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds_not_centromere_Chr1_specific_k 24 0.9 10 not_centromere Chr1
-# ./hybrid_reads_acc_chr_specific_kmers_bbduk.sh 256g 76 Col_Ler_F1_pollen_500bp_minq99 Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1_specific_k 24 0.9 10 not_centromere Chr1
-# ./hybrid_reads_acc_chr_specific_kmers_bbduk.sh 256g 76 Col_Ler_F1_pollen_500bp_minq99_match_Col-0.ragtag_scaffolds_not_centromere_Chr1_specific_k24_downsampled_op0.9_hits10 Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1_specific_k 24 0.9 10 not_centromere Chr1
-# ./hybrid_reads_acc_chr_specific_kmers_bbduk.sh 256g 76 Col_Ler_F1_pollen_500bp_minq99_match_Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1_specific_k24_downsampled_op0.9_hits10 Col-0.ragtag_scaffolds_not_centromere_Chr1_specific_k 24 0.9 10 not_centromere Chr1
+# ./hybrid_reads_acc_chr_specific_kmers_bbduk.sh 48g 16 ColLerF1pollen_1000bp_minq90 Col-0.ragtag_scaffolds_not_centromere_Chr1_specific_k 24 0.9 11 not_centromere Chr1
+# ./hybrid_reads_acc_chr_specific_kmers_bbduk.sh 24g 8 ColLerF1pollen_1000bp_minq90_match_Col-0.ragtag_scaffolds_not_centromere_Chr1_specific_k24_downsampled_op0.9_hits11 Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1_specific_k 24 0.9 11 not_centromere Chr1
 # conda deactivate
 
-#MEMORY=256g
-#THREADS=76
-#FQ_PREFIX=Col_Ler_F1_pollen_500bp_minq99
+#MEMORY=48g
+#THREADS=16
+#FQ_PREFIX=ColLerF1pollen_1000bp_minq90
 #FA_PREFIX=Col-0.ragtag_scaffolds_not_centromere_Chr1_specific_k
 #K=24
 #OP=0.9
-#HITS=10
+#HITS=11
 #REGION=not_centromere
 #CHROM=Chr1
 
@@ -48,6 +46,12 @@ echo ${CHROM}
 echo $(which bbduk.sh)
 
 [ -d ${REGION}/${CHROM}/fasta/ ] || mkdir -p ${REGION}/${CHROM}/fasta/
+[ -d ${REGION}/${CHROM}/kmer_loc_tsv/ ] || mkdir -p ${REGION}/${CHROM}/kmer_loc_tsv/
+[ -d ${REGION}/${CHROM}/segments/Col-0/co/ ] || mkdir -p ${REGION}/${CHROM}/segments/Col-0/co/
+[ -d ${REGION}/${CHROM}/segments/Col-0/nco/ ] || mkdir -p ${REGION}/${CHROM}/segments/Col-0/nco/
+[ -d ${REGION}/${CHROM}/segments/Ler-0/co/ ] || mkdir -p ${REGION}/${CHROM}/segments/Ler-0/co/
+[ -d ${REGION}/${CHROM}/segments/Ler-0/nco/ ] || mkdir -p ${REGION}/${CHROM}/segments/Ler-0/nco/
+[ -d logs/segments/ ] || mkdir -p logs/segments/
 
 bbduk.sh -Xmx${MEMORY} \
          in=fastq/${FQ_PREFIX}.fq \

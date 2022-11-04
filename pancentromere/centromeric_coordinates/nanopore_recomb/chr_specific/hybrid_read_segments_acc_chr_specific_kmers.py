@@ -6,14 +6,14 @@
 # Usage (sbatch hybrid_read_segments_acc_chr_specific_kmers_py_icelake_slurm):
 # conda activate python_3.9.6
 # ./hybrid_read_segments_acc_chr_specific_kmers.py \
-#  -r Col_Ler_F1_pollen_500bp_minq99 \
+#  -r ColLerF1pollen_1000bp_minq90 \
 #  -a1 Col-0.ragtag_scaffolds_not_centromere_Chr1 \
 #  -a2 Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1 \
 ###  -reg not_centromere \
 ###  -chrom Chr1 \
 #  -k 24 \
 #  -op 0.9 \
-#  -mh 10 \
+#  -mh 11 \
 #  -hr 0
 # conda deactivate
 
@@ -47,8 +47,8 @@ from time import time, sleep
 def create_parser():
     parser = argparse.ArgumentParser(description="Fasta filename variables.")
     #### Define command-line arguments
-    parser.add_argument("-r", "--readsPrefix", type=str, default="Col_Ler_F1_pollen_500bp_minq99",
-                        help="The prefix of the FASTQ file name. Default: Col_Ler_F1_pollen_500bp_minq99")
+    parser.add_argument("-r", "--readsPrefix", type=str, default="ColLerF1pollen_1000bp_minq90",
+                        help="The prefix of the FASTQ file name. Default: ColLerF1pollen_1000bp_minq90")
     parser.add_argument("-a1", "--acc1", type=str, default="Col-0.ragtag_scaffolds_not_centromere_Chr1",
                         help="The prefix of the first accession's sequences. Default: Col-0.ragtag_scaffolds_not_centromere_Chr1")
     parser.add_argument("-a2", "--acc2", type=str, default="Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1",
@@ -61,8 +61,8 @@ def create_parser():
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
     parser.add_argument("-op", "--overlapProp", type=float, default="0.9",
                         help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
-    parser.add_argument("-mh", "--minHits", type=int, default="10",
-                        help="The minimum number of accession-specific k-mers found in a read. Default: 10")
+    parser.add_argument("-mh", "--minHits", type=int, default="11",
+                        help="The minimum number of accession-specific k-mers found in a read. Default: 11")
     parser.add_argument("-hr", "--hybReadNo", type=int, default="0",
                         help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 0")
     return parser

@@ -6,6 +6,7 @@ channels:
   - defaults
 dependencies:
   - python=3.9.6
+  - snakemake
   - biopython
   - pandas
   - numpy
@@ -41,12 +42,13 @@ dependencies:
   - r-rcpp
   - r-gridbase
   - r-viridis
-  - r-cairo # must be installed for complexheatmap to work
+  - r-cairo # must be installed for complexheatmap to work (conda installation doesn't fix this so run install.packages("Cairo") in an interactive R session after running conda activate python_3.9.6 )
   - bioconductor-msa
   - bioconductor-biostrings
   - bioconductor-dmrcaller=1.24.0
   - bioconductor-rtracklayer=1.52.0
   - bioconductor-complexheatmap
+  - bioconductor-segmentseq
   - bedtools=2.30.0
   - bbmap=38.98
   - winnowmap=2.03
@@ -55,3 +57,4 @@ dependencies:
   - bowtie2=2.4.5
   - bowtie=1.3.1
   - samtools=1.15.1
+  - rename
