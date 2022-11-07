@@ -2,9 +2,11 @@
 # chromosome-specific read segments from "hybrid" reads derived from
 # ONT long-read sequencing of F1 pollen.
 
+
 # bash safe mode
 shell.executable("/bin/bash")
 shell.prefix("set -euo pipefail; ")
+
 
 import os
 import re
@@ -28,17 +30,6 @@ minHits     = config["KMERS"]["minHits"]
 region = re.sub(".+_scaffolds_", "", acc1)
 region = re.sub("_Chr.+", "", region)
 chrom = re.sub(".+_scaffolds_" + region + "_", "", acc1)
-
-#outdir = region + "/" + chrom
-#kmer_loc_outdir = outdir + "/kmer_loc_tsv"
-#
-#acc1_name = acc1.split(".")[0].split("_")[0]
-#acc2_name = acc2.split(".")[0].split("_")[0]
-#
-#acc1_outdir_co = outdir + "/segments/" + acc1_name + "/co"
-#acc2_outdir_co = outdir + "/segments/" + acc2_name + "/co"
-#acc1_outdir_nco = outdir + "/segments/" + acc1_name + "/nco"
-#acc2_outdir_nco = outdir + "/segments/" + acc2_name + "/nco"
 
 
 # Path to hybrid reads
