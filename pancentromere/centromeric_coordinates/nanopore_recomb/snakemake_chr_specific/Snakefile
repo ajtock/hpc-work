@@ -89,14 +89,14 @@ rule hybrid_read_segments:
         time      = "12:00:00"
     output:
         region + "/" + chrom + "/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"
-    log:
-        "logs/segments/" + region + "_" + chrom + "_hybrid_read_segments_acc_chr_specific_kmers_py_{reads_name}_hr{reads_enum}.log"
+    #log:
+    #    "logs/segments/" + region + "_" + chrom + "_hybrid_read_segments_acc_chr_specific_kmers_py_{reads_name}_hr{reads_enum}.log"
     shell:
-        "(./hybrid_read_segments_acc_chr_specific_kmers.py"
+        "./hybrid_read_segments_acc_chr_specific_kmers.py"
         " -r {readsPrefix}"
         " -a1 {acc1}"
         " -a2 {acc2}"
         " -k {kmerSize}"
         " -op {overlapProp}"
         " -mh {minHits}"
-        " -hr {wildcards.reads_enum}) &> {log}"
+        " -hr {wildcards.reads_enum}"

@@ -7,7 +7,7 @@ cluster:
     --mem={resources.mem_mb}
     --time={resources.time}
     --job-name={rule}-{wildcards}
-    --output=logs/{rule}/{wildcards}-%j.log
+    --output=logs/{rule}/{region}_{chrom}_{wildcards}-%j.log
 default-resources:
   - partition=icelake
   - mem_mb=3380
