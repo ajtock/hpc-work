@@ -1,0 +1,98 @@
+# Snakemake workflow for extracting and aligning accession-specific,
+# chromosome-specific read segments from "hybrid" reads derived from
+# ONT long-read sequencing of F1 pollen.
+
+# bash safe mode
+shell.executable("/bin/bash")
+shell.prefix("set -euo pipefail; ")
+
+import os
+import re
+#import yaml
+
+from Bio import SeqIO
+from pathlib import Path
+
+
+# Specify config file parameters
+configfile: "config.yaml"
+#with open("config.yaml", "r") as config_handle:
+#    config = yaml.safe_load(config_handle)
+readsPrefix = config["READS"]["prefix"]
+acc1        = config["KMERS"]["acc1"]
+acc2        = config["KMERS"]["acc2"]
+kmerSize    = config["KMERS"]["kmerSize"]
+overlapProp = config["KMERS"]["overlapProp"]
+minHits     = config["KMERS"]["minHits"]
+
+region = re.sub(".+_scaffolds_", "", acc1)
+region = re.sub("_Chr.+", "", region)
+chrom = re.sub(".+_scaffolds_" + region + "_", "", acc1)
+
+#outdir = region + "/" + chrom
+#kmer_loc_outdir = outdir + "/kmer_loc_tsv"
+#
+#acc1_name = acc1.split(".")[0].split("_")[0]
+#acc2_name = acc2.split(".")[0].split("_")[0]
+#
+#acc1_outdir_co = outdir + "/segments/" + acc1_name + "/co"
+#acc2_outdir_co = outdir + "/segments/" + acc2_name + "/co"
+#acc1_outdir_nco = outdir + "/segments/" + acc1_name + "/nco"
+#acc2_outdir_nco = outdir + "/segments/" + acc2_name + "/nco"
+
+
+# Path to hybrid reads
+input_fa = "fasta/" + readsPrefix + \
+    "_match_" + acc1 + \
+    "_specific_k" + str(kmerSize) + \
+    "_downsampled_op" + str(overlapProp) + \
+    "_hits" + str(minHits) + \
+    "_match_" + acc2 + \
+    "_specific_k" + str(kmerSize) + \
+    "_downsampled_op" + str(overlapProp) + \
+    "_hits" + str(minHits) + \
+    "_head10855.fa"
+# File exists sanity check
+Path(input_fa).resolve(strict=True)
+
+# Parse reads to get read index numbers
+# Dictionary approach assumes use of Python >= 3.7, because in previous
+# Python versions dictionaries were inherently unordered
+reads_dict = SeqIO.index(input_fa, "fasta")
+reads_enum = [i for i, v in enumerate(reads_dict.values())]
+reads_name = [v.id for i, v in enumerate(reads_dict.values())]
+
+
+rule all:
+    input:
+        # hybrid_read_segments
+        expand("{region}/{chrom}/kmer_loc_tsv/*__kmer_loc.tsv",
+               region = region,
+               chrom = chrom),
+               #reads_name = reads_name),
+
+
+# Run hybrid_read_segments_acc_chr_specific_kmers.py to extract and align
+# accession-specific, chromosome-specific read segments from hybrid reads 
+rule hybrid_read_segments:
+    """
+    Extract and align accession-specific, chromosome-specific read segments
+    from hybrid reads derived from ONT long-read sequencing of F1 pollen.
+    """
+    resources:
+        partition = "icelake",
+        mem_mb    = 3380,
+        time      = "12:00:00"
+    output:
+        "{region}/{chrom}/kmer_loc_tsv/*__kmer_loc.tsv"
+    log:
+        "logs/segments/{region}_{chrom}_hybrid_read_segments_acc_chr_specific_kmers_py_{reads_enum}.log"
+    shell:
+        "(./hybrid_read_segments_acc_chr_specific_kmers.py"
+        " -r {readsPrefix}"
+        " -a1 {acc1}"
+        " -a2 {acc2}"
+        " -k {kmerSize}"
+        " -op {overlapProp}"
+        " -mh {minHits}"
+        " -hr {wildcards.reads_enum}) &> {log}"
