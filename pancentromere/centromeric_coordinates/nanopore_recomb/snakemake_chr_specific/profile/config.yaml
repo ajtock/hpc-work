@@ -21,4 +21,4 @@ jobs: 500
 keep-going: False
 rerun-incomplete: False
 printshellcmds: True
-scheduler: "ilp"
+#scheduler: greedy
