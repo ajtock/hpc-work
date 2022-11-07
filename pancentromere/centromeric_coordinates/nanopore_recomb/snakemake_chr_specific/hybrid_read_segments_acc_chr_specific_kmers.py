@@ -612,9 +612,10 @@ def main():
                                                            ascending=True,
                                                            kind="quicksort",
                                                            ignore_index=True)
-    kmer_loc_outfile = kmer_loc_outdir + "/" + \
-        read.id + "__kmer_loc.tsv"
-    acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+    ## Write within-read k-mer locations TSV file
+    #kmer_loc_outfile = kmer_loc_outdir + "/" + \
+    #    read.id + "_hr" + str(parser.hybReadNo) + "__kmer_loc.tsv"
+    #acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
     
     
     # For a given read, get accession-specific read segments
@@ -628,7 +629,8 @@ def main():
     # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
     # separately (using concat_DF_list() on output), to be provided as the input to the second call
     acc_read_segments_list_pass1 = get_read_segments_pass1(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
-    del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
+    #del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
+    del acc_kmer_loc_df
     
     
     # Concatenate acc_read_segments_list_tmp into a single DataFrame,
@@ -753,6 +755,13 @@ def main():
                      alignment_prefix2=acc2_alignment_to_acc1_prefix)
     delete_alignment(alignment_prefix1=acc2_alignment_to_acc1_prefix,
                      alignment_prefix2=acc1_alignment_to_acc1_prefix)
+    
+    
+    # Write within-read k-mer locations TSV file 
+    kmer_loc_outfile = kmer_loc_outdir + "/" + \
+        read.id + "_hr" + str(parser.hybReadNo) + "__kmer_loc.tsv"
+    acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+    del acc_kmer_loc_df_sort_tmp
     
     
     # Delete within-read k-mer locations TSV file if correspodning accession-specific

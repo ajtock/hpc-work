@@ -66,27 +66,40 @@ reads_name = [v.id for i, v in enumerate(reads_dict.values())]
 rule all:
     input:
         # hybrid_read_segments
-        expand("{region}/{chrom}/kmer_loc_tsv/*__kmer_loc.tsv",
-               region = region,
-               chrom = chrom),
-               #reads_name = reads_name),
+        expand([region + "/" + chrom + "/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"], zip,
+               reads_name = reads_name,
+               reads_enum = reads_enum)
+
+#        #["".join (map(str, x)) for x in zip(
+#        #    [region + "/"]*len(reads_enum),
+#        #    [chrom + "/kmer_loc_tsv/"]*len(reads_enum), 
+#        #    reads_name,
+#        #    ["_hr"]*len(reads_enum),
+#        #    reads_enum,
+#        #    ["__kmer_loc.tsv"]*len(reads_enum)
+#        #) ]
+#
+#        ### hybrid_read_segments
+#        #expand(["{{region}}/{{chrom}}/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"], zip,
+#        #       reads_name = reads_name,
+#        #       reads_enum = reads_enum),
 
 
 # Run hybrid_read_segments_acc_chr_specific_kmers.py to extract and align
 # accession-specific, chromosome-specific read segments from hybrid reads 
 rule hybrid_read_segments:
     """
-    Extract and align accession-specific, chromosome-specific read segments
-    from hybrid reads derived from ONT long-read sequencing of F1 pollen.
+    Extract and align accession-specific, chromosome-specific read segments from
+    hybrid reads derived from ONT long-read sequencing of F1 pollen.
     """
     resources:
         partition = "icelake",
         mem_mb    = 3380,
         time      = "12:00:00"
     output:
-        "{region}/{chrom}/kmer_loc_tsv/*__kmer_loc.tsv"
+        region + "/" + chrom + "/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"
     log:
-        "logs/segments/{region}_{chrom}_hybrid_read_segments_acc_chr_specific_kmers_py_{reads_enum}.log"
+        "logs/segments/" + region + "_" + chrom + "_hybrid_read_segments_acc_chr_specific_kmers_py_{reads_name}_hr{reads_enum}.log"
     shell:
         "(./hybrid_read_segments_acc_chr_specific_kmers.py"
         " -r {readsPrefix}"
