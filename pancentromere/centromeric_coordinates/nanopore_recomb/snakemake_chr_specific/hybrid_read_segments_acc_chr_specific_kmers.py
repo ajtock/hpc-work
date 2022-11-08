@@ -59,6 +59,8 @@ def create_parser():
                         help="The minimum number of accession-specific k-mers found in a read. Default: 11")
     parser.add_argument("-hr", "--hybReadNo", type=int, default="0",
                         help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 0")
+    parser.add_argument("-at", "--alnTo", type=str, default="Col-0.ragtag_scaffolds_Chr",
+                        help="The prefix of the assembly to be used for read segment alignment. Default: Col-0.ragtag_scaffolds_Chr")
     return parser
 
 parser = create_parser().parse_args()
@@ -608,7 +610,8 @@ def main():
     ## Write within-read k-mer locations TSV file (NOTE: moved this to end as this is a snakemake target output,
     ## to ensure creation of other outputs of this script that aren't specified in Snakefile)
     #kmer_loc_outfile = kmer_loc_outdir + "/" + \
-    #    read.id + "_hr" + str(parser.hybReadNo) + "__kmer_loc.tsv"
+    #    read.id + "__hr" + str(parser.hybReadNo) + \
+    #    "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
     #acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
     
     
@@ -731,19 +734,19 @@ def main():
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
     else: 
         align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+                                  genome=parser.alnTo)
         align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+                                  genome=parser.alnTo)
         align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+                                 genome=parser.alnTo)
         align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+                                 genome=parser.alnTo)
     
     
     # Delete accession-specific segment alignment file if the equivalent
     # file for the other accession doesn't exist (indicating an unmapped segment)
-    acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
-    acc2_alignment_to_acc1_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
+    acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + parser.alnTo + "_"
+    acc2_alignment_to_acc1_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + parser.alnTo + "_"
     
     delete_alignment(alignment_prefix1=acc1_alignment_to_acc1_prefix,
                      alignment_prefix2=acc2_alignment_to_acc1_prefix)
@@ -753,7 +756,8 @@ def main():
     
     # Write within-read k-mer locations TSV file 
     kmer_loc_outfile = kmer_loc_outdir + "/" + \
-        read.id + "_hr" + str(parser.hybReadNo) + "__kmer_loc.tsv"
+        read.id + "__hr" + str(parser.hybReadNo) + \
+        "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
     acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
     del acc_kmer_loc_df_sort_tmp
     

@@ -1,13 +1,13 @@
 cluster:
-  mkdir -p logs/{rule} &&
+  mkdir -p logs/{rule}/{region}/{chrom} &&
   sbatch
     --account=HENDERSON-SL3-CPU
     --partition={resources.partition}
     --cpus-per-task={threads}
     --mem={resources.mem_mb}
     --time={resources.time}
-    --job-name={rule}-{wildcards}
-    --output=logs/{rule}/{region}_{chrom}_{wildcards}-%j.log
+    --job-name={rule}_{region}_{chrom}_{alnTo}_{wildcards}
+    --output=logs/{rule}/{region}/{chrom}/{region}_{chrom}_alnTo_{alnTo}_{wildcards}_%j.log
 default-resources:
   - partition=icelake
   - mem_mb=3380
@@ -15,7 +15,7 @@ default-resources:
 restart-times: 0
 max-jobs-per-second: 100
 max-status-checks-per-second: 1
-local-cores: 1
+#local-cores: 1
 latency-wait: 60
 jobs: 500
 keep-going: False

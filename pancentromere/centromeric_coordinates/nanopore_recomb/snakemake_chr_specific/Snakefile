@@ -17,8 +17,8 @@ from pathlib import Path
 
 
 # Specify config file parameters
-configfile: "config.yaml"
-#with open("config.yaml", "r") as config_handle:
+##configfile: "config_not_centromere_Chr1.yaml"
+#with open("config_not_centromere_Chr1.yaml", "r") as config_handle:
 #    config = yaml.safe_load(config_handle)
 readsPrefix = config["READS"]["prefix"]
 acc1        = config["KMERS"]["acc1"]
@@ -26,6 +26,8 @@ acc2        = config["KMERS"]["acc2"]
 kmerSize    = config["KMERS"]["kmerSize"]
 overlapProp = config["KMERS"]["overlapProp"]
 minHits     = config["KMERS"]["minHits"]
+alnTo       = config["MAPPING"]["alnTo"]
+
 
 region = re.sub(".+_scaffolds_", "", acc1)
 region = re.sub("_Chr.+", "", region)
@@ -40,8 +42,8 @@ if not os.path.exists(outdir):
 if not os.path.exists(kmer_loc_outdir):
     os.makedirs(kmer_loc_outdir)
 
-acc1_name = parser.acc1.split(".")[0].split("_")[0]
-acc2_name = parser.acc2.split(".")[0].split("_")[0]
+acc1_name = acc1.split(".")[0].split("_")[0]
+acc2_name = acc2.split(".")[0].split("_")[0]
 
 acc1_outdir_co = outdir + "/segments/" + acc1_name + "/co"
 acc2_outdir_co = outdir + "/segments/" + acc2_name + "/co"
@@ -86,10 +88,14 @@ reads_name = [v.id for i, v in enumerate(reads_dict.values())]
 rule all:
     input:
         # hybrid_read_segments
-        expand([region + "/" + chrom + "/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"], zip,
+        expand([region + "/" + chrom + "/kmer_loc_tsv/{reads_name}__hr{reads_enum}_alnTo_" + alnTo + "_kmer_loc.tsv"], zip,
                reads_name = reads_name,
                reads_enum = reads_enum)
 
+#        expand(["{{region}}/{{chrom}}/kmer_loc_tsv/{reads_name}__hr{reads_enum}_alnTo_{{alnTo}}_kmer_loc.tsv"], zip,
+#               reads_name = reads_name,
+#               reads_enum = reads_enum)
+#
 #        #["".join (map(str, x)) for x in zip(
 #        #    [region + "/"]*len(reads_enum),
 #        #    [chrom + "/kmer_loc_tsv/"]*len(reads_enum), 
@@ -100,7 +106,7 @@ rule all:
 #        #) ]
 #
 #        ### hybrid_read_segments
-#        #expand(["{{region}}/{{chrom}}/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"], zip,
+#        #expand(["region/chrom/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"], zip,
 #        #       reads_name = reads_name,
 #        #       reads_enum = reads_enum),
 
@@ -117,9 +123,9 @@ rule hybrid_read_segments:
         mem_mb    = 3380,
         time      = "12:00:00"
     output:
-        region + "/" + chrom + "/kmer_loc_tsv/{reads_name}_hr{reads_enum}__kmer_loc.tsv"
+        region + "/" + chrom + "/kmer_loc_tsv/{reads_name}__hr{reads_enum}_alnTo_" + alnTo + "_kmer_loc.tsv"
     #log:
-    #    "logs/segments/" + region + "_" + chrom + "_hybrid_read_segments_acc_chr_specific_kmers_py_{reads_name}_hr{reads_enum}.log"
+    #    "logs/segments/" + region + "/" + chrom + "/" + region + "_" chrom + "_alnTo_" + alnTo + "_hybrid_read_segments_acc_chr_specific_kmers_py_{reads_name}_hr{reads_enum}.log"
     shell:
         "./hybrid_read_segments_acc_chr_specific_kmers.py"
         " -r {readsPrefix}"
