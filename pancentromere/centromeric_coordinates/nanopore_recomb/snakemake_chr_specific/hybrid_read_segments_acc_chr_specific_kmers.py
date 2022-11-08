@@ -109,7 +109,7 @@ input_fa = "fasta/" + parser.readsPrefix + \
     "_specific_k" + str(parser.kmerSize) + \
     "_downsampled_op" + str(parser.overlapProp) + \
     "_hits" + str(parser.minHits) + \
-    ".fa"
+    "_head10855.fa"
 # File exists sanity check
 Path(input_fa).resolve(strict=True)
 
@@ -578,6 +578,7 @@ def main():
     acc1_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
     acc2_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
     
+    
     ## Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
     ## overlap any of those in acc2_kmer_loc_df, and vice versa
     ## NOTE: requires two reciprocal function calls
@@ -595,14 +596,6 @@ def main():
         return
     
     
-    # TODO: Use pyranges to remove rows in acc1_kmer_loc_df and acc2_kmer_loc_df
-    # whose k-mer match coordinate ranges overlap between accessions
-    # E.g.:
-    # https://stackoverflow.com/questions/57032580/finding-overlaps-between-millions-of-ranges-intervals
-    # https://stackoverflow.com/questions/49118347/pythonic-equivalent-to-reduce-in-r-granges-how-to-collapse-ranged-data
-    # NOTE: Not needed given remove_overlaps() function using range() above
-    
-    
     # Concatenate and sort by k-mer match start location in read
     acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
                                 axis=0,
@@ -612,7 +605,8 @@ def main():
                                                            ascending=True,
                                                            kind="quicksort",
                                                            ignore_index=True)
-    ## Write within-read k-mer locations TSV file
+    ## Write within-read k-mer locations TSV file (NOTE: moved this to end as this is a snakemake target output,
+    ## to ensure creation of other outputs of this script that aren't specified in Snakefile)
     #kmer_loc_outfile = kmer_loc_outdir + "/" + \
     #    read.id + "_hr" + str(parser.hybReadNo) + "__kmer_loc.tsv"
     #acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
