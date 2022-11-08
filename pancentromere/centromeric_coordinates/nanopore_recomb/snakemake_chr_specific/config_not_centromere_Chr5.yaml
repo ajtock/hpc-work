@@ -1,0 +1,12 @@
+# F1 pollen reads prefix
+READS:
+  prefix: "ColLerF1pollen_1000bp_minq90"
+# Accession-specific, chromosome-specific k-mers parameters
+KMERS:
+  acc1: "Col-0.ragtag_scaffolds_not_centromere_Chr5"
+  acc2: "Ler-0_110x.ragtag_scaffolds_not_centromere_Chr5"
+  kmerSize: 24
+  overlapProp: 0.9
+  minHits: 11
+MAPPING:
+  alnTo: "Col-0.ragtag_scaffolds_Chr"
