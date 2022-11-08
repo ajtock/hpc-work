@@ -111,7 +111,7 @@ input_fa = "fasta/" + parser.readsPrefix + \
     "_specific_k" + str(parser.kmerSize) + \
     "_downsampled_op" + str(parser.overlapProp) + \
     "_hits" + str(parser.minHits) + \
-    "_head10855.fa"
+    ".fa"
 # File exists sanity check
 Path(input_fa).resolve(strict=True)
 
@@ -769,9 +769,9 @@ def main():
                         kmer_loc_outfile=kmer_loc_outfile)
     
     
-    # Delete read segment FASTA to reduce number of output files for each read
-    delete_read_segment(segment_fasta=acc1_outfile)
-    delete_read_segment(segment_fasta=acc2_outfile)
+    ## Delete read segment FASTA to reduce number of output files for each read
+    #delete_read_segment(segment_fasta=acc1_outfile)
+    #delete_read_segment(segment_fasta=acc2_outfile)
 
 
 

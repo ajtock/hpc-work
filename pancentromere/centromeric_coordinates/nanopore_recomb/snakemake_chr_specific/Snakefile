@@ -73,7 +73,7 @@ input_fa = "fasta/" + readsPrefix + \
     "_specific_k" + str(kmerSize) + \
     "_downsampled_op" + str(overlapProp) + \
     "_hits" + str(minHits) + \
-    "_head10855.fa"
+    ".fa"
 # File exists sanity check
 Path(input_fa).resolve(strict=True)
 
