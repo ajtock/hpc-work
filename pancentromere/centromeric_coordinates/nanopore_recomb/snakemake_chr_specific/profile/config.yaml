@@ -13,12 +13,12 @@ default-resources:
   - mem_mb=3380
   - time="12:00:00"
 restart-times: 0
-max-jobs-per-second: 100
+max-jobs-per-second: 10
 max-status-checks-per-second: 1
-#local-cores: 1
-latency-wait: 60
-jobs: 500
+local-cores: 1
+latency-wait: 5
+jobs: 300
 keep-going: True
 rerun-incomplete: False
 printshellcmds: True
-#scheduler: greedy
+scheduler: greedy
