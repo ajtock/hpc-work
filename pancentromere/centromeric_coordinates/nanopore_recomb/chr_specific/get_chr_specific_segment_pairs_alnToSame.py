@@ -30,6 +30,7 @@ import argparse
 import re
 import gc
 import pandas as pd
+import subprocess
 
 from pathlib import Path
 
@@ -144,51 +145,37 @@ acc2_chrs = [acc2_name + "_" + x for x in acc2_chrs]
 
 
 
-#acc2
-acc2_fai = read.table(paste0("index/", acc2, ".fa.fai"), header=F)
-acc2_chrs = acc2_fai[which(acc2_fai$V1 %in% chrName),]$V1
-acc2_chrLens = acc2_fai[which(acc2_fai$V1 %in% chrName),]$V2
-
-acc2_CEN = CEN[grep(acc2, CEN$fasta.name),]
-acc2_CEN = acc2_CEN[,which(colnames(acc2_CEN) %in% c("chr", "start", "end"))]
-acc2_CEN_new = data.frame()
-for(i in 1:length(acc2_chrs)) {
-    acc2_CEN_chr = acc2_CEN[which(acc2_CEN$chr == acc2_chrs[i]),]
-    if(nrow(acc2_CEN_chr) > 1) {
-        acc2_CEN_chr = data.frame(chr=acc2_CEN_chr$chr[1],
-                                  start=acc2_CEN_chr$start[1],
-                                  end=acc2_CEN_chr$end[nrow(acc2_CEN_chr)])
-    }
-    acc2_CEN_new = rbind(acc2_CEN_new, acc2_CEN_chr)
-}
-acc2_CEN = acc2_CEN_new
-acc2_CENstart = acc2_CEN$start
-acc2_CENend = acc2_CEN$end
-acc2_chrs = paste0(acc2_name, "_", acc2_chrs)
-
-
-# Load read segment alignment files as a combined data.frame
-load_pafs = function(indir, acc_name, aln_acc, suffix, aligner) {
-    #indir=acc1_indir_list[[1]]
+# Load read segment alignment files as a combined DataFrame
+def load_pafs(indir, acc_name, aln_acc, suffix, aligner):
+    #indir=acc1_indir_list[0]
     #acc_name=acc1_name
-    #suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf")
-    #aligner="wm"
-    files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
-    if(length(files) > 0) {
-        aln_DF = data.frame()
-        for(h in 1:length(files)) {
-            aln = fread(files[h],
-                        header=F, fill=T, sep="\t", data.table=F)[,1:13]
-            aln_DF = rbind(aln_DF, aln)
-        }
-        aln_DF$aligner = aligner
-        colnames(aln_DF) = c("qname", "qlen", "qstart0", "qend0",
-                             "strand", "tname", "tlen", "tstart", "tend",
-                             "nmatch", "alen", "mapq", "atype", "aligner")
+    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #aligner="mm"
+    find_cmd = ["find"] + \
+               ["/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + indir + "/"] + \
+               ["-type", "f"] + \
+               ["-name", "*" + acc_name + suffix] + \
+               ["-print"]
+    find_output = subprocess.run(find_cmd, capture_output=True)
+    files_bytes = find_output.stdout.splitlines()
+    files = [x.decode("utf-8") for x in files_bytes]
+    #
+    if len(files) > 0:
+        aln_DF = pd.DataFrame()
+        for h in range(0, len(files)):
+            aln = pd.read_csv(files[h],
+                              sep="\t", header=None, usecols=list(range(0, 13)))
+            aln_DF = pd.concat(objs=[aln_DF, aln],
+                               axis=0,
+                               ignore_index=True)
+        #aln_DF = aln_DF.iloc[:, :13]
+        aln_DF["aligner"] = aligner
+        aln_DF.columns = ["qname", "qlen", "qstart0", "qend0",
+                          "strand", "tname", "tlen", "tstart", "tend",
+                          "nmatch", "alen", "mapq", "atype", "aligner"]
+        #
+        return aln_DF
 
-    return(aln_DF)
-    }
-}
 
 
 # wm alignments
