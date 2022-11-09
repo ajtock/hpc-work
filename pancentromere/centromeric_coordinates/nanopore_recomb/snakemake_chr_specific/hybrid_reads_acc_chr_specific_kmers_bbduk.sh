@@ -51,7 +51,7 @@ echo $(which bbduk.sh)
 [ -d ${REGION}/${CHROM}/segments/Col-0/nco/ ] || mkdir -p ${REGION}/${CHROM}/segments/Col-0/nco/
 [ -d ${REGION}/${CHROM}/segments/Ler-0/co/ ] || mkdir -p ${REGION}/${CHROM}/segments/Ler-0/co/
 [ -d ${REGION}/${CHROM}/segments/Ler-0/nco/ ] || mkdir -p ${REGION}/${CHROM}/segments/Ler-0/nco/
-[ -d logs/segments/ ] || mkdir -p logs/segments/
+[ -d logs/segments/${REGION}/${CHROM}/ ] || mkdir -p logs/segments/${REGION}/${CHROM}/
 
 bbduk.sh -Xmx${MEMORY} \
          in=fastq/${FQ_PREFIX}.fq \
