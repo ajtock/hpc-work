@@ -9,11 +9,10 @@
 #  -r ColLerF1pollen_1000bp_minq90 \
 #  -a1 Col-0.ragtag_scaffolds_not_centromere_Chr1 \
 #  -a2 Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1 \
-###  -reg not_centromere \
-###  -chrom Chr1 \
 #  -k 24 \
 #  -op 0.9 \
 #  -mh 11 \
+#  -at Col-0.ragtag_scaffolds_Chr \
 #  -hr 0
 # conda deactivate
 
@@ -53,16 +52,14 @@ def create_parser():
                         help="The prefix of the first accession's sequences. Default: Col-0.ragtag_scaffolds_not_centromere_Chr1")
     parser.add_argument("-a2", "--acc2", type=str, default="Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1",
                         help="The prefix of the second accession's sequences. Default: Ler-0_110x.ragtag_scaffolds_not_centromere_Chr1")
-    ##parser.add_argument("-reg", "--region", type=str, default="not_centromere",
-    ##                    help="Region from which to get accession-specific, chromosome-specific k-mers. Default: not_centromere")
-    ##parser.add_argument("-c", "--chrom", type=str, default="Chr1",
-    ##                    help="Name of chromosome from which to get accession-specific, chromosome-specific k-mers. Default: Chr1")
     parser.add_argument("-k", "--kmerSize", type=int, default="24",
                         help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
     parser.add_argument("-op", "--overlapProp", type=float, default="0.9",
                         help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
     parser.add_argument("-mh", "--minHits", type=int, default="11",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 11")
+    parser.add_argument("-at", "--alnTo", type=str, default="Col-0.ragtag_scaffolds_Chr",
+                        help="The prefix of the assembly to be used for read segment alignment. Default: Col-0.ragtag_scaffolds_Chr")
     parser.add_argument("-hr", "--hybReadNo", type=int, default="0",
                         help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 0")
     return parser
@@ -501,12 +498,12 @@ def align_read_segment_mm_ont(segment_fasta, genome):
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.paf", segment_fasta)
-    outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.err", segment_fasta)
-    with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    #outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.err", segment_fasta)
+    with open(outpaf, "w") as outfile_handle: #, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle) #, stderr=outerr_handle)
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
-        subprocess.run(["rm", outpaf, outerr])
+        subprocess.run(["rm", outpaf]) #, outerr])
 
 
 # Align accession-specific read segments to respective genome
@@ -522,12 +519,12 @@ def align_read_segment_mm_sr(segment_fasta, genome):
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.paf", segment_fasta)
-    outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.err", segment_fasta)
-    with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle)
+    #outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.err", segment_fasta)
+    with open(outpaf, "w") as outfile_handle: #, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle) #, stderr=outerr_handle)
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
-        subprocess.run(["rm", outpaf, outerr])
+        subprocess.run(["rm", outpaf]) #, outerr])
 
 
 # Delete accession-specific segment alignment file if the equivalent
@@ -546,6 +543,31 @@ def delete_alignment(alignment_prefix1, alignment_prefix2):
                 print("Error while deleting file " + file_path)
 
 
+# Delete within-read k-mer locations TSV file if corresponding accession-specific
+# read segment alignment files don't exist
+def delete_kmer_loc_tsv(alignment_prefix1, alignment_prefix2, kmer_loc_outfile):
+    """
+    Delete within-read k-mer locations TSV file if correspodning accession-specific
+    read segment alignment files don't exist.
+    """
+    if not glob.glob(alignment_prefix1 + "*") and not glob.glob(alignment_prefix2 + "*"):
+        try:
+            os.remove(kmer_loc_outfile)
+        except OSError:
+            print("Error while deleting file " + kmer_loc_outfile)
+
+
+# Delete read segment FASTA to reduce number of output files for each read
+def delete_read_segment(segment_fasta):
+    """
+    Delete read segment FASTA.
+    """
+    try:
+        os.remove(segment_fasta)
+    except OSError:
+        print("Error while deleting file " + segment_fasta)
+
+
 
 def main():
     """
@@ -558,6 +580,7 @@ def main():
     #acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
     acc1_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
     acc2_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
+    
     
     ## Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
     ## overlap any of those in acc2_kmer_loc_df, and vice versa
@@ -576,14 +599,6 @@ def main():
         return
     
     
-    # TODO: Use pyranges to remove rows in acc1_kmer_loc_df and acc2_kmer_loc_df
-    # whose k-mer match coordinate ranges overlap between accessions
-    # E.g.:
-    # https://stackoverflow.com/questions/57032580/finding-overlaps-between-millions-of-ranges-intervals
-    # https://stackoverflow.com/questions/49118347/pythonic-equivalent-to-reduce-in-r-granges-how-to-collapse-ranged-data
-    # NOTE: Not needed given remove_overlaps() function using range() above
-    
-    
     # Concatenate and sort by k-mer match start location in read
     acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
                                 axis=0,
@@ -593,9 +608,12 @@ def main():
                                                            ascending=True,
                                                            kind="quicksort",
                                                            ignore_index=True)
-    kmer_loc_outfile = kmer_loc_outdir + "/" + \
-        read.id + "__kmer_loc.tsv"
-    acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+    ## Write within-read k-mer locations TSV file (NOTE: moved this to end as this is a snakemake target output,
+    ## to ensure creation of other outputs of this script that aren't specified in Snakefile)
+    #kmer_loc_outfile = kmer_loc_outdir + "/" + \
+    #    read.id + "__hr" + str(parser.hybReadNo) + \
+    #    "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
+    #acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
     
     
     # For a given read, get accession-specific read segments
@@ -609,7 +627,8 @@ def main():
     # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
     # separately (using concat_DF_list() on output), to be provided as the input to the second call
     acc_read_segments_list_pass1 = get_read_segments_pass1(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
-    del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
+    #del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
+    del acc_kmer_loc_df
     
     
     # Concatenate acc_read_segments_list_tmp into a single DataFrame,
@@ -715,48 +734,45 @@ def main():
         align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
     else: 
-        align_read_segment_wm_ont(segment_fasta=acc1_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-        align_read_segment_wm_ont(segment_fasta=acc2_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
         align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+                                  genome=parser.alnTo)
         align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+                                  genome=parser.alnTo)
         align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+                                 genome=parser.alnTo)
         align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-        align_read_segment_wm_ont(segment_fasta=acc1_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-        align_read_segment_wm_ont(segment_fasta=acc2_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-        align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-        align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-        align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-        align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+                                 genome=parser.alnTo)
+    
     
     # Delete accession-specific segment alignment file if the equivalent
     # file for the other accession doesn't exist (indicating an unmapped segment)
-    acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
-    acc2_alignment_to_acc1_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
-    
-    acc1_alignment_to_acc2_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr_"
-    acc2_alignment_to_acc2_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr_"
+    acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + parser.alnTo + "_"
+    acc2_alignment_to_acc1_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + parser.alnTo + "_"
     
     delete_alignment(alignment_prefix1=acc1_alignment_to_acc1_prefix,
                      alignment_prefix2=acc2_alignment_to_acc1_prefix)
     delete_alignment(alignment_prefix1=acc2_alignment_to_acc1_prefix,
                      alignment_prefix2=acc1_alignment_to_acc1_prefix)
     
-    delete_alignment(alignment_prefix1=acc1_alignment_to_acc2_prefix,
-                     alignment_prefix2=acc2_alignment_to_acc2_prefix)
-    delete_alignment(alignment_prefix1=acc2_alignment_to_acc2_prefix,
-                     alignment_prefix2=acc1_alignment_to_acc2_prefix)
+    
+    # Write within-read k-mer locations TSV file 
+    kmer_loc_outfile = kmer_loc_outdir + "/" + \
+        read.id + "__hr" + str(parser.hybReadNo) + \
+        "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
+    acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+    del acc_kmer_loc_df_sort_tmp
+    
+    
+    # Delete within-read k-mer locations TSV file if correspodning accession-specific
+    # read segment alignment files don't exist
+    delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_acc1_prefix,
+                        alignment_prefix2=acc2_alignment_to_acc1_prefix,
+                        kmer_loc_outfile=kmer_loc_outfile)
+    
+    
+    ## Delete read segment FASTA to reduce number of output files for each read
+    #delete_read_segment(segment_fasta=acc1_outfile)
+    #delete_read_segment(segment_fasta=acc2_outfile)
 
 
 
