@@ -134,4 +134,5 @@ rule hybrid_read_segments:
         " -k {kmerSize}"
         " -op {overlapProp}"
         " -mh {minHits}"
+        " -at {alnTo}"
         " -hr {wildcards.reads_enum}"

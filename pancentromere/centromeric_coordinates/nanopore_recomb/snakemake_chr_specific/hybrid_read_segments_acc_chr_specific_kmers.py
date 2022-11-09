@@ -12,6 +12,7 @@
 #  -k 24 \
 #  -op 0.9 \
 #  -mh 11 \
+#  -at Col-0.ragtag_scaffolds_Chr \
 #  -hr 0
 # conda deactivate
 
@@ -57,10 +58,10 @@ def create_parser():
                         help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
     parser.add_argument("-mh", "--minHits", type=int, default="11",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 11")
-    parser.add_argument("-hr", "--hybReadNo", type=int, default="0",
-                        help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 0")
     parser.add_argument("-at", "--alnTo", type=str, default="Col-0.ragtag_scaffolds_Chr",
                         help="The prefix of the assembly to be used for read segment alignment. Default: Col-0.ragtag_scaffolds_Chr")
+    parser.add_argument("-hr", "--hybReadNo", type=int, default="0",
+                        help="The hybrid read number, defined according to the order it appears in the hybrid reads FASTA file. Default: 0")
     return parser
 
 parser = create_parser().parse_args()
