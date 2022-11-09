@@ -21,4 +21,6 @@ jobs: 300
 keep-going: True
 rerun-incomplete: False
 printshellcmds: True
+quiet: rules
 scheduler: greedy
+dryrun: True

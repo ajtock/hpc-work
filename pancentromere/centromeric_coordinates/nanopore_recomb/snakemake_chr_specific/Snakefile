@@ -10,6 +10,7 @@ shell.prefix("set -euo pipefail; ")
 
 import os
 import re
+import gc
 #import yaml
 
 from Bio import SeqIO
@@ -20,6 +21,7 @@ from pathlib import Path
 ##configfile: "config_not_centromere_Chr1.yaml"
 #with open("config_not_centromere_Chr1.yaml", "r") as config_handle:
 #    config = yaml.safe_load(config_handle)
+
 readsPrefix = config["READS"]["prefix"]
 acc1        = config["KMERS"]["acc1"]
 acc2        = config["KMERS"]["acc2"]
@@ -77,12 +79,16 @@ input_fa = "fasta/" + readsPrefix + \
 # File exists sanity check
 Path(input_fa).resolve(strict=True)
 
+
 # Parse reads to get read index numbers
 # Dictionary approach assumes use of Python >= 3.7, because in previous
 # Python versions dictionaries were inherently unordered
 reads_dict = SeqIO.index(input_fa, "fasta")
 reads_enum = [i for i, v in enumerate(reads_dict.values())]
 reads_name = [v.id for i, v in enumerate(reads_dict.values())]
+
+del reads_dict, input_fa, outdir, kmer_loc_outdir, acc1_name, acc2_name, acc1_outdir_co, acc1_outdir_nco, acc2_outdir_co, acc2_outdir_nco
+gc.collect()
 
 
 rule all:
