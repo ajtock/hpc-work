@@ -1,0 +1,7 @@
+#!/bin/bash
+
+sbatch not_centromere_Chr3_hybrid_read_segments_acc_chr_specific_kmers_py_icelake_array01of05_slurm && sleep 2;
+sbatch not_centromere_Chr3_hybrid_read_segments_acc_chr_specific_kmers_py_icelake_array02of05_slurm && sleep 2;
+sbatch not_centromere_Chr3_hybrid_read_segments_acc_chr_specific_kmers_py_icelake_array03of05_slurm && sleep 2;
+sbatch not_centromere_Chr3_hybrid_read_segments_acc_chr_specific_kmers_py_icelake_array04of05_slurm && sleep 2;
+sbatch not_centromere_Chr3_hybrid_read_segments_acc_chr_specific_kmers_py_icelake_array05of05_slurm && sleep 2;
