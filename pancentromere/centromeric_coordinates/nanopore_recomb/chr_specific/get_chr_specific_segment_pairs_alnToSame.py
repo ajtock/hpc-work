@@ -146,7 +146,7 @@ acc2_chrs = [acc2_name + "_" + x for x in acc2_chrs]
 
 
 # Load read segment alignment files as a combined DataFrame
-def load_pafs(indir, acc_name, aln_acc, suffix, aligner):
+def load_pafs(indir, acc_name, suffix, aligner):
     #indir=acc1_indir_list[0]
     #acc_name=acc1_name
     #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
@@ -178,45 +178,57 @@ def load_pafs(indir, acc_name, aln_acc, suffix, aligner):
 
 
 
-# wm alignments
-acc1_wm_list = mclapply(1:length(acc1_indir_list), function(x) {
-    load_pafs(indir=acc1_indir_list[[x]], acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
-}, mc.preschedule=F, mc.cores=length(acc1_indir_list))
-acc2_wm_list = mclapply(1:length(acc2_indir_list), function(x) {
-    load_pafs(indir=acc2_indir_list[[x]], acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
-}, mc.preschedule=F, mc.cores=length(acc2_indir_list))
-
 # mm alignments
-acc1_mm_list = mclapply(1:length(acc1_indir_list), function(x) {
-    load_pafs(indir=acc1_indir_list[[x]], acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_mm_ont.paf"), aligner="mm")
-}, mc.preschedule=F, mc.cores=length(acc1_indir_list))
-acc2_mm_list = mclapply(1:length(acc2_indir_list), function(x) {
-    load_pafs(indir=acc2_indir_list[[x]], acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_mm_ont.paf"), aligner="mm")
-}, mc.preschedule=F, mc.cores=length(acc2_indir_list))
+acc1_mm_list = []
+for x in range(0, len(acc1_indir_list)):
+    acc1_mm_Chr = load_pafs(indir=acc1_indir_list[x],
+                            acc_name=acc1_name,
+                            suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                            aligner="mm")
+    acc1_mm_list.append(acc1_mm_Chr)
+    del acc1_mm_Chr
+    gc.collect()
+
+acc2_mm_list = []
+for x in range(0, len(acc2_indir_list)):
+    acc2_mm_Chr = load_pafs(indir=acc2_indir_list[x],
+                            acc_name=acc2_name,
+                            suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                            aligner="mm")
+    acc2_mm_list.append(acc2_mm_Chr)
+    del acc2_mm_Chr
+    gc.collect()
 
 # sr alignments
-acc1_sr_list = mclapply(1:length(acc1_indir_list), function(x) {
-    load_pafs(indir=acc1_indir_list[[x]], acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_mm_sr.paf"), aligner="sr")
-}, mc.preschedule=F, mc.cores=length(acc1_indir_list))
-acc2_sr_list = mclapply(1:length(acc2_indir_list), function(x) {
-    load_pafs(indir=acc2_indir_list[[x]], acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_mm_sr.paf"), aligner="sr")
-}, mc.preschedule=F, mc.cores=length(acc2_indir_list))
+acc1_sr_list = []
+for x in range(0, len(acc1_indir_list)):
+    acc1_sr_Chr = load_pafs(indir=acc1_indir_list[x],
+                            acc_name=acc1_name,
+                            suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                            aligner="sr")
+    acc1_sr_list.append(acc1_sr_Chr)
+    del acc1_sr_Chr
+    gc.collect()
+
+acc2_sr_list = []
+for x in range(0, len(acc2_indir_list)):
+    acc2_sr_Chr = load_pafs(indir=acc2_indir_list[x],
+                            acc_name=acc2_name,
+                            suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                            aligner="sr")
+    acc2_sr_list.append(acc2_sr_Chr)
+    del acc2_sr_Chr
+    gc.collect()
 
 
 # acc alignments - chromosome list of aligner lists
-acc1_aln_chr_list_of_lists = lapply(1:length(acc1_wm_list), function(x) {
-    list(acc1_wm_list[[x]], acc1_mm_list[[x]], acc1_sr_list[[x]])
-})
-for(x in 1:length(acc1_aln_chr_list_of_lists)) {
-    names(acc1_aln_chr_list_of_lists[[x]]) = c("wm", "mm", "sr")
-}
+acc1_aln_chr_list_of_lists = []
+for x in range(0, len(acc1_mm_list)):
+    acc1_aln_chr_list_of_lists.append([acc1_mm_list[x], acc1_sr_list[x]])
 
-acc2_aln_chr_list_of_lists = lapply(1:length(acc2_wm_list), function(x) {
-    list(acc2_wm_list[[x]], acc2_mm_list[[x]], acc2_sr_list[[x]])
-})
-for(x in 1:length(acc2_aln_chr_list_of_lists)) {
-    names(acc2_aln_chr_list_of_lists[[x]]) = c("wm", "mm", "sr")
-}
+acc2_aln_chr_list_of_lists = []
+for x in range(0, len(acc2_mm_list)):
+    acc2_aln_chr_list_of_lists.append([acc2_mm_list[x], acc2_sr_list[x]])
 
 
 # Get best pair of acc1 and acc2 read segment alignments, based on:
