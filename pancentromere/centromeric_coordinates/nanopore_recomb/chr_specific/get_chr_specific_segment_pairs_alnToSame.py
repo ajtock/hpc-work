@@ -89,6 +89,7 @@ CEN = pd.read_csv("/rds/project/rds-O5Ty9yVfQKg/pancentromere/centromeric_coordi
                   "centromere_manual_EDTA4_fa.csv")
 CEN["fasta.name"].replace(to_replace="\.fa", value="", regex=True, inplace=True)
 
+
 # Genomic definitions
 # acc1
 acc1_fai = pd.read_csv("index/" + parser.acc1 + ".fa.fai",
@@ -144,6 +145,41 @@ acc2_CENend = acc2_CEN["end"]
 acc2_chrs = [acc2_name + "_" + x for x in acc2_chrs]
 
 
+def cat_load_paf(indir, acc_name, suffix, aligner):
+indir=acc1_indir_list[0]
+acc_name=acc1_name
+suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+aligner="mm"
+out_paf = "segments_" + acc_name + suffix
+cat_cmd = ["find"] + \
+          ["/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + indir + "/"] + \
+          ["-type", "f"] + \
+          ["-name", "'*" + acc_name + suffix + "'"] + \
+          ["-exec", "cat", "{}", "+"]
+with open(out_paf, "w") as out_paf_handle:
+    subprocess.run(cat_cmd, stdout=out_paf_handle)
+
+aln_DF = pd.read_csv("tmp3.paf",
+                     sep="\t", header=None, usecols=list(range(0, 13)))
+
+            aln = pd.read_csv(files[h],
+                              sep="\t", header=None, usecols=list(range(0, 13)))
+            aln_DF = pd.concat(objs=[aln_DF, aln],
+                               axis=0,
+                               ignore_index=True)
+subprocess.run(cat_cmd, stdout=
+          ["segments_" + acc_name + suffix]
+subprocess.run(cat_cmd)
+
+    with open(out_bed, "w") as out_bed_handle, \
+        open(out_bed_err, "w") as out_bed_err_handle, \
+        open(out_cut_err, "w") as out_cut_err_handle:
+        intersect = subprocess.Popen(intersect_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
+        subprocess.call(cut_cmd, stdin=intersect.stdout, stdout=out_bed_handle, stderr=out_cut_err_handle)
+        intersect.wait()
+
+find . -type f -name "*mm_ont.paf" -exec cat {} + >> tmp2.paf
+find . -type f -name "*mm_ont.paf" -exec cat {} + >> tmp2.paf
 
 # Load read segment alignment files as a combined DataFrame
 def load_pafs(indir, acc_name, suffix, aligner):
