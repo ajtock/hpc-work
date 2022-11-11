@@ -173,18 +173,22 @@ def cat_pafs(indir, acc_name, suffix):
         os.makedirs(outdir_paf)
     #
     out_paf = outdir_paf + "/all_segments__" + acc_name + suffix
-    cat_pafs_script = indir + "/find_cat_pafs.sh"
-    with open(cat_pafs_script, "w") as cat_pafs_script_handle:
-        cat_pafs_script_handle.write("#!/bin/bash\n\n" + \
-                                     "find " + indir + "/ \\\n" + \
-                                     "  -mindepth 1 \\\n" +\
-                                     "  -maxdepth 1 \\\n" +\
-                                     "  -type f \\\n" + \
-                                     "  -name '*" + acc_name + suffix + "' \\\n" + \
-                                     "  -exec cat {} + >> " + out_paf)
-    #
-    subprocess.run(["bash", cat_pafs_script])
-    return
+    if os.path.exists(out_paf):
+        print("Concatenated alignment file " + out_paf + " already exists!")
+        return
+    else:
+        cat_pafs_script = indir + "/find_cat_pafs.sh"
+        with open(cat_pafs_script, "w") as cat_pafs_script_handle:
+            cat_pafs_script_handle.write("#!/bin/bash\n\n" + \
+                                         "find " + indir + "/ \\\n" + \
+                                         "  -mindepth 1 \\\n" +\
+                                         "  -maxdepth 1 \\\n" +\
+                                         "  -type f \\\n" + \
+                                         "  -name '*" + acc_name + suffix + "' \\\n" + \
+                                         "  -exec cat {} + >> " + out_paf)
+        #
+        subprocess.run(["bash", cat_pafs_script])
+        return
 
 
 for x in range(0, len(acc1_indir_list)):
@@ -319,33 +323,80 @@ for x in range(0, len(acc2_mm_list)):
 # 2. The alignment number of matching bases (nmatch)
 # 3. The alignment strand
 def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
+acc1_aln_DF_list=acc1_aln_chr_nested_list[0]
+acc2_aln_DF_list=acc2_aln_chr_nested_list[0]
+"""
+Get the best pair of acc1 and acc2 read segment alignments, based on:
+1. The alignment length (alen)
+2. The alignment number of matching bases (nmatch)
+3. The alignment strand
+"""
+# Each of the 2 list elements in acc1_aln_DF_list and acc2_aln_DF_list is
+# a DataFrame of alignments done by mm_ont or mm_sr
+acc1_aln_DF_concat = pd.concat(objs=acc1_aln_DF_list, axis=0, ignore_index=True)
+acc2_aln_DF_concat = pd.concat(objs=acc2_aln_DF_list, axis=0, ignore_index=True)
+#
+# For each read ID, get the best alignment from each of acc1_aln_DF_concat and
+# and acc2_aln_DF_concat
+acc1_aln_DF_concat_sort = acc1_aln_DF_concat.sort_values(by=["qname", "alen", "nmatch"],
+                                                         axis=0,
+                                                         ascending=[True, False, False],
+                                                         kind="quicksort",
+                                                         ignore_index=False)
+acc1_aln_DF_concat_sort_list = list(acc1_aln_DF_concat_sort.groupby("qname"))
+
+    kmers_DF_sort_list = list(kmers_DF_sort.groupby(["win_chr", "win_start0", "win_end"]))
+
+
+acc1_aln_DF_best = pd.DataFrame()
+acc2_aln_DF_best = pd.DataFrame()
+for read_id in list(set(acc1_aln_DF_concat["qname"])):
+acc1_aln_DF_read_id = acc1_aln_DF_concat[acc1_aln_DF_concat["qname"] == read_id] 
+acc1_aln_DF_read_id_sort = acc1_aln_DF_read_id.sort_values(by=["alen", "nmatch"],
+                                                           axis=0,
+                                                           ascending=[False, False],
+                                                           kind="quicksort",
+                                                           ignore_index=False)
+acc1_aln_DF_read_id_sort_select = acc1_aln_DF_read_id_sort.iloc[[0]]
+acc1_aln_DF_best = pd.concat(objs=[acc1_aln_DF_best, acc1_aln_DF_read_id_sort_select],
+                             axis=0,
+                             ignore_index=True)
+  
+    kmers_DF_sort = kmers_DF.sort_values(by=["win_chr", "win_start0", "overlap_bp"],
+                                         axis=0,
+                                         ascending=[True, True, False],
+                                         kind="quicksort",
+                                         ignore_index=True)
+    kmers_DF_sort_list = list(kmers_DF_sort.groupby(["win_chr", "win_start0", "win_end"]))
+    kmers_DF_greatest = pd.DataFrame()
+    for window_tuple in kmers_DF_sort_list:
+        window_DF_greatest = window_tuple[1].iloc[[0]]
+        kmers_DF_greatest = pd.concat(objs=[kmers_DF_greatest, window_DF_greatest],
+                                      axis = 0,
+                                      ignore_index=True)
+    kmers_DF_greatest_sort = kmers_DF_greatest.iloc[:,3:10].sort_values(by=["kmer_chr", "kmer_start0"],
+                                                                        axis=0,
+                                                                        ascending=[True, True],
+                                                                        kind="quicksort",
+                                                                        ignore_index=True)
+    kmers_DF_greatest_sort.to_csv(out_bed, sep="\t", header=False, index=False)
 
 
 
-# Get best pair of acc1 and acc2 read segment alignments, based on:
-# 1. The alignment length (alen)
-# 2. The alignment number of matching bases (nmatch)
-# 3. The alignment strand
-aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
-    #acc1_aln_DF_list=acc1_aln_list
-    #acc2_aln_DF_list=acc2_aln_list
-    # Each of the 3 list elements in acc1_aln_DF_list and acc2_aln_DF_list is a
-    # a data.frame of alignments done by wm_ont, mm_ont or mm_sr
-    acc1_aln_DF_bind_rows = dplyr::bind_rows(acc1_aln_DF_list)
-    acc2_aln_DF_bind_rows = dplyr::bind_rows(acc2_aln_DF_list)
 
-    # Get the best alignment from acc1_aln_DF and corresponding row from acc2_aln_DF
-    acc1_aln_DF_best = data.frame()
-    acc2_aln_DF_best = data.frame()
-    for(read_id in unique(acc1_aln_DF_bind_rows$qname)) {
-        acc1_aln_DF_read_id = acc1_aln_DF_bind_rows %>%
+
+
+
+
+    for(read_id in unique(acc1_aln_DF_concat$qname)) {
+        acc1_aln_DF_read_id = acc1_aln_DF_concat %>%
             dplyr::filter(qname == read_id)
         acc1_aln_DF_read_id = acc1_aln_DF_read_id[ with(acc1_aln_DF_read_id,
                                                         order(alen, nmatch, decreasing=T)), ]
         acc1_aln_DF_read_id_select = acc1_aln_DF_read_id[1, ]
         acc1_aln_DF_best = rbind(acc1_aln_DF_best, acc1_aln_DF_read_id_select)
 
-        acc2_aln_DF_read_id = acc2_aln_DF_bind_rows %>%
+        acc2_aln_DF_read_id = acc2_aln_DF_concat %>%
             dplyr::filter(qname == read_id)
         acc2_aln_DF_read_id = acc2_aln_DF_read_id[ with(acc2_aln_DF_read_id,
                                                         order(alen, nmatch, decreasing=T)), ]
