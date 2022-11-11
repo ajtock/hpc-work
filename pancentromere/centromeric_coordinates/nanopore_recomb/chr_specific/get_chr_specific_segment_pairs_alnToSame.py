@@ -31,6 +31,7 @@ import re
 import gc
 import pandas as pd
 import subprocess
+import glob
 
 from pathlib import Path
 
@@ -145,44 +146,100 @@ acc2_CENend = acc2_CEN["end"]
 acc2_chrs = [acc2_name + "_" + x for x in acc2_chrs]
 
 
-def cat_load_paf(indir, acc_name, suffix, aligner):
-indir=acc1_indir_list[0]
-acc_name=acc1_name
-suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
-aligner="mm"
-out_paf = "segments_" + acc_name + suffix
-cat_cmd = ["find"] + \
-          ["/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + indir + "/"] + \
-          ["-type", "f"] + \
-          ["-name", "'*" + acc_name + suffix + "'"] + \
-          ["-exec", "cat", "{}", "+"]
-with open(out_paf, "w") as out_paf_handle:
-    subprocess.run(cat_cmd, stdout=out_paf_handle)
+# Concatenate all alignment files for the given chromosome,
+# accession and aligner
+# NOTE: for some reason the "find ..." approach below doesn't work
+# from within python, so need to create and run an equivalent bash script:
+#cat_cmd = ["find"] + \
+#          ["/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + indir + "/"] + \
+#          ["-mindepth", "1"] + \
+#          ["-maxdepth", "1"] + \
+#          ["-type", "f"] + \
+#          ["-name", "*" + acc_name + suffix] + \
+#          ["-exec cat {} + >> cat.paf"]
+#subprocess.run(cat_cmd)
+# For details on -exec, see https://stackoverflow.com/questions/2961673/find-missing-argument-to-exec
+def cat_pafs(indir, acc_name, suffix):
+    ##indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1]
+    #indir=acc1_indir_list[1]
+    #acc_name=acc1_name
+    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    """
+    Concatenate all alignment files for the given chromosome,
+    accession and aligner.
+    """
+    outdir_paf = indir + "/cat_paf"
+    if not os.path.exists(outdir_paf):
+        os.makedirs(outdir_paf)
+    #
+    out_paf = outdir_paf + "/all_segments__" + acc_name + suffix
+    cat_pafs_script = indir + "/find_cat_pafs.sh"
+    with open(cat_pafs_script, "w") as cat_pafs_script_handle:
+        cat_pafs_script_handle.write("#!/bin/bash\n\n" + \
+                                     "find " + indir + "/ \\\n" + \
+                                     "  -mindepth 1 \\\n" +\
+                                     "  -maxdepth 1 \\\n" +\
+                                     "  -type f \\\n" + \
+                                     "  -name '*" + acc_name + suffix + "' \\\n" + \
+                                     "  -exec cat {} + >> " + out_paf)
+    #
+    subprocess.run(["bash", cat_pafs_script])
+    return
 
-aln_DF = pd.read_csv("tmp3.paf",
-                     sep="\t", header=None, usecols=list(range(0, 13)))
 
-            aln = pd.read_csv(files[h],
-                              sep="\t", header=None, usecols=list(range(0, 13)))
-            aln_DF = pd.concat(objs=[aln_DF, aln],
-                               axis=0,
-                               ignore_index=True)
-subprocess.run(cat_cmd, stdout=
-          ["segments_" + acc_name + suffix]
-subprocess.run(cat_cmd)
+cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[0],
+         acc_name=acc1_name,
+         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1],
+         acc_name=acc1_name,
+         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
 
-    with open(out_bed, "w") as out_bed_handle, \
-        open(out_bed_err, "w") as out_bed_err_handle, \
-        open(out_cut_err, "w") as out_cut_err_handle:
-        intersect = subprocess.Popen(intersect_cmd, stdout=subprocess.PIPE, stderr=out_bed_err_handle)
-        subprocess.call(cut_cmd, stdin=intersect.stdout, stdout=out_bed_handle, stderr=out_cut_err_handle)
-        intersect.wait()
+for x in range(0, len(acc2_indir_list)):
+    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+             acc_name=acc2_name,
+             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+             acc_name=acc2_name,
+             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
 
-find . -type f -name "*mm_ont.paf" -exec cat {} + >> tmp2.paf
-find . -type f -name "*mm_ont.paf" -exec cat {} + >> tmp2.paf
+
+# Load concatenated read segment alignment file as a DataFrame
+def load_cat_paf(indir, acc_name, suffix, aligner):
+    ##indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1]
+    #indir=acc1_indir_list[1]
+    #acc_name=acc1_name
+    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #aligner="mm"
+    """
+    Load concatenated read segment alignment file as a DataFrame.
+    """
+    #cat_pafs(indir=indir, acc_name=acc_name, suffix=suffix)
+    indir_paf = indir + "/cat_paf"
+    in_paf = indir_paf + "/all_segments__" + acc_name + suffix
+    aln_DF = pd.read_csv(in_paf,
+                         sep="\t", header=None, usecols=list(range(0, 13)))
+    aln_DF["aligner"] = aligner
+    aln_DF.columns = ["qname", "qlen", "qstart0", "qend0",
+                      "strand", "tname", "tlen", "tstart", "tend",
+                      "nmatch", "alen", "mapq", "atype", "aligner"]
+    #
+    return aln_DF
+
+
+# mm alignments
+acc1_mm_list = []
+for x in range(0, len(acc1_indir_list)):
+    acc1_mm_Chr = load_pafs(indir=acc1_indir_list[x],
+                            acc_name=acc1_name,
+                            suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                            aligner="mm")
+    acc1_mm_list.append(acc1_mm_Chr)
+    del acc1_mm_Chr
+    gc.collect()
+
 
 # Load read segment alignment files as a combined DataFrame
-def load_pafs(indir, acc_name, suffix, aligner):
+def load_pafs_slowly(indir, acc_name, suffix, aligner):
     #indir=acc1_indir_list[0]
     #acc_name=acc1_name
     #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
