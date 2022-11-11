@@ -187,28 +187,14 @@ def cat_pafs(indir, acc_name, suffix):
     return
 
 
-#cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1],
-#         acc_name=acc1_name,
-#         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
-##cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[0],
-##         acc_name=acc1_name,
-##         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
-
-cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1],
-         acc_name=acc1_name,
-         suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
-cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[0],
-         acc_name=acc1_name,
-         suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
-
-#for x in range(0, len(acc1_indir_list)):
-#    print(acc1_indir_list[x])
-#    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
-#             acc_name=acc1_name,
-#             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
-#    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
-#             acc_name=acc1_name,
-#             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
+for x in range(0, len(acc1_indir_list)):
+    print(acc1_indir_list[x])
+    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+             acc_name=acc1_name,
+             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+             acc_name=acc1_name,
+             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
 
 for x in range(0, len(acc2_indir_list)):
     print(acc2_indir_list[x])
