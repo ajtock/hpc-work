@@ -229,18 +229,6 @@ def load_cat_paf(indir, acc_name, suffix, aligner):
     return aln_DF
 
 
-# mm alignments
-acc1_mm_list = []
-for x in range(0, len(acc1_indir_list)):
-    acc1_mm_Chr = load_pafs(indir=acc1_indir_list[x],
-                            acc_name=acc1_name,
-                            suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
-                            aligner="mm")
-    acc1_mm_list.append(acc1_mm_Chr)
-    del acc1_mm_Chr
-    gc.collect()
-
-
 # Load read segment alignment files as a combined DataFrame
 def load_pafs_slowly(indir, acc_name, suffix, aligner):
     #indir=acc1_indir_list[0]
@@ -273,24 +261,23 @@ def load_pafs_slowly(indir, acc_name, suffix, aligner):
         return aln_DF
 
 
-
 # mm alignments
 acc1_mm_list = []
 for x in range(0, len(acc1_indir_list)):
-    acc1_mm_Chr = load_pafs(indir=acc1_indir_list[x],
-                            acc_name=acc1_name,
-                            suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
-                            aligner="mm")
+    acc1_mm_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+                               acc_name=acc1_name,
+                               suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                               aligner="mm")
     acc1_mm_list.append(acc1_mm_Chr)
     del acc1_mm_Chr
     gc.collect()
 
 acc2_mm_list = []
 for x in range(0, len(acc2_indir_list)):
-    acc2_mm_Chr = load_pafs(indir=acc2_indir_list[x],
-                            acc_name=acc2_name,
-                            suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
-                            aligner="mm")
+    acc2_mm_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+                               acc_name=acc2_name,
+                               suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                               aligner="mm")
     acc2_mm_list.append(acc2_mm_Chr)
     del acc2_mm_Chr
     gc.collect()
@@ -298,33 +285,41 @@ for x in range(0, len(acc2_indir_list)):
 # sr alignments
 acc1_sr_list = []
 for x in range(0, len(acc1_indir_list)):
-    acc1_sr_Chr = load_pafs(indir=acc1_indir_list[x],
-                            acc_name=acc1_name,
-                            suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
-                            aligner="sr")
+    acc1_sr_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+                               acc_name=acc1_name,
+                               suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                               aligner="sr")
     acc1_sr_list.append(acc1_sr_Chr)
     del acc1_sr_Chr
     gc.collect()
 
 acc2_sr_list = []
 for x in range(0, len(acc2_indir_list)):
-    acc2_sr_Chr = load_pafs(indir=acc2_indir_list[x],
-                            acc_name=acc2_name,
-                            suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
-                            aligner="sr")
+    acc2_sr_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+                               acc_name=acc2_name,
+                               suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                               aligner="sr")
     acc2_sr_list.append(acc2_sr_Chr)
     del acc2_sr_Chr
     gc.collect()
 
 
 # acc alignments - chromosome list of aligner lists
-acc1_aln_chr_list_of_lists = []
+acc1_aln_chr_nested_list = []
 for x in range(0, len(acc1_mm_list)):
-    acc1_aln_chr_list_of_lists.append([acc1_mm_list[x], acc1_sr_list[x]])
+    acc1_aln_chr_nested_list.append([acc1_mm_list[x], acc1_sr_list[x]])
 
-acc2_aln_chr_list_of_lists = []
+acc2_aln_chr_nested_list = []
 for x in range(0, len(acc2_mm_list)):
-    acc2_aln_chr_list_of_lists.append([acc2_mm_list[x], acc2_sr_list[x]])
+    acc2_aln_chr_nested_list.append([acc2_mm_list[x], acc2_sr_list[x]])
+
+
+# Get best pair of acc1 and acc2 read segment alignments, based on:
+# 1. The alignment length (alen)
+# 2. The alignment number of matching bases (nmatch)
+# 3. The alignment strand
+def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
+
 
 
 # Get best pair of acc1 and acc2 read segment alignments, based on:
@@ -390,9 +385,9 @@ aln_best_pair = function(acc1_aln_DF_list, acc2_aln_DF_list) {
 
 # Get best pair of aligned read segments for each read
 aln_best_pair_DF = dplyr::bind_rows(
-    mclapply(1:length(acc1_aln_chr_list_of_lists), function(x) {
-        aln_best_pair(acc1_aln_DF_list=acc1_aln_chr_list_of_lists[[x]], acc2_aln_DF_list=acc2_aln_chr_list_of_lists[[x]])
-    }, mc.preschedule=F, mc.cores=length(acc1_aln_chr_list_of_lists))
+    mclapply(1:length(acc1_aln_chr_nested_list), function(x) {
+        aln_best_pair(acc1_aln_DF_list=acc1_aln_chr_nested_list[[x]], acc2_aln_DF_list=acc2_aln_chr_nested_list[[x]])
+    }, mc.preschedule=F, mc.cores=length(acc1_aln_chr_nested_list))
 )
 
 #aln_best_pair_DF = aln_best_pair_DF %>%
