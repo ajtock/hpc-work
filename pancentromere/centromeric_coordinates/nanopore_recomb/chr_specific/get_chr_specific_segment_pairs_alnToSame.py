@@ -20,7 +20,7 @@
 #  -aq 0.90 \
 #  -rt co \
 #  -reg not_centromere \
-#  -c 'Chr1,Chr5'
+#  -c 'Chr5'
 # conda deactivate
 
 
@@ -61,8 +61,8 @@ def create_parser():
                         help="The type/pattern of the recombination event identified based on the sequence of accession-specific read segments. Default: co")
     parser.add_argument("-reg", "--region", type=str, default="not_centromere",
                         help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: not_centromere")
-    parser.add_argument("-c", "--chrom", type=str, default="Chr1,Chr5",
-                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: Chr1,Chr5")
+    parser.add_argument("-c", "--chrom", type=str, default="Chr5",
+                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: Chr5")
     return parser
 
 parser = create_parser().parse_args()
@@ -187,14 +187,31 @@ def cat_pafs(indir, acc_name, suffix):
     return
 
 
-cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[0],
-         acc_name=acc1_name,
-         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+#cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1],
+#         acc_name=acc1_name,
+#         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+##cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[0],
+##         acc_name=acc1_name,
+##         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+
 cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1],
          acc_name=acc1_name,
-         suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+         suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
+cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[0],
+         acc_name=acc1_name,
+         suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
+
+#for x in range(0, len(acc1_indir_list)):
+#    print(acc1_indir_list[x])
+#    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+#             acc_name=acc1_name,
+#             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+#    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+#             acc_name=acc1_name,
+#             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
 
 for x in range(0, len(acc2_indir_list)):
+    print(acc2_indir_list[x])
     cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
              acc_name=acc2_name,
              suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
