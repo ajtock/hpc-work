@@ -9,7 +9,7 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./get_chr_specific_segment_pairs_alnToSame.R \
+# ./get_chr_specific_segment_pairs_alnToSame.py \
 #  -r ColLerF1pollen_1000bp_minq90 \
 #  -a1 Col-0.ragtag_scaffolds \
 #  -a2 Ler-0_110x.ragtag_scaffolds \
@@ -35,6 +35,7 @@ import subprocess
 import glob
 
 from pathlib import Path
+from Bio import SeqIO
 
 
 # ==== Capture user input as command-line arguments
@@ -426,9 +427,8 @@ str(aln_best_pair_DF.shape[0]) + " validly aligning hybrid read segment pairs wh
     "based on the sequence of accession-specific, chromosome-specific k-mers"
 
 # Filter to retain hybrid read segments pairs where each segment aligns to the same chromosome
-aln_best_pair_hom_DF = aln_best_pair_DF[aln_best_pair_DF["acc1_tname"] == aln_best_pair_DF["acc2_tname"]]
+aln_best_pair_hom_DF = aln_best_pair_DF.loc[aln_best_pair_DF["acc1_tname"] == aln_best_pair_DF["acc2_tname"]]
 str(aln_best_pair_hom_DF.shape[0]) + " '" + parser.recombType + "-type' hybrid read segments align to the same chromosome"
-
 str( round( aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0], 4 ) * 100 ) + "% of '" + parser.recombType + "-type' hybrid read segment pairs align to the same chromosome"
 
 # Filter to retain hybrid read segments pairs where the per-accession read segments align to within
@@ -459,139 +459,99 @@ aln_coords_nparray = np.array([list(aln_best_pair_hom_DF["acc1_tstart"]),
                                list(aln_best_pair_hom_DF["acc1_tend"]),
                                list(aln_best_pair_hom_DF["acc2_tstart"]),
                                list(aln_best_pair_hom_DF["acc2_tend"])])
+#aln_coords_nparray.sort(axis=0)
 sidx = aln_coords_nparray.argsort(axis=0)
 aln_coords_nparray_sort = aln_coords_nparray[sidx, np.arange(sidx.shape[1])]
 
 # Define recombination interval as the inner boundaries of segment alignment coordinates
-event_start = list(aln_coords_nparray[1])
-event_end = list(aln_coords_nparray[2])
+event_start = list(aln_coords_nparray_sort[1])
+event_end = list(aln_coords_nparray_sort[2])
+event_start_end_nparray = np.array([event_start, event_end])
+event_midpoint = (event_start_end_nparray[0] + event_start_end_nparray[1]) / 2
+event_midpoint = list(event_midpoint.round().astype(int))
+del aln_coords_nparray, sidx, aln_coords_nparray_sort, event_start_end_nparray
+gc.collect()
+
+aln_best_pair_hom_DF_cp = aln_best_pair_hom_DF.copy()
+del aln_best_pair_hom_DF
+gc.collect()
+aln_best_pair_hom_DF = aln_best_pair_hom_DF_cp
+#aln_best_pair_hom_DF.reset_index(drop=True, inplace=True)
+aln_best_pair_hom_DF["aln_dist_min"] = aln_dist_min
+aln_best_pair_hom_DF["aln_dist_max"] = aln_dist_max
+aln_best_pair_hom_DF["event_start"] = event_start
+aln_best_pair_hom_DF["event_end"] = event_end
+aln_best_pair_hom_DF["event_midpoint"] = event_midpoint
 
 
-event_start = pmin(aln_best_pair_hom_DF["acc1_tstart"], aln_best_pair_hom_DF["acc1_tend"],
-                   aln_best_pair_hom_DF["acc2_tstart"], aln_best_pair_hom_DF["acc2_tend"], na.rm = T)
-event_end = pmax(aln_best_pair_hom_DF["acc1_tstart"], aln_best_pair_hom_DF["acc1_tend"],
-                 aln_best_pair_hom_DF["acc2_tstart"], aln_best_pair_hom_DF["acc2_tend"], na.rm = T)
-event_midpoint = round((event_start + event_end) / 2)
+#acc1_kmers_iter = SeqIO.parse(acc1_fa, "fasta")
+##acc1_kmers = list(SeqIO.parse(acc1_fa, "fasta"))
 
-aln_best_pair_hom_DF$aln_dist_min = aln_dist_min
-aln_best_pair_hom_DF$aln_dist_max = aln_dist_max
-aln_best_pair_hom_DF$event_start = event_start
-aln_best_pair_hom_DF$event_end = event_end
-aln_best_pair_hom_DF$event_midpoint = event_midpoint
 
 # Get read lengths for hybrid read IDs in aln_best_pair_hom_DF$qname
 # to be used for retaining alignment pairs where the Col and Ler
 # read segments align to within a given distance of each other
 # (e.g., the given hybrid read length) in the same assembly
-hybrid_read_lengths = distinct(dplyr::bind_rows(
-    mclapply(1:length(chrName), function(x) {
-        tmp_list = read.fasta(paste0("fasta/", readsPrefix,
-                                     "_match_", acc1, "_", region, "_", chrName[x],
-                                     "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
-                                     "_match_", acc2, "_", region, "_", chrName[x],
-                                     "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
-                                     ".fa"),
-                              forceDNAtolower=F)
-        read_length_DF = data.frame()
-        for(i in 1:length(tmp_list)) {
-            if( attr(tmp_list[[i]], which="name", exact=T) %in% aln_best_pair_hom_DF$qname ) {
-                read_length_DF_i = data.frame(read_id = attr(tmp_list[[i]], which="name", exact=T),
-                                              read_len = length(getSequence(tmp_list[[i]])))
-                read_length_DF = rbind(read_length_DF, read_length_DF_i)
-            } 
-        }                                                              
-        read_length_DF
-    }, mc.preschedule=F, mc.cores=length(chrName))
-))
+hybrid_read_lengths_DF_list = []
+for x in range(0, len(chrom)):
+    reads_fa = "fasta/" + parser.readsPrefix + \
+        "_match_" + parser.acc1 + "_" + parser.region + "_" + chrom[x] + \
+        "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+        "_match_" + parser.acc2 + "_" + parser.region + "_" + chrom[x] + \
+        "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+        ".fa"
+    reads_dict = SeqIO.index(reads_fa, "fasta")
+    reads = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_DF["qname"])]
+    #reads_iter = SeqIO.parse(reads_fa, "fasta")
+    #reads2 = [x for x in reads_iter if x.id in list(aln_best_pair_hom_DF["qname"])]
+    read_ids = [x.id for x in reads]
+    read_lens = [len(x) for x in reads]
+    hybrid_read_lengths_DF = pd.DataFrame({ "read_id": read_ids,
+                                            "read_len": read_lens })
+    hybrid_read_lengths_DF_list.append(hybrid_read_lengths_DF) 
 
-aln_best_pair_hom_DF = base::merge(x = aln_best_pair_hom_DF,
-                                   y = hybrid_read_lengths,
-                                   by.x = "qname",
-                                   by.y = "read_id",
-                                   sort = F)
+del hybrid_read_lengths_DF
+gc.collect()
 
-aln_best_pair_hom_maxDist_DF = data.frame()
-for(x in 1:nrow(aln_best_pair_hom_DF)) {
-    if(aln_best_pair_hom_DF[x, ]$aln_dist_min <= aln_best_pair_hom_DF[x, ]$read_len * 2) {
-        aln_best_pair_hom_maxDist_DF = rbind(aln_best_pair_hom_maxDist_DF, aln_best_pair_hom_DF[x, ])
-    }
-}
+# Concatenate list elements (per-chromosome pd.DataFrames) into one pd.DataFrame
+if len(hybrid_read_lengths_DF_list) > 1:
+    hybrid_read_lengths_DF = pd.concat(objs=hybrid_read_lengths_DF_list, axis=0, ignore_index=True)
+else:
+    hybrid_read_lengths_DF = hybrid_read_lengths_DF_list[0]
 
-print(paste0(nrow(aln_best_pair_hom_maxDist_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
 
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
+aln_best_pair_hom_DF_read_lens = pd.merge(left=aln_best_pair_hom_DF, right=hybrid_read_lengths_DF,
+                                          how="inner", left_on="qname", right_on="read_id")
+del aln_best_pair_hom_DF
+gc.collect()
+aln_best_pair_hom_DF = aln_best_pair_hom_DF_read_lens.drop(columns="read_id")
 
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_hom_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly"))
-
+aln_best_pair_hom_maxDist_DF = aln_best_pair_hom_DF.loc[aln_best_pair_hom_DF["aln_dist_min"] <= aln_best_pair_hom_DF["read_len"] * 2]
 
 
 # Filter to retain putative recombination events between homologous chromosomes where
 # the per-accession read segments align to within maxDist bp of each other in the same reference assembly, AND
-# where the per-accession alignment length is >= alenTOqlen of the segment length
-aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF[ which(aln_best_pair_hom_maxDist_DF["acc1_alen /
-                                                                              aln_best_pair_hom_maxDist_DF["acc1_qlen >= alenTOqlen &
-                                                                              aln_best_pair_hom_maxDist_DF["acc2_alen /
-                                                                              aln_best_pair_hom_maxDist_DF["acc2_qlen >= alenTOqlen), ]
-
-print(paste0(nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
-
-print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF) / nrow(aln_best_pair_hom_maxDist_DF) ), 4 ) * 100, "% of putative ", recombType, " events that are between homologous chromosomes and where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, are those where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
+# where the per-accession alignment length is >= parser.alenTOqlen of the segment length
+aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF.loc[ ( aln_best_pair_hom_maxDist_DF["acc1_alen"] / \
+                                                                              aln_best_pair_hom_maxDist_DF["acc1_qlen"] >= parser.alenTOqlen ) & \
+                                                                            ( aln_best_pair_hom_maxDist_DF["acc2_alen"] / \
+                                                                              aln_best_pair_hom_maxDist_DF["acc2_qlen"] >= parser.alenTOqlen ) ] 
 
 
 
-#write.table(aln_best_pair_DF,
-#            paste0(outdir, readsPrefix,
-#                   "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-#                   "_", recombType,
-#                   "_alnTo_", alnTo, "_",
-#                   paste0(chrName, collapse="_"), ".tsv"),
-#            quote=F, sep="\t", col.names=T, row.names=F)
-#write.table(aln_best_pair_hom_DF,
-#            paste0(outdir, readsPrefix,
-#                   "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-#                   "_hom_", recombType,
-#                   "_alnTo_", alnTo, "_",
-#                   paste0(chrName, collapse="_"), ".tsv"),
-#            quote=F, sep="\t", col.names=T, row.names=F)
-write.table(aln_best_pair_hom_maxDist_DF,
-            paste0(outdir, readsPrefix,
-                   "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                   "_hom_maxDist_", recombType,
-                   "_alnTo_", alnTo, "_",
-                   paste0(chrName, collapse="_"), ".tsv"),
-            quote=F, sep="\t", col.names=T, row.names=F)
-write.table(aln_best_pair_hom_maxDist_alenTOqlen_DF,
-            paste0(outdir, readsPrefix,
-                   "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                   "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
-                   "_alnTo_", alnTo, "_",
-                   paste0(chrName, collapse="_"), ".tsv"),
-            quote=F, sep="\t", col.names=T, row.names=F)
+# Write to TSV
+aln_best_pair_hom_maxDist_DF_filename = outdir + "/" + parser.readsPrefix + \
+    "_" + parser.acc1 + "_" + parser.acc2 + \
+    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
+    "_hom_maxDist_" + parser.recombType + \
+    "_alnTo_" + parser.alnTo + "_" + \
+    re.sub(",", "_", parser.chrom) + ".tsv"
+aln_best_pair_hom_maxDist_DF.to_csv(aln_best_pair_hom_maxDist_DF_filename, sep="\t", header=True, index=False)
 
-
-#aln_best_pair_DF = read.table(paste0(outdir, readsPrefix,
-#                                     "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-#                                     "_", recombType,
-#                                     "_alnTo_", alnTo, "_",
-#                                     paste0(chrName, collapse="_"), ".tsv"),
-#                              header=T)
-#aln_best_pair_hom_DF = read.table(paste0(outdir, readsPrefix,
-#                                         "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-#                                         "_hom_", recombType,
-#                                         "_alnTo_", alnTo, "_",
-#                                         paste0(chrName, collapse="_"), ".tsv"),
-#                                  header=T)
-aln_best_pair_hom_maxDist_DF = read.table(paste0(outdir, readsPrefix,
-                                                 "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                                                 "_hom_maxDist_", recombType,
-                                                 "_alnTo_", alnTo, "_",
-                                                 paste0(chrName, collapse="_"), ".tsv"),
-                                          header=T)
-aln_best_pair_hom_maxDist_alenTOqlen_DF = read.table(paste0(outdir, readsPrefix,
-                                                            "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                                                            "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
-                                                            "_alnTo_", alnTo, "_",
-                                                            paste0(chrName, collapse="_"), ".tsv"),
-                                                     header=T)
+aln_best_pair_hom_maxDist_alenTOqlen_DF_filename = outdir + "/" + parser.readsPrefix + \
+    "_" + parser.acc1 + "_" + parser.acc2 + \
+    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
+    "_hom_maxDist_aTOq" + str(parser.alenTOqlen)+ "_" + parser.recombType + \
+    "_alnTo_" + parser.alnTo + "_" + \
+    re.sub(",", "_", parser.chrom) + ".tsv"
+aln_best_pair_hom_maxDist_alenTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_alenTOqlen_DF_filename, sep="\t", header=True, index=False)
