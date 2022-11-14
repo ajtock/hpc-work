@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+#!/usr/bin/env python3
 
 # Author: Andy Tock (ajt200@cam.ac.uk)
 # Date: 09/11/2022
