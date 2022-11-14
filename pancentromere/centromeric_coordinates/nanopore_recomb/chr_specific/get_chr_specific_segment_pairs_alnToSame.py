@@ -30,6 +30,7 @@ import argparse
 import re
 import gc
 import pandas as pd
+import numpy as np
 import subprocess
 import glob
 
@@ -432,15 +433,39 @@ str( round( aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0], 4 ) * 100
 
 # Filter to retain hybrid read segments pairs where the per-accession read segments align to within
 # 2 * the given read length of each other in the same reference assembly
-aln_dist_acc1_tstart_acc2_tstart = abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1
-aln_dist_acc1_tstart_acc2_tend = abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tend"]) + 1
-aln_dist_acc1_tend_acc2_tstart = abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1
-aln_dist_acc1_tend_acc2_tend = abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tend"]) + 1
+aln_dist_acc1_tstart_acc2_tstart = list(abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1)
+aln_dist_acc1_tstart_acc2_tend = list(abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tend"]) + 1)
+aln_dist_acc1_tend_acc2_tstart = list(abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1)
+aln_dist_acc1_tend_acc2_tend = list(abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tend"]) + 1)
 
-aln_dist_min = pmin(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
-                    aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend, na.rm = T)
-aln_dist_max = pmax(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
-                    aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend, na.rm = T)
+aln_dist_nparray = np.array([aln_dist_acc1_tstart_acc2_tstart,
+                             aln_dist_acc1_tstart_acc2_tend,
+                             aln_dist_acc1_tend_acc2_tstart,
+                             aln_dist_acc1_tend_acc2_tend])
+aln_dist_min = list(aln_dist_nparray.min(axis=0))
+aln_dist_max = list(aln_dist_nparray.max(axis=0))
+del aln_dist_nparray
+gc.collect()
+
+## Skin and overcook a cat
+#aln_dist_tuple_list = list(zip(aln_dist_acc1_tstart_acc2_tstart,
+#                               aln_dist_acc1_tstart_acc2_tend,
+#                               aln_dist_acc1_tend_acc2_tstart,
+#                               aln_dist_acc1_tend_acc2_tend))
+#aln_dist_min = list(map(min, aln_dist_tuple_list))
+#aln_dist_max = list(map(max, aln_dist_tuple_list))
+
+aln_coords_nparray = np.array([list(aln_best_pair_hom_DF["acc1_tstart"]),
+                               list(aln_best_pair_hom_DF["acc1_tend"]),
+                               list(aln_best_pair_hom_DF["acc2_tstart"]),
+                               list(aln_best_pair_hom_DF["acc2_tend"])])
+sidx = aln_coords_nparray.argsort(axis=0)
+aln_coords_nparray_sort = aln_coords_nparray[sidx, np.arange(sidx.shape[1])]
+
+# Define recombination interval as the inner boundaries of segment alignment coordinates
+event_start = list(aln_coords_nparray[1])
+event_end = list(aln_coords_nparray[2])
+
 
 event_start = pmin(aln_best_pair_hom_DF["acc1_tstart"], aln_best_pair_hom_DF["acc1_tend"],
                    aln_best_pair_hom_DF["acc2_tstart"], aln_best_pair_hom_DF["acc2_tend"], na.rm = T)
