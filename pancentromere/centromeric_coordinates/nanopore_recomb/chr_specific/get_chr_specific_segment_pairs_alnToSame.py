@@ -407,54 +407,45 @@ def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
 
 
 # Get best pair of aligned read segments for each read
-aln_best_pair_DF_ori = aln_best_pair_DF_sort
-
 aln_best_pair_DF_list = []
 for x in range(0, len(acc1_aln_chr_nested_list)):
     aln_best_pair_DF_x = aln_best_pair(acc1_aln_DF_list=acc1_aln_chr_nested_list[x],
                                        acc2_aln_DF_list=acc2_aln_chr_nested_list[x])
     aln_best_pair_DF_list.append(aln_best_pair_DF_x)
 
-acc2_aln_chr_nested_list = []
-for x in range(0, len(acc2_mm_list)):
-    acc2_aln_chr_nested_list.append([acc2_mm_list[x], acc2_sr_list[x]])
+# Concatenate list elements (per-chromosome pd.DataFrames) into one pd.DataFrame
+if len(aln_best_pair_DF_list) > 1:
+    aln_best_pair_DF = pd.concat(objs=aln_best_pair_DF_list, axis=0, ignore_index=True)
+else:
+    aln_best_pair_DF = aln_best_pair_DF_list[0]
 
 
-aln_best_pair_DF = dplyr::bind_rows(
-    mclapply(1:length(acc1_aln_chr_nested_list), function(x) {
-        aln_best_pair(acc1_aln_DF_list=acc1_aln_chr_nested_list[[x]], acc2_aln_DF_list=acc2_aln_chr_nested_list[[x]])
-    }, mc.preschedule=F, mc.cores=length(acc1_aln_chr_nested_list))
-)
+# Report total
+str(aln_best_pair_DF.shape[0]) + " validly aligning hybrid read segment pairs where unaligned segments are of '" + parser.recombType + " type', \n" + \
+    "based on the sequence of accession-specific, chromosome-specific k-mers"
 
-#aln_best_pair_DF = aln_best_pair_DF %>%
-#    dplyr::filter(acc1_alen >= 200) %>%
-#    dplyr::filter(acc2_alen >= 200)
+# Filter to retain hybrid read segments pairs where each segment aligns to the same chromosome
+aln_best_pair_hom_DF = aln_best_pair_DF[aln_best_pair_DF["acc1_tname"] == aln_best_pair_DF["acc2_tname"]]
+str(aln_best_pair_hom_DF.shape[0]) + " '" + parser.recombType + "-type' hybrid read segments align to the same chromosome"
 
-print(paste0(nrow(aln_best_pair_DF), " putative ", recombType, " events"))
+str( round( aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0], 4 ) * 100 ) + "% of '" + parser.recombType + "-type' hybrid read segment pairs align to the same chromosome"
 
-# Filter to retain putative recombination events between homologous chromosomes only
-aln_best_pair_hom_DF = aln_best_pair_DF[ which(aln_best_pair_DF$acc1_tname == aln_best_pair_DF$acc2_tname), ]
-
-print(paste0(nrow(aln_best_pair_hom_DF), " putative ", recombType, " events are between homologous chromosomes"))
-
-print(paste0( round( ( nrow(aln_best_pair_hom_DF) / nrow(aln_best_pair_DF) ), 4 ) * 100, "% of putative ", recombType, " events are between homologous chromosomes"))
-
-# Filter to retain putative recombination events between homologous chromosomes where
-# the per-accession read segments align to within maxDist bp of each other in the same reference assembly
-aln_dist_acc1_tstart_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tstart) + 1
-aln_dist_acc1_tstart_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tstart - aln_best_pair_hom_DF$acc2_tend) + 1
-aln_dist_acc1_tend_acc2_tstart = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tstart) + 1
-aln_dist_acc1_tend_acc2_tend = abs(aln_best_pair_hom_DF$acc1_tend - aln_best_pair_hom_DF$acc2_tend) + 1
+# Filter to retain hybrid read segments pairs where the per-accession read segments align to within
+# 2 * the given read length of each other in the same reference assembly
+aln_dist_acc1_tstart_acc2_tstart = abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1
+aln_dist_acc1_tstart_acc2_tend = abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tend"]) + 1
+aln_dist_acc1_tend_acc2_tstart = abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1
+aln_dist_acc1_tend_acc2_tend = abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tend"]) + 1
 
 aln_dist_min = pmin(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
                     aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend, na.rm = T)
 aln_dist_max = pmax(aln_dist_acc1_tstart_acc2_tstart, aln_dist_acc1_tstart_acc2_tend,
                     aln_dist_acc1_tend_acc2_tstart, aln_dist_acc1_tend_acc2_tend, na.rm = T)
 
-event_start = pmin(aln_best_pair_hom_DF$acc1_tstart, aln_best_pair_hom_DF$acc1_tend,
-                   aln_best_pair_hom_DF$acc2_tstart, aln_best_pair_hom_DF$acc2_tend, na.rm = T)
-event_end = pmax(aln_best_pair_hom_DF$acc1_tstart, aln_best_pair_hom_DF$acc1_tend,
-                 aln_best_pair_hom_DF$acc2_tstart, aln_best_pair_hom_DF$acc2_tend, na.rm = T)
+event_start = pmin(aln_best_pair_hom_DF["acc1_tstart"], aln_best_pair_hom_DF["acc1_tend"],
+                   aln_best_pair_hom_DF["acc2_tstart"], aln_best_pair_hom_DF["acc2_tend"], na.rm = T)
+event_end = pmax(aln_best_pair_hom_DF["acc1_tstart"], aln_best_pair_hom_DF["acc1_tend"],
+                 aln_best_pair_hom_DF["acc2_tstart"], aln_best_pair_hom_DF["acc2_tend"], na.rm = T)
 event_midpoint = round((event_start + event_end) / 2)
 
 aln_best_pair_hom_DF$aln_dist_min = aln_dist_min
@@ -512,10 +503,10 @@ print(paste0( round( ( nrow(aln_best_pair_hom_maxDist_DF) / nrow(aln_best_pair_h
 # Filter to retain putative recombination events between homologous chromosomes where
 # the per-accession read segments align to within maxDist bp of each other in the same reference assembly, AND
 # where the per-accession alignment length is >= alenTOqlen of the segment length
-aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF[ which(aln_best_pair_hom_maxDist_DF$acc1_alen /
-                                                                              aln_best_pair_hom_maxDist_DF$acc1_qlen >= alenTOqlen &
-                                                                              aln_best_pair_hom_maxDist_DF$acc2_alen /
-                                                                              aln_best_pair_hom_maxDist_DF$acc2_qlen >= alenTOqlen), ]
+aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF[ which(aln_best_pair_hom_maxDist_DF["acc1_alen /
+                                                                              aln_best_pair_hom_maxDist_DF["acc1_qlen >= alenTOqlen &
+                                                                              aln_best_pair_hom_maxDist_DF["acc2_alen /
+                                                                              aln_best_pair_hom_maxDist_DF["acc2_qlen >= alenTOqlen), ]
 
 print(paste0(nrow(aln_best_pair_hom_maxDist_alenTOqlen_DF), " putative ", recombType, " events are between homologous chromosomes where the per-accession read segments align to within hybrid-read-length bp of each other in the same reference assembly, and where the per-accession alignment length is >= ", alenTOqlen * 100, "% of the segment length"))
 
