@@ -368,13 +368,13 @@ def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
                                                                    ignore_index=True)
         acc2_aln_DF_read_id_sort_strand = acc2_aln_DF_read_id_sort[acc2_aln_DF_read_id_sort["strand"] == acc1_aln_DF_read_id["strand"].iloc[0]]
         if acc2_aln_DF_read_id_sort_strand.shape[0] > 0:
-            acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
-            # Alternatively, if "alen" and "nmatch" are to be given priority over finding pairs where both alignments are to the same strand:
-            #if acc2_aln_DF_read_id_sort_strand.iloc[0]["alen"] == acc2_aln_DF_read_id_sort.iloc[0]["alen"] and \
-            #   acc2_aln_DF_read_id_sort_strand.iloc[0]["nmatch"] == acc2_aln_DF_read_id_sort.iloc[0]["nmatch"]:
-            #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
-            #else:
-            #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
+            #acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
+            # If "alen" and "nmatch" are to be given priority over finding pairs where both alignments are to the same strand:
+            if acc2_aln_DF_read_id_sort_strand.iloc[0]["alen"] == acc2_aln_DF_read_id_sort.iloc[0]["alen"] and \
+               acc2_aln_DF_read_id_sort_strand.iloc[0]["nmatch"] == acc2_aln_DF_read_id_sort.iloc[0]["nmatch"]:
+                acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
+            else:
+                acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
         else:
             acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
         acc2_aln_DF_best = pd.concat(objs=[acc2_aln_DF_best, acc2_aln_DF_read_id_sort_select],
@@ -555,3 +555,34 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF_filename = outdir + "/" + parser.readsPr
     "_alnTo_" + parser.alnTo + "_" + \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_maxDist_alenTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_alenTOqlen_DF_filename, sep="\t", header=True, index=False)
+
+
+
+# Write filtered hybrid reads to FASTA
+for x in range(0, len(chrom)):
+reads_fa = "fasta/" + parser.readsPrefix + \
+    "_match_" + parser.acc1 + "_" + parser.region + "_" + chrom[x] + \
+    "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    "_match_" + parser.acc2 + "_" + parser.region + "_" + chrom[x] + \
+    "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    ".fa"
+reads_dict = SeqIO.index(reads_fa, "fasta")
+reads_maxDist = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_maxDist_DF["qname"])]
+reads_maxDist_alenTOqlen = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_maxDist_alenTOqlen_DF["qname"])]
+reads_maxDist_fa = "fasta/" + parser.readsPrefix + \
+    "_match_" + parser.acc1 + "_" + parser.region + "_" + chrom[x] + \
+    "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    "_match_" + parser.acc2 + "_" + parser.region + "_" + chrom[x] + \
+    "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    "_hom_maxDist_" + parser.recombType + \
+    "_alnTo_" + parser.alnTo + ".fa"
+reads_maxDist_alenTOqlen_fa = "fasta/" + parser.readsPrefix + \
+    "_match_" + parser.acc1 + "_" + parser.region + "_" + chrom[x] + \
+    "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    "_match_" + parser.acc2 + "_" + parser.region + "_" + chrom[x] + \
+    "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    "_hom_maxDist_aTOq" + str(parser.alenTOqlen)+ "_" + parser.recombType + \
+    "_alnTo_" + parser.alnTo + ".fa"
+
+with open("example.fasta", "w") as output_handle:
+    SeqIO.write(sequences, output_handle, "fasta")
