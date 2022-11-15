@@ -20,7 +20,7 @@
 #  -aq 0.90 \
 #  -rt co \
 #  -reg not_centromere \
-#  -c 'Chr5'
+#  -c 'Chr1'
 # conda deactivate
 
 
@@ -63,8 +63,8 @@ def create_parser():
                         help="The type/pattern of the recombination event identified based on the sequence of accession-specific read segments. Default: co")
     parser.add_argument("-reg", "--region", type=str, default="not_centromere",
                         help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: not_centromere")
-    parser.add_argument("-c", "--chrom", type=str, default="Chr5",
-                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: Chr5")
+    parser.add_argument("-c", "--chrom", type=str, default="Chr1",
+                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: Chr1")
     return parser
 
 parser = create_parser().parse_args()
