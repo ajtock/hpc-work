@@ -159,6 +159,74 @@ alnTo_CENend = alnTo_CEN["end"]
 #alnTo_chrs = [alnTo_name + "_" + x for x in alnTo_chrs]
 
 
+# Make a single list that contains all
+# the elements of each sublist of a nested list
+def flatten(nested_list):
+    """
+    Use list comprehension to flatten a nested list into a
+    single list composed of all the elements in each sublist.
+    """
+    return [item for sublist in nested_list for item in sublist]
+
+alnTo_nonCEN = pd.DataFrame({ "chr": list(alnTo_CEN["chr"]) * 2,
+                              "start": flatten( [ [1] * 5, list(alnTo_CEN["end"] + 1) ] ),
+                              "end": flatten( [ list(alnTo_CEN["start"] - 1), alnTo_chrLens ] ) })
+
+
+# Define "
+
+# Define function to select randomly positioned loci of the same
+# width distribution as CENgapAllAthila_bed
+ranLocStartSelect <- function(coordinates, n) {
+  sample(x = coordinates,
+         size = n,
+         replace = FALSE)
+}
+
+
+
+# Function to define, for each accession, "perms" sets of centromeric random loci (acc_CENranLoc_GR)
+# of the same number and width distribution as acc_CENATHILA_GR
+defineCENranLoc <- function(acc_idx, chrs_list, chrLens_list, CEN_GR_list, CENATHILA_GR_list, seed) {
+  print(acc[acc_idx])
+
+  acc_chrs <- chrs_list[[acc_idx]]
+  acc_chrLens <- chrLens_list[[acc_idx]]
+  acc_CEN_GR <- CEN_GR_list[[acc_idx]]
+  acc_CENATHILA_GR <- CENATHILA_GR_list[[acc_idx]]
+
+  # Apply ranLocStartSelect() on a per-chromosome basis so that
+  # acc_CENranLoc_GR contains the same number of loci per chromosome as acc_CENATHILA_GR
+  acc_CENranLoc_GR <- GRanges()
+  for(j in 1:length(acc_chrs)) {
+    print(acc_chrs[j])
+
+    chr_acc_CEN_GR <- acc_CEN_GR[seqnames(acc_CEN_GR) == acc_chrs[j]]
+
+    chr_acc_CENATHILA_GR <- acc_CENATHILA_GR[seqnames(acc_CENATHILA_GR) == acc_chrs[j]]
+    if(length(chr_acc_CENATHILA_GR) > 0) {
+      set.seed(seed + 1e6)
+      chr_acc_CENranLoc_Start <- ranLocStartSelect(coordinates = unlist(lapply(seq_along(chr_acc_CEN_GR), function(x) {
+                                                                          ( start(chr_acc_CEN_GR[x]) + max(width(chr_acc_CENATHILA_GR)) ) :
+                                                                          ( end(chr_acc_CEN_GR[x]) - max(width(chr_acc_CENATHILA_GR)) )
+                                                                        })),
+                                                   n = length(chr_acc_CENATHILA_GR))
+      chr_acc_CENranLoc_GR <- GRanges(seqnames = acc_chrs[j],
+                                      ranges = IRanges(start = chr_acc_CENranLoc_Start,
+                                                       width = width(chr_acc_CENATHILA_GR)),
+                                      strand = strand(chr_acc_CENATHILA_GR),
+                                      phylo = as.character(chr_acc_CENATHILA_GR$phylo))
+      acc_CENranLoc_GR <- append(acc_CENranLoc_GR, chr_acc_CENranLoc_GR)
+    }
+  }
+  stopifnot(identical(width(acc_CENranLoc_GR), width(acc_CENATHILA_GR)))
+  acc_CENranLoc_GR
+}
+
+
+
+
+
 
 # Concatenate all alignment files for the given chromosome,
 # accession and aligner
