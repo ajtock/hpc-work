@@ -35,6 +35,7 @@ import subprocess
 import glob
 
 from pathlib import Path
+from numpy.random import default_rng
 
 
 # ==== Capture user input as command-line arguments
@@ -170,6 +171,9 @@ alnTo_CENstart = alnTo_CEN["start"]
 alnTo_CENend = alnTo_CEN["end"]
 #alnTo_chrs = [alnTo_name + "_" + x for x in alnTo_chrs]
 
+alnTo_CEN_PR = pr.pyranges.PyRanges(chromosomes=alnTo_CEN["chr"],
+                                    starts=alnTo_CEN["start"],
+                                    ends=alnTo_CEN["end"])
 
 # Make a single list that contains all
 # the elements of each sublist of a nested list
@@ -184,19 +188,23 @@ alnTo_nonCEN = pd.DataFrame({ "chr": list(alnTo_CEN["chr"]) * 2,
                               "start": flatten( [ [1] * 5, list(alnTo_CEN["end"] + 1) ] ),
                               "end": flatten( [ list(alnTo_CEN["start"] - 1), alnTo_chrLens ] ) })
 
+alnTo_nonCEN_PR = pr.pyranges.PyRanges(chromosomes=alnTo_nonCEN["chr"],
+                                       starts=alnTo_nonCEN["start"],
+                                       ends=alnTo_nonCEN["end"])
+
 
 # Define parser.perms sets of random loci in parser.region
-# of the same number and width distribution as 
-
-# Define function to select randomly positioned loci of the same
-# width distribution as CENgapAllAthila_bed
-ranLocStartSelect <- function(coordinates, n) {
-  sample(x = coordinates,
-         size = n,
-         replace = FALSE)
-}
+# of the same number and width distribution as the candidate recombination events 
+def ranLoc_start_select(coordinates, n):
+    rng = default_rng(238435)    
+    rng.choice(a=coordinates,
+               size=n,
+               replace=False)
 
 
+def define_ranLoc(region_PR, features_PR):
+#regions_PR = alnTo_nonCEN_PR 
+#features_PR = COs_PR
 
 # Function to define, for each accession, "perms" sets of centromeric random loci (acc_CENranLoc_GR)
 # of the same number and width distribution as acc_CENATHILA_GR
