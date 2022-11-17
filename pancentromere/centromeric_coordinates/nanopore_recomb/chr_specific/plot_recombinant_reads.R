@@ -170,7 +170,7 @@ haplo_DF_list = make_haplo_DF_list(aln_pair_DF = aln_DF,
                                    hybrid_reads_list = hybrid_reads_list) 
 
 # Plot haplotype of recombinant read
-haplo_heatmap = function(haplo_DF, aln_DF) {
+haplo_heatmap = function(haplo_DF, aln_DF_x) {
   haplo_mat = t(haplo_DF[ , 2:3])
   colnames(haplo_mat) = 1:ncol(haplo_mat)
   Heatmap(
@@ -178,7 +178,7 @@ haplo_heatmap = function(haplo_DF, aln_DF) {
           col = c("Col-0"="dodgerblue3", "Ler-0"="darkgoldenrod", "X"="grey70",
                   "A"="firebrick3", "T"="forestgreen", "G"="darkgoldenrod1", "C"="blue3"),
           show_row_names = F,
-          column_title = paste0(aln_DF$acc1_tname[x], " read ID: ", aln_DF$qname[x]),
+          column_title = paste0(aln_DF_x$acc1_tname, " read ID: ", aln_DF_x$qname),
           column_title_gp = gpar(fontsize = 16, fontface = "bold"),
           column_labels = colnames(haplo_mat),
           column_names_rot = 90,
@@ -206,7 +206,7 @@ haplo_heatmap = function(haplo_DF, aln_DF) {
 
 foreach(x = 1:length(haplo_DF_list)) %dopar% {
     if(!is.null(haplo_DF_list[[x]][[1]])) {
-        haplo_htmp = haplo_heatmap(haplo_DF = haplo_DF_list[[x]], aln_DF=aln_DF)
+        haplo_htmp = haplo_heatmap(haplo_DF = haplo_DF_list[[x]], aln_DF_x=aln_DF[x,])
         pdf(paste0(plotDir, aln_DF$acc1_tname[x], "_", aln_DF$qname[x],
                    "_alnTo_", alnTo, "_haplo_heatmap.pdf"),
             height = 2, width = 0.05 * nrow(haplo_DF_list[[x]]))
