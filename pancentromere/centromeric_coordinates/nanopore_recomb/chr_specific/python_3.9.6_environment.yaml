@@ -17,6 +17,7 @@ dependencies:
   - seaborn
   - pysam
   - pybedtools
+  - pyranges
   - mmh3
   - screed
   - scikit-bio

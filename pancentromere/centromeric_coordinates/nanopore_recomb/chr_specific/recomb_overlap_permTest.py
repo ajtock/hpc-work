@@ -19,6 +19,7 @@
 #  -aq 0.90 \
 #  -reg not_centromere \
 #  -c 'Chr1,Chr2,Chr3,Chr4,Chr5'
+#  -p 10000
 # conda deactivate
 
 
@@ -61,6 +62,8 @@ def create_parser():
                         help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: not_centromere")
     parser.add_argument("-c", "--chrom", type=str, default="Chr1,Chr2,Chr3,Chr4,Chr5",
                         help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: Chr1,Chr2,Chr3,Chr4,Chr5")
+    parser.add_argument("-p", "--perms", type=int, default="10000",
+                        help="The number of permutations (sets of random loci) to do. Default: 10000")
     return parser
 
 parser = create_parser().parse_args()
@@ -102,6 +105,11 @@ if len(COs_DF_list) > 1:
 else:
     COs_DF = COs_DF_list[0]
 
+COs_PR = pr.pyranges.PyRanges(chromosomes=COs_DF["acc1_tname"],
+                              starts=COs_DF["event_start"],
+                              ends=COs_DF["event_end"])
+
+
 # NCOs
 NCOs_DF_list = []
 for x in range(0, len(chrom)):
@@ -122,6 +130,10 @@ if len(NCOs_DF_list) > 1:
     NCOs_DF = pd.concat(objs=NCOs_DF_list, axis=0, ignore_index=True)
 else:
     NCOs_DF = NCOs_DF_list[0]
+
+NCOs_PR = pr.pyranges.PyRanges(chromosomes=NCOs_DF["acc1_tname"],
+                               starts=NCOs_DF["event_start"],
+                               ends=NCOs_DF["event_end"])
 
 
 # Genomic definitions
@@ -173,7 +185,8 @@ alnTo_nonCEN = pd.DataFrame({ "chr": list(alnTo_CEN["chr"]) * 2,
                               "end": flatten( [ list(alnTo_CEN["start"] - 1), alnTo_chrLens ] ) })
 
 
-# Define "
+# Define parser.perms sets of random loci in parser.region
+# of the same number and width distribution as 
 
 # Define function to select randomly positioned loci of the same
 # width distribution as CENgapAllAthila_bed

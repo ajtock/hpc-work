@@ -36,7 +36,7 @@
 #! error file (NOTE: enclosing directory must exist)
 #SBATCH --error=logs/hybrid_reads_acc_chr_specific_kmers_bbduk_icelake_slurm_%A_%a.err
 #! Array task IDs
-#SBATCH --array=2-5
+#SBATCH --array=6-10
 
 #! sbatch directives end here (put any additional directives above this line)
 

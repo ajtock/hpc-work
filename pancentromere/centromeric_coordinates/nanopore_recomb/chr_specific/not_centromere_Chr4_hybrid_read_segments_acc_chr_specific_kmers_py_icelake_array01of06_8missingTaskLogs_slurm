@@ -39,7 +39,9 @@
 #! Array task IDs
 #! NOTE: this array range needs to be determined based on the number of
 #! hybrid reads found by reads_acc_chr_specific_kmers_bbduk.sh 
-#SBATCH --array=0-9999
+#! Where tasks indices are not a range, can be specified as comma-separated list:
+#! SBATCH --array=6161,6162,6163,6164,6165,6166,6167,6168
+#SBATCH --array=6161-6168
 
 #! sbatch directives end here (put any additional directives above this line)
 
@@ -80,7 +82,7 @@ KMER_SIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 OP=$(echo $PARAMS | cut -d ' ' -f 5)
 MIN_HITS=$(echo $PARAMS | cut -d ' ' -f 6)
 ALN_TO=$(echo $PARAMS | cut -d ' ' -f 7)
-HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID+30000))
+HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID+0))
 
 #! Activate conda environment
 source ~/.bashrc

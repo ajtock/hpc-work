@@ -33,9 +33,9 @@
 #! interrupted by node failure or system downtime):
 #SBATCH --no-requeue
 #! log file (NOTE: enclosing directory must exist)
-#SBATCH --output=logs/segments/not_centromere_Chr2_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.out
+#SBATCH --output=logs/segments/not_centromere/Chr2/not_centromere_Chr2_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.log
 #! error file (NOTE: enclosing directory must exist)
-#SBATCH --error=logs/segments/not_centromere_Chr2_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.err
+#! SBATCH --error=logs/segments/not_centromere/Chr2/not_centromere_Chr2_hybrid_read_segments_acc_chr_specific_kmers_py_%A_%a.err
 #! Array task IDs
 #! NOTE: this array range needs to be determined based on the number of
 #! hybrid reads found by reads_acc_chr_specific_kmers_bbduk.sh 
@@ -79,6 +79,7 @@ ACC2=$(echo $PARAMS | cut -d ' ' -f 3)
 KMER_SIZE=$(echo $PARAMS | cut -d ' ' -f 4)
 OP=$(echo $PARAMS | cut -d ' ' -f 5)
 MIN_HITS=$(echo $PARAMS | cut -d ' ' -f 6)
+ALN_TO=$(echo $PARAMS | cut -d ' ' -f 7)
 HYBRID_READ_INDEX=$((SLURM_ARRAY_TASK_ID+10000))
 
 #! Activate conda environment
@@ -101,7 +102,7 @@ application="./hybrid_read_segments_acc_chr_specific_kmers.py"
 
 
 #! Run options for the application:
-options="-r $READS_PREFIX -a1 $ACC1 -a2 $ACC2 -k $KMER_SIZE -op $OP -mh $MIN_HITS -hr $HYBRID_READ_INDEX"
+options="-r $READS_PREFIX -a1 $ACC1 -a2 $ACC2 -k $KMER_SIZE -op $OP -mh $MIN_HITS -at $ALN_TO -hr $HYBRID_READ_INDEX"
 
 
 #! Work directory (i.e. where the job will run):
