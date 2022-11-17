@@ -66,25 +66,15 @@ print(getDoParName())
 print(getDoParVersion())
 print(getDoParWorkers())
 
-
 outDir = paste0(region, "/segment_pairs/", recombType, "/")
 plotDir = paste0(outDir, "recombinant_read_plots/")
 system(paste0("[ -d ", outDir, " ] || mkdir -p ", outDir))
 system(paste0("[ -d ", plotDir, " ] || mkdir -p ", plotDir))
 
-# Accession names
 acc1_name = strsplit( strsplit(acc1, split="\\.")[[1]][1],
                       split="_" )[[1]][1]
 acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
                       split="_" )[[1]][1]
-
-
-aln_best_pair_DF = dplyr::bind_rows(
-    mclapply(1:length(acc1_aln_chr_list_of_lists), function(x) {
-        aln_best_pair(acc1_aln_DF_list=acc1_aln_chr_list_of_lists[[x]], acc2_aln_DF_list=acc2_aln_chr_list_of_lists[[x]])
-    }, mc.preschedule=F, mc.cores=length(acc1_aln_chr_list_of_lists))
-)
-
 
 aln_best_pair_hom_maxDist_DF_list = lapply(1:length(chrName), function(x) {
     read.table(paste0(outDir, readsPrefix,
@@ -100,7 +90,6 @@ if(length(aln_best_pair_hom_maxDist_DF_list) > 1) {
     aln_best_pair_hom_maxDist_DF = aln_best_pair_hom_maxDist_DF[[1]]
 }
 
-
 aln_best_pair_hom_maxDist_alenTOqlen_DF_list = lapply(1:length(chrName), function(x) {
     read.table(paste0(outDir, readsPrefix,
                       "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
@@ -114,7 +103,6 @@ if(length(aln_best_pair_hom_maxDist_alenTOqlen_DF_list) > 1) {
     } else {
     aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_alenTOqlen_DF[[1]]
 }
-
 
 aln_DF = aln_best_pair_hom_maxDist_alenTOqlen_DF
 
