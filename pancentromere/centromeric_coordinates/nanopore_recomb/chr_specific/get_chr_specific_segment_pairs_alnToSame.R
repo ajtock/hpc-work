@@ -9,17 +9,17 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./get_chr_specific_segment_pairs_alnToSame.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds not_centromere Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
+# ./get_chr_specific_segment_pairs_alnToSame.R ColLerF1pollen_1000bp_minq90 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds not_centromere Col-0.ragtag_scaffolds_Chr 24 0.9 11 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
 # conda deactivate
 
-#readsPrefix = "Col_Ler_F1_pollen_500bp_minq99"
+#readsPrefix = "ColLerF1pollen_1000bp_minq90"
 #acc1 = "Col-0.ragtag_scaffolds"
 #acc2 = "Ler-0_110x.ragtag_scaffolds"
 #region = "not_centromere"
 #alnTo = "Col-0.ragtag_scaffolds_Chr"
 #kmerSize = 24
 #overlapProp = 0.9
-#minHits = 10
+#minHits = 11
 #maxDist = 30000
 #alenTOqlen = 0.90
 #recombType = "co"
@@ -85,9 +85,9 @@ acc2_indir_list = lapply(1:length(chrName), function(x) {
 })
 
 # CEN coordinates
-CEN = read.csv(paste0("/home/ajt200/rds/hpc-work/pancentromere/centromeric_coordinates/",
+CEN = read.csv(paste0("/rds/project/rds-O5Ty9yVfQKg/pancentromere/centromeric_coordinates/",
                       "centromere_manual_EDTA4_fa.csv"),
-               header=T)
+               header = T)
 CEN$fasta.name = gsub(".fa", "", CEN$fasta.name)
 
 # Genomic definitions
@@ -142,7 +142,7 @@ load_pafs = function(indir, acc_name, aln_acc, suffix, aligner) {
     #acc_name=acc1_name
     #suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf")
     #aligner="wm"
-    files = system(paste0("ls -1 ", indir, "*", acc_name, suffix), intern=T)
+    files = system(paste0("find ", indir, " -type f -name ", "'*", acc_name, suffix, "'", " -print"), intern=T)
     if(length(files) > 0) {
         aln_DF = data.frame()
         for(h in 1:length(files)) {
@@ -160,13 +160,13 @@ load_pafs = function(indir, acc_name, aln_acc, suffix, aligner) {
 }
 
 
-# wm alignments
-acc1_wm_list = mclapply(1:length(acc1_indir_list), function(x) {
-    load_pafs(indir=acc1_indir_list[[x]], acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
-}, mc.preschedule=F, mc.cores=length(acc1_indir_list))
-acc2_wm_list = mclapply(1:length(acc2_indir_list), function(x) {
-    load_pafs(indir=acc2_indir_list[[x]], acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
-}, mc.preschedule=F, mc.cores=length(acc2_indir_list))
+## wm alignments
+#acc1_wm_list = mclapply(1:length(acc1_indir_list), function(x) {
+#    load_pafs(indir=acc1_indir_list[[x]], acc_name=acc1_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
+#}, mc.preschedule=F, mc.cores=length(acc1_indir_list))
+#acc2_wm_list = mclapply(1:length(acc2_indir_list), function(x) {
+#    load_pafs(indir=acc2_indir_list[[x]], acc_name=acc2_name, suffix=paste0("_alnTo_", alnTo, "_wm_ont.paf"), aligner="wm")
+#}, mc.preschedule=F, mc.cores=length(acc2_indir_list))
 
 # mm alignments
 acc1_mm_list = mclapply(1:length(acc1_indir_list), function(x) {
@@ -186,18 +186,18 @@ acc2_sr_list = mclapply(1:length(acc2_indir_list), function(x) {
 
 
 # acc alignments - chromosome list of aligner lists
-acc1_aln_chr_list_of_lists = lapply(1:length(acc1_wm_list), function(x) {
-    list(acc1_wm_list[[x]], acc1_mm_list[[x]], acc1_sr_list[[x]])
+acc1_aln_chr_list_of_lists = lapply(1:length(acc1_mm_list), function(x) {
+    list(acc1_mm_list[[x]], acc1_sr_list[[x]]) ## acc1_wm_list[[x]], removed as wm alignment not produced 
 })
 for(x in 1:length(acc1_aln_chr_list_of_lists)) {
-    names(acc1_aln_chr_list_of_lists[[x]]) = c("wm", "mm", "sr")
+    names(acc1_aln_chr_list_of_lists[[x]]) = c("mm", "sr") ## "wm"
 }
 
-acc2_aln_chr_list_of_lists = lapply(1:length(acc2_wm_list), function(x) {
-    list(acc2_wm_list[[x]], acc2_mm_list[[x]], acc2_sr_list[[x]])
+acc2_aln_chr_list_of_lists = lapply(1:length(acc2_mm_list), function(x) {
+    list(acc2_mm_list[[x]], acc2_sr_list[[x]]) ## acc2_wm_list[[x]], removed as wm alignment not produced
 })
 for(x in 1:length(acc2_aln_chr_list_of_lists)) {
-    names(acc2_aln_chr_list_of_lists[[x]]) = c("wm", "mm", "sr")
+    names(acc2_aln_chr_list_of_lists[[x]]) = c("mm", "sr") ## "wm" removed
 }
 
 

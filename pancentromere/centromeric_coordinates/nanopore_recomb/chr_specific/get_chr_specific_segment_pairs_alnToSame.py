@@ -153,7 +153,7 @@ acc2_chrs = [acc2_name + "_" + x for x in acc2_chrs]
 # NOTE: for some reason the "find ..." approach below doesn't work
 # from within python, so need to create and run an equivalent bash script:
 #cat_cmd = ["find"] + \
-#          ["/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + indir + "/"] + \
+#          [indir + "/"] + \
 #          ["-mindepth", "1"] + \
 #          ["-maxdepth", "1"] + \
 #          ["-type", "f"] + \
@@ -195,19 +195,19 @@ def cat_pafs(indir, acc_name, suffix):
 
 for x in range(0, len(acc1_indir_list)):
     print(acc1_indir_list[x])
-    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+    cat_pafs(indir=acc1_indir_list[x],
              acc_name=acc1_name,
              suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
-    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+    cat_pafs(indir=acc1_indir_list[x],
              acc_name=acc1_name,
              suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
 
 for x in range(0, len(acc2_indir_list)):
     print(acc2_indir_list[x])
-    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+    cat_pafs(indir=acc2_indir_list[x],
              acc_name=acc2_name,
              suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
-    cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+    cat_pafs(indir=acc2_indir_list[x],
              acc_name=acc2_name,
              suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
 
@@ -242,7 +242,7 @@ def load_pafs_slowly(indir, acc_name, suffix, aligner):
     #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
     #aligner="mm"
     find_cmd = ["find"] + \
-               ["/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + indir + "/"] + \
+               [indir + "/"] + \
                ["-type", "f"] + \
                ["-name", "*" + acc_name + suffix] + \
                ["-print"]
@@ -270,7 +270,7 @@ def load_pafs_slowly(indir, acc_name, suffix, aligner):
 # mm alignments
 acc1_mm_list = []
 for x in range(0, len(acc1_indir_list)):
-    acc1_mm_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+    acc1_mm_Chr = load_cat_paf(indir=acc1_indir_list[x],
                                acc_name=acc1_name,
                                suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
                                aligner="mm")
@@ -280,7 +280,7 @@ for x in range(0, len(acc1_indir_list)):
 
 acc2_mm_list = []
 for x in range(0, len(acc2_indir_list)):
-    acc2_mm_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+    acc2_mm_Chr = load_cat_paf(indir=acc2_indir_list[x],
                                acc_name=acc2_name,
                                suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
                                aligner="mm")
@@ -291,7 +291,7 @@ for x in range(0, len(acc2_indir_list)):
 # sr alignments
 acc1_sr_list = []
 for x in range(0, len(acc1_indir_list)):
-    acc1_sr_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
+    acc1_sr_Chr = load_cat_paf(indir=acc1_indir_list[x],
                                acc_name=acc1_name,
                                suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
                                aligner="sr")
@@ -301,7 +301,7 @@ for x in range(0, len(acc1_indir_list)):
 
 acc2_sr_list = []
 for x in range(0, len(acc2_indir_list)):
-    acc2_sr_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
+    acc2_sr_Chr = load_cat_paf(indir=acc2_indir_list[x],
                                acc_name=acc2_name,
                                suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
                                aligner="sr")
@@ -535,6 +535,22 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF.loc[ ( al
 
 
 # Write to TSV
+aln_best_pair_DF_filename = outdir + "/" + parser.readsPrefix + \
+    "_" + parser.acc1 + "_" + parser.acc2 + \
+    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
+    "_" + parser.recombType + \
+    "_alnTo_" + parser.alnTo + "_" + \
+    re.sub(",", "_", parser.chrom) + ".tsv"
+aln_best_pair_DF.to_csv(aln_best_pair_DF_filename, sep="\t", header=True, index=False)
+
+aln_best_pair_hom_DF_filename = outdir + "/" + parser.readsPrefix + \
+    "_" + parser.acc1 + "_" + parser.acc2 + \
+    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
+    "_hom_" + parser.recombType + \
+    "_alnTo_" + parser.alnTo + "_" + \
+    re.sub(",", "_", parser.chrom) + ".tsv"
+aln_best_pair_hom_DF.to_csv(aln_best_pair_hom_DF_filename, sep="\t", header=True, index=False)
+
 aln_best_pair_hom_maxDist_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \

@@ -9,17 +9,17 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./plot_recombinant_reads.R Col_Ler_F1_pollen_500bp_minq99 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds not_centromere Col-0.ragtag_scaffolds_Chr 24 0.9 10 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
+# ./plot_recombinant_reads.R ColLerF1pollen_1000bp_minq90 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds not_centromere Col-0.ragtag_scaffolds_Chr 24 0.9 11 30000 0.90 co 'Chr1,Chr2,Chr3,Chr4,Chr5'
 # conda deactivate
 
-#readsPrefix = "Col_Ler_F1_pollen_500bp_minq99"
+#readsPrefix = "ColLerF1pollen_1000bp_minq90"
 #acc1 = "Col-0.ragtag_scaffolds"
 #acc2 = "Ler-0_110x.ragtag_scaffolds"
 #region = "not_centromere"
 #alnTo = "Col-0.ragtag_scaffolds_Chr"
 #kmerSize = 24
 #overlapProp = 0.9
-#minHits = 10
+#minHits = 11
 #maxDist = 30000
 #alenTOqlen = 0.90
 #recombType = "co"
@@ -56,6 +56,15 @@ options(scipen=999)
 library(ComplexHeatmap)
 library(Cairo)
 library(seqinr)
+library(dplyr)
+library(parallel)
+library(doParallel)
+# Create and register a doParallel parallel backend
+registerDoParallel()
+print("Currently registered parallel backend name, version and cores")
+print(getDoParName())
+print(getDoParVersion())
+print(getDoParWorkers())
 
 
 outDir = paste0(region, "/segment_pairs/", recombType, "/")
@@ -70,62 +79,89 @@ acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
                       split="_" )[[1]][1]
 
 
-aln_best_pair_hom_maxDist_DF = read.table(paste0(outDir, readsPrefix,
-                                                 "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                                                 "_hom_maxDist_", recombType,
-                                                 "_alnTo_", alnTo, "_",
-                                                 paste0(chrName, collapse="_"), ".tsv"),
-                                          header=T)
-aln_best_pair_hom_maxDist_alenTOqlen_DF = read.table(paste0(outDir, readsPrefix,
-                                                            "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
-                                                            "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
-                                                            "_alnTo_", alnTo, "_",
-                                                            paste0(chrName, collapse="_"), ".tsv"),
-                                                     header=T)
+aln_best_pair_DF = dplyr::bind_rows(
+    mclapply(1:length(acc1_aln_chr_list_of_lists), function(x) {
+        aln_best_pair(acc1_aln_DF_list=acc1_aln_chr_list_of_lists[[x]], acc2_aln_DF_list=acc2_aln_chr_list_of_lists[[x]])
+    }, mc.preschedule=F, mc.cores=length(acc1_aln_chr_list_of_lists))
+)
+
+
+aln_best_pair_hom_maxDist_DF_list = lapply(1:length(chrName), function(x) {
+    read.table(paste0(outDir, readsPrefix,
+                      "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                      "_hom_maxDist_", recombType,
+                      "_alnTo_", alnTo, "_",
+                      chrName[x], ".tsv"),
+               header=T)
+})
+if(length(aln_best_pair_hom_maxDist_DF_list) > 1) {
+    aln_best_pair_hom_maxDist_DF = dplyr::bind_rows(aln_best_pair_hom_maxDist_DF_list)
+    } else {
+    aln_best_pair_hom_maxDist_DF = aln_best_pair_hom_maxDist_DF[[1]]
+}
+
+
+aln_best_pair_hom_maxDist_alenTOqlen_DF_list = lapply(1:length(chrName), function(x) {
+    read.table(paste0(outDir, readsPrefix,
+                      "_", acc1, "_", acc2, "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                      "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
+                      "_alnTo_", alnTo, "_",
+                      chrName[x], ".tsv"),
+               header=T)
+})
+if(length(aln_best_pair_hom_maxDist_alenTOqlen_DF_list) > 1) {
+    aln_best_pair_hom_maxDist_alenTOqlen_DF = dplyr::bind_rows(aln_best_pair_hom_maxDist_alenTOqlen_DF_list)
+    } else {
+    aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_alenTOqlen_DF[[1]]
+}
+
 
 aln_DF = aln_best_pair_hom_maxDist_alenTOqlen_DF
 
 # Create list of all hybrid reads
 hybrid_reads_list = list()
 for(x in 1:length(chrName)) {
-    hybrid_reads_list_chr = read.fasta(paste0("fasta/", readsPrefix,
-                                              "_match_", acc1, "_", region, "_", chrName[x],
-                                              "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
-                                              "_match_", acc2, "_", region, "_", chrName[x],
-                                              "_specific_k", kmerSize, "_downsampled_op", overlapProp, "_hits", minHits,
-                                              ".fa"),
+    hybrid_reads_list_chr = read.fasta(paste0(outDir, readsPrefix,
+                                              "_", acc1, "_", acc2,
+                                              "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                                              "_hom_maxDist_aTOq", alenTOqlen, "_", recombType,
+                                              "_alnTo_", alnTo, "_",
+                                              chrName[x], "_hybrid_reads.fa"),
                                        forceDNAtolower=F)
     hybrid_reads_list = c(hybrid_reads_list, hybrid_reads_list_chr)
 }
 
 # Make haplotype data.frames of reads based on k-mer locations
 make_haplo_DF_list = function(aln_pair_DF, hybrid_reads_list) {
-    DF_list = lapply(1:nrow(aln_pair_DF), function(x) {
+    DF_list = mclapply(1:nrow(aln_pair_DF), function(x) {
         print(x)
         read_id = aln_pair_DF[x, ]$qname
         read_chr = aln_pair_DF[x, ]$acc1_tname
         read_rfa = hybrid_reads_list[[which(names(hybrid_reads_list) == read_id)]]
         read_seq = getSequence(read_rfa)
         read_len = length(read_seq)
-        read_kmer_loc = read.table(paste0(region, "/", read_chr, "/kmer_loc_tsv/",
-                                          read_id, "__kmer_loc.tsv"), header=T)
-        read_haplo_DF = data.frame()
-        for(h in 1:read_len) {
-            if(h %in% (read_kmer_loc$hit_start + 1)) {
-                pos_kmer_loc = read_kmer_loc[which(read_kmer_loc$hit_start + 1 == h),]
-                pos_geno_DF = data.frame(pos = h,
-                                         acc = pos_kmer_loc$acc)
-            } else {
-                pos_geno_DF = data.frame(pos = h,
-                                         acc = "X")
+        read_kmer_tsv = system(paste0("ls ", region, "/", read_chr, "/kmer_loc_tsv/",
+                                      read_id, "__*", "_alnTo_", alnTo, "_kmer_loc.tsv"), intern=T)
+        if(length(read_kmer_tsv) > 0) {
+            read_kmer_loc = read.table(read_kmer_tsv, header=T)
+            read_haplo_DF = data.frame()
+            for(h in 1:read_len) {
+                if(h %in% (read_kmer_loc$hit_start + 1)) {
+                    pos_kmer_loc = read_kmer_loc[which(read_kmer_loc$hit_start + 1 == h),]
+                    pos_geno_DF = data.frame(pos = h,
+                                             acc = pos_kmer_loc$acc)
+                } else {
+                    pos_geno_DF = data.frame(pos = h,
+                                             acc = "X")
+                }
+                read_haplo_DF = rbind(read_haplo_DF, pos_geno_DF)
             }
-            read_haplo_DF = rbind(read_haplo_DF, pos_geno_DF)
+            read_haplo_DF = data.frame(pos = read_haplo_DF$pos,
+                                       seq = read_seq,
+                                       acc = read_haplo_DF$acc)
+            read_haplo_DF
         }
-        read_haplo_DF = data.frame(pos = read_haplo_DF$pos,
-                                   seq = read_seq,
-                                   acc = read_haplo_DF$acc)
-        read_haplo_DF
-    })
+    }, mc.cores=detectCores(), mc.preschedule=T)
 
     return(DF_list)
 }
@@ -168,12 +204,14 @@ haplo_heatmap = function(haplo_DF, aln_DF) {
          )
 }
 
-for(x in 1:length(haplo_DF_list)) {
-    haplo_htmp = haplo_heatmap(haplo_DF = haplo_DF_list[[x]], aln_DF=aln_DF)
-    pdf(paste0(plotDir, aln_DF$acc1_tname[x], "_", aln_DF$qname[x],
-               "_alnTo_", alnTo, "_haplo_heatmap.pdf"),
-        height = 2, width = 0.05 * nrow(haplo_DF_list[[x]]))
-    draw(haplo_htmp,
-         heatmap_legend_side = "bottom")
-dev.off()
+foreach(x = 1:length(haplo_DF_list)) %dopar% {
+    if(!is.null(haplo_DF_list[[x]][[1]])) {
+        haplo_htmp = haplo_heatmap(haplo_DF = haplo_DF_list[[x]], aln_DF=aln_DF)
+        pdf(paste0(plotDir, aln_DF$acc1_tname[x], "_", aln_DF$qname[x],
+                   "_alnTo_", alnTo, "_haplo_heatmap.pdf"),
+            height = 2, width = 0.05 * nrow(haplo_DF_list[[x]]))
+        draw(haplo_htmp,
+             heatmap_legend_side = "bottom")
+        dev.off()
+    }
 }
