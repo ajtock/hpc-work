@@ -468,12 +468,12 @@ def align_read_segment_wm_ont(segment_fasta, genome):
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.paf", segment_fasta)
-    outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.err", segment_fasta)
-    with open(outpaf, "w") as outfile_handle, open(outerr, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle, stderr=outerr_handle) 
+    #outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.err", segment_fasta)
+    with open(outpaf, "w") as outfile_handle: #, open(outerr, "w") as outerr_handle:
+        subprocess.run(aln_cmd, stdout=outfile_handle) #, stderr=outerr_handle) 
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
-        subprocess.run(["rm", outpaf, outerr])
+        subprocess.run(["rm", outpaf]) #, outerr])
 #    # Delete file(s) if unmapped
 #    sam_view_cmd = ["samtools"] + \
 #                   ["view", outsam]
@@ -733,6 +733,27 @@ def main():
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
         align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        
+        # Delete accession-specific segment alignment file if the equivalent
+        # file for the other accession doesn't exist (indicating an unmapped segment)
+        acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
+        acc2_alignment_to_acc2_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr_"
+        delete_alignment(alignment_prefix1=acc1_alignment_to_acc1_prefix,
+                         alignment_prefix2=acc2_alignment_to_acc2_prefix)
+        delete_alignment(alignment_prefix1=acc2_alignment_to_acc2_prefix,
+                         alignment_prefix2=acc1_alignment_to_acc1_prefix)
+        
+        # Write within-read k-mer locations TSV file
+        kmer_loc_outfile = kmer_loc_outdir + "/" + \
+            read.id + "__hr" + str(parser.hybReadNo) + \
+            "_kmer_loc.tsv"
+        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+        del acc_kmer_loc_df_sort_tmp
+        # Delete within-read k-mer locations TSV file if correspodning accession-specific
+        # read segment alignment files don't exist
+        delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_acc1_prefix,
+                            alignment_prefix2=acc2_alignment_to_acc2_prefix,
+                            kmer_loc_outfile=kmer_loc_outfile)
     else: 
         align_read_segment_mm_ont(segment_fasta=acc1_outfile,
                                   genome=parser.alnTo)
@@ -742,32 +763,27 @@ def main():
                                  genome=parser.alnTo)
         align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                                  genome=parser.alnTo)
-    
-    
-    # Delete accession-specific segment alignment file if the equivalent
-    # file for the other accession doesn't exist (indicating an unmapped segment)
-    acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + parser.alnTo + "_"
-    acc2_alignment_to_acc1_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + parser.alnTo + "_"
-    
-    delete_alignment(alignment_prefix1=acc1_alignment_to_acc1_prefix,
-                     alignment_prefix2=acc2_alignment_to_acc1_prefix)
-    delete_alignment(alignment_prefix1=acc2_alignment_to_acc1_prefix,
-                     alignment_prefix2=acc1_alignment_to_acc1_prefix)
-    
-    
-    # Write within-read k-mer locations TSV file 
-    kmer_loc_outfile = kmer_loc_outdir + "/" + \
-        read.id + "__hr" + str(parser.hybReadNo) + \
-        "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
-    acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
-    del acc_kmer_loc_df_sort_tmp
-    
-    
-    # Delete within-read k-mer locations TSV file if correspodning accession-specific
-    # read segment alignment files don't exist
-    delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_acc1_prefix,
-                        alignment_prefix2=acc2_alignment_to_acc1_prefix,
-                        kmer_loc_outfile=kmer_loc_outfile)
+        
+        # Delete accession-specific segment alignment file if the equivalent
+        # file for the other accession doesn't exist (indicating an unmapped segment)
+        acc1_alignment_to_alnTo_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + parser.alnTo + "_"
+        acc2_alignment_to_alnTo_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + parser.alnTo + "_"
+        delete_alignment(alignment_prefix1=acc1_alignment_to_alnTo_prefix,
+                         alignment_prefix2=acc2_alignment_to_alnTo_prefix)
+        delete_alignment(alignment_prefix1=acc2_alignment_to_alnTo_prefix,
+                         alignment_prefix2=acc1_alignment_to_alnTo_prefix)
+        
+        # Write within-read k-mer locations TSV file
+        kmer_loc_outfile = kmer_loc_outdir + "/" + \
+            read.id + "__hr" + str(parser.hybReadNo) + \
+            "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
+        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+        del acc_kmer_loc_df_sort_tmp
+        # Delete within-read k-mer locations TSV file if correspodning accession-specific
+        # read segment alignment files don't exist
+        delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_alnTo_prefix,
+                            alignment_prefix2=acc2_alignment_to_alnTo_prefix,
+                            kmer_loc_outfile=kmer_loc_outfile)
     
     
     ## Delete read segment FASTA to reduce number of output files for each read
