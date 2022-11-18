@@ -612,7 +612,7 @@ summary_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_" + parser.recombType + \
-    "_alnTo_" + parser.acc1 + "_Chr_" + \
+    "_" +  \
     re.sub(",", "_", parser.chrom) + "_count_summary.tsv"
 summary_DF.to_csv(summary_DF_filename, sep="\t", header=True, index=False)
 
@@ -620,7 +620,7 @@ aln_best_pair_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_" + parser.recombType + \
-    "_alnTo_" + parser.acc1 + "_Chr_" + \
+    "_" +  \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_DF.to_csv(aln_best_pair_DF_filename, sep="\t", header=True, index=False)
 
@@ -628,7 +628,7 @@ aln_best_pair_hom_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_hom_" + parser.recombType + \
-    "_alnTo_" + parser.acc1 + "_Chr_" + \
+    "_" +  \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_DF.to_csv(aln_best_pair_hom_DF_filename, sep="\t", header=True, index=False)
 
@@ -636,7 +636,7 @@ aln_best_pair_hom_maxDist_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_hom_maxDist_" + parser.recombType + \
-    "_alnTo_" + parser.acc1 + "_Chr_" + \
+    "_" +  \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_maxDist_DF.to_csv(aln_best_pair_hom_maxDist_DF_filename, sep="\t", header=True, index=False)
 
@@ -644,7 +644,7 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF_filename = outdir + "/" + parser.readsPr
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_" + parser.recombType + \
-    "_alnTo_" + parser.acc1 + "_Chr_" + \
+    "_" +  \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_maxDist_alenTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_alenTOqlen_DF_filename, sep="\t", header=True, index=False)
 
@@ -652,7 +652,7 @@ aln_best_pair_hom_maxDist_nmatchTOqlen_DF_filename = outdir + "/" + parser.reads
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_hom_maxDist_nTOq" + str(parser.nmatchTOqlen) + "_" + parser.recombType + \
-    "_alnTo_" + parser.acc1 + "_Chr_" + \
+    "_" +  \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_maxDist_nmatchTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_nmatchTOqlen_DF_filename, sep="\t", header=True, index=False)
 
@@ -680,21 +680,21 @@ for x in range(0, len(chrom)):
         "_" + parser.acc1 + "_" + parser.acc2 + \
         "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
         "_hom_maxDist_" + parser.recombType + \
-        "_alnTo_" + parser.acc1 + "_Chr_" + \
+        "_" +  \
         chrom[x] + "_hybrid_reads.fa"
     # Output FASTA path to maxDist_alenTOqlen-filtered hybrid reads for the given chromosome
     reads_maxDist_alenTOqlen_fa = outdir + "/" + parser.readsPrefix + \
         "_" + parser.acc1 + "_" + parser.acc2 + \
         "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
         "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_" + parser.recombType + \
-        "_alnTo_" + parser.acc1 + "_Chr_" + \
+        "_" +  \
         chrom[x] + "_hybrid_reads.fa"
     # Output FASTA path to maxDist_nmatchTOqlen-filtered hybrid reads for the given chromosome
     reads_maxDist_nmatchTOqlen_fa = outdir + "/" + parser.readsPrefix + \
         "_" + parser.acc1 + "_" + parser.acc2 + \
         "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
         "_hom_maxDist_nTOq" + str(parser.nmatchTOqlen) + "_" + parser.recombType + \
-        "_alnTo_" + parser.acc1 + "_Chr_" + \
+        "_" +  \
         chrom[x] + "_hybrid_reads.fa"
     # Write outputs
     with open(reads_maxDist_fa, "w") as reads_maxDist_fa_handle:
