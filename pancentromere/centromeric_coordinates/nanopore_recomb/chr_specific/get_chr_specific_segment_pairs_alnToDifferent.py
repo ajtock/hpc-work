@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Author: Andy Tock (ajt200@cam.ac.uk)
-# Date: 09/11/2022
+# Date: 18/11/2022
 
 # Extract putative recombination events detected in Col-0/Ler-0
 # hybrid ONT reads identified on the basis that they contain >=
@@ -9,17 +9,17 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./get_chr_specific_segment_pairs_alnToSame.py \
+# ./get_chr_specific_segment_pairs_alnToDifferent.py \
 #  -r ColLerF1pollen_1000bp_minq90 \
 #  -a1 Col-0.ragtag_scaffolds \
 #  -a2 Ler-0_110x.ragtag_scaffolds \
 #  -k 24 \
 #  -op 0.9 \
 #  -mh 11 \
-#  -at Col-0.ragtag_scaffolds_Chr \
+#  -md 1e6 \
 #  -aq 0.90 \
 #  -rt co \
-#  -reg not_centromere \
+#  -reg centromere \
 #  -c 'Chr1'
 # conda deactivate
 
@@ -31,6 +31,7 @@ import re
 import gc
 import pandas as pd
 import numpy as np
+import math
 import subprocess
 import glob
 
@@ -55,14 +56,14 @@ def create_parser():
                         help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
     parser.add_argument("-mh", "--minHits", type=int, default="11",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 11")
-    parser.add_argument("-at", "--alnTo", type=str, default="Col-0.ragtag_scaffolds_Chr",
-                        help="The prefix of the assembly to be used for read segment alignment. Default: Col-0.ragtag_scaffolds_Chr")
+    parser.add_argument("-md", "--maxDist", type=float, default="1e6",
+                        help="The maximum inter-assembly distance in bp between accession-specific hybrid read segment alignments. Default: 1e6")
     parser.add_argument("-aq", "--alenTOqlen", type=float, default="0.90",
                         help="The minimum ratio of the read segment alignment length to the read segment length. Default: 0.90")
     parser.add_argument("-rt", "--recombType", type=str, default="co",
                         help="The type/pattern of the recombination event identified based on the sequence of accession-specific read segments. Default: co")
-    parser.add_argument("-reg", "--region", type=str, default="not_centromere",
-                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: not_centromere")
+    parser.add_argument("-reg", "--region", type=str, default="centromere",
+                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: centromere")
     parser.add_argument("-c", "--chrom", type=str, default="Chr1",
                         help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: Chr1")
     return parser
@@ -71,6 +72,16 @@ parser = create_parser().parse_args()
 print(parser)
 
 chrom = parser.chrom.split(",")
+
+maxDist = int(parser.maxDist)
+
+if math.floor(math.log10(maxDist)) + 1 < 4:
+    maxDistName = str(int(maxDist)) + "bp"
+elif math.floor(math.log10(maxDist)) + 1 >= 4 and \
+     math.floor(math.log10(maxDist)) + 1 <= 6:
+    maxDistName = str(int(maxDist / 1e3)) + "kb"
+elif math.floor(math.log10(maxDist)) + 1 >= 7:
+    maxDistName = str(int(maxDist / 1e6)) + "Mb"
 
 outdir = parser.region + "/segment_pairs/" + parser.recombType
 
@@ -164,7 +175,7 @@ def cat_pafs(indir, acc_name, suffix):
     ##indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1]
     #indir=acc1_indir_list[1]
     #acc_name=acc1_name
-    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #suffix="_alnTo_" + parser.acc1 + "_Chr_mm_ont.paf"
     """
     Concatenate all alignment files for the given chromosome,
     accession and aligner.
@@ -178,7 +189,7 @@ def cat_pafs(indir, acc_name, suffix):
         print("Concatenated alignment file " + out_paf + " already exists!")
         return
     else:
-        cat_pafs_script = indir + "/find_cat_pafs_alnTo_" + parser.alnTo + ".sh"
+        cat_pafs_script = indir + "/find_cat_pafs.sh"
         with open(cat_pafs_script, "w") as cat_pafs_script_handle:
             cat_pafs_script_handle.write("#!/bin/bash\n\n" + \
                                          "find " + indir + "/ \\\n" + \
@@ -196,19 +207,25 @@ for x in range(0, len(acc1_indir_list)):
     print(acc1_indir_list[x])
     cat_pafs(indir=acc1_indir_list[x],
              acc_name=acc1_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+             suffix="_alnTo_" + parser.acc1 + "_Chr_wm_ont.paf")
     cat_pafs(indir=acc1_indir_list[x],
              acc_name=acc1_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
+             suffix="_alnTo_" + parser.acc1 + "_Chr_mm_ont.paf")
+    cat_pafs(indir=acc1_indir_list[x],
+             acc_name=acc1_name,
+             suffix="_alnTo_" + parser.acc1 + "_Chr_mm_sr.paf")
 
 for x in range(0, len(acc2_indir_list)):
     print(acc2_indir_list[x])
     cat_pafs(indir=acc2_indir_list[x],
              acc_name=acc2_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+             suffix="_alnTo_" + parser.acc2 + "_Chr_wm_ont.paf")
     cat_pafs(indir=acc2_indir_list[x],
              acc_name=acc2_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
+             suffix="_alnTo_" + parser.acc2 + "_Chr_mm_ont.paf")
+    cat_pafs(indir=acc2_indir_list[x],
+             acc_name=acc2_name,
+             suffix="_alnTo_" + parser.acc2 + "_Chr_mm_sr.paf")
 
 
 # Load concatenated read segment alignment file as a DataFrame
@@ -216,7 +233,7 @@ def load_cat_paf(indir, acc_name, suffix, aligner):
     ##indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1]
     #indir=acc1_indir_list[1]
     #acc_name=acc1_name
-    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #suffix="_alnTo_" + parser.acc1 + "_Chr_mm_ont.paf"
     #aligner="mm"
     """
     Load concatenated read segment alignment file as a DataFrame.
@@ -238,7 +255,7 @@ def load_cat_paf(indir, acc_name, suffix, aligner):
 def load_pafs_slowly(indir, acc_name, suffix, aligner):
     #indir=acc1_indir_list[0]
     #acc_name=acc1_name
-    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #suffix="_alnTo_" + parser.acc1 + "_Chr_mm_ont.paf"
     #aligner="mm"
     find_cmd = ["find"] + \
                [indir + "/"] + \
@@ -266,12 +283,33 @@ def load_pafs_slowly(indir, acc_name, suffix, aligner):
         return aln_DF
 
 
+# wm alignments
+acc1_wm_list = []
+for x in range(0, len(acc1_indir_list)):
+    acc1_wm_Chr = load_cat_paf(indir=acc1_indir_list[x],
+                               acc_name=acc1_name,
+                               suffix="_alnTo_" + parser.acc1 + "_Chr_wm_ont.paf",
+                               aligner="wm")
+    acc1_wm_list.append(acc1_wm_Chr)
+    del acc1_wm_Chr
+    gc.collect()
+
+acc2_wm_list = []
+for x in range(0, len(acc2_indir_list)):
+    acc2_wm_Chr = load_cat_paf(indir=acc2_indir_list[x],
+                               acc_name=acc2_name,
+                               suffix="_alnTo_" + parser.acc2 + "_Chr_wm_ont.paf",
+                               aligner="wm")
+    acc2_wm_list.append(acc2_wm_Chr)
+    del acc2_wm_Chr
+    gc.collect()
+
 # mm alignments
 acc1_mm_list = []
 for x in range(0, len(acc1_indir_list)):
     acc1_mm_Chr = load_cat_paf(indir=acc1_indir_list[x],
                                acc_name=acc1_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                               suffix="_alnTo_" + parser.acc1 + "_Chr_mm_ont.paf",
                                aligner="mm")
     acc1_mm_list.append(acc1_mm_Chr)
     del acc1_mm_Chr
@@ -281,7 +319,7 @@ acc2_mm_list = []
 for x in range(0, len(acc2_indir_list)):
     acc2_mm_Chr = load_cat_paf(indir=acc2_indir_list[x],
                                acc_name=acc2_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                               suffix="_alnTo_" + parser.acc2 + "_Chr_mm_ont.paf",
                                aligner="mm")
     acc2_mm_list.append(acc2_mm_Chr)
     del acc2_mm_Chr
@@ -292,7 +330,7 @@ acc1_sr_list = []
 for x in range(0, len(acc1_indir_list)):
     acc1_sr_Chr = load_cat_paf(indir=acc1_indir_list[x],
                                acc_name=acc1_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                               suffix="_alnTo_" + parser.acc1 + "_Chr_mm_sr.paf",
                                aligner="sr")
     acc1_sr_list.append(acc1_sr_Chr)
     del acc1_sr_Chr
@@ -302,7 +340,7 @@ acc2_sr_list = []
 for x in range(0, len(acc2_indir_list)):
     acc2_sr_Chr = load_cat_paf(indir=acc2_indir_list[x],
                                acc_name=acc2_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                               suffix="_alnTo_" + parser.acc2 + "_Chr_mm_sr.paf",
                                aligner="sr")
     acc2_sr_list.append(acc2_sr_Chr)
     del acc2_sr_Chr
@@ -312,11 +350,11 @@ for x in range(0, len(acc2_indir_list)):
 # acc alignments - chromosome list of aligner lists
 acc1_aln_chr_nested_list = []
 for x in range(0, len(acc1_mm_list)):
-    acc1_aln_chr_nested_list.append([acc1_mm_list[x], acc1_sr_list[x]])
+    acc1_aln_chr_nested_list.append([acc1_wm_list[x], acc1_mm_list[x], acc1_sr_list[x]])
 
 acc2_aln_chr_nested_list = []
 for x in range(0, len(acc2_mm_list)):
-    acc2_aln_chr_nested_list.append([acc2_mm_list[x], acc2_sr_list[x]])
+    acc2_aln_chr_nested_list.append([acc2_wm_list[x], acc2_mm_list[x], acc2_sr_list[x]])
 
 
 # Get best pair of acc1 and acc2 read segment alignments, based on:
@@ -552,7 +590,7 @@ summary_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_" + parser.recombType + \
-    "_alnTo_" + parser.alnTo + "_" + \
+    "_alnTo_" + parser.acc1 + "_Chr_" + \
     re.sub(",", "_", parser.chrom) + "_count_summary.tsv"
 summary_DF.to_csv(summary_DF_filename, sep="\t", header=True, index=False)
 
@@ -560,7 +598,7 @@ aln_best_pair_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_" + parser.recombType + \
-    "_alnTo_" + parser.alnTo + "_" + \
+    "_alnTo_" + parser.acc1 + "_Chr_" + \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_DF.to_csv(aln_best_pair_DF_filename, sep="\t", header=True, index=False)
 
@@ -568,7 +606,7 @@ aln_best_pair_hom_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_hom_" + parser.recombType + \
-    "_alnTo_" + parser.alnTo + "_" + \
+    "_alnTo_" + parser.acc1 + "_Chr_" + \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_DF.to_csv(aln_best_pair_hom_DF_filename, sep="\t", header=True, index=False)
 
@@ -576,7 +614,7 @@ aln_best_pair_hom_maxDist_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_hom_maxDist_" + parser.recombType + \
-    "_alnTo_" + parser.alnTo + "_" + \
+    "_alnTo_" + parser.acc1 + "_Chr_" + \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_maxDist_DF.to_csv(aln_best_pair_hom_maxDist_DF_filename, sep="\t", header=True, index=False)
 
@@ -584,7 +622,7 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF_filename = outdir + "/" + parser.readsPr
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
     "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_" + parser.recombType + \
-    "_alnTo_" + parser.alnTo + "_" + \
+    "_alnTo_" + parser.acc1 + "_Chr_" + \
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_maxDist_alenTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_alenTOqlen_DF_filename, sep="\t", header=True, index=False)
 
@@ -609,14 +647,14 @@ for x in range(0, len(chrom)):
         "_" + parser.acc1 + "_" + parser.acc2 + \
         "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
         "_hom_maxDist_" + parser.recombType + \
-        "_alnTo_" + parser.alnTo + "_" + \
+        "_alnTo_" + parser.acc1 + "_Chr_" + \
         chrom[x] + "_hybrid_reads.fa"
     # Output FASTA path to maxDist_alenTOqlen-filtered hybrid reads for the given chromosome
     reads_maxDist_alenTOqlen_fa = outdir + "/" + parser.readsPrefix + \
         "_" + parser.acc1 + "_" + parser.acc2 + \
         "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
         "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_" + parser.recombType + \
-        "_alnTo_" + parser.alnTo + "_" + \
+        "_alnTo_" + parser.acc1 + "_Chr_" + \
         chrom[x] + "_hybrid_reads.fa"
     # Write outputs
     with open(reads_maxDist_fa, "w") as reads_maxDist_fa_handle:
