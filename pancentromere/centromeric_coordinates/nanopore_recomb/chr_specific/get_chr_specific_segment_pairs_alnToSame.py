@@ -545,7 +545,13 @@ summary_DF = pd.DataFrame({ "Filter": [ "hybrid_reads",
                                        aln_best_pair_DF.shape[0],
                                        aln_best_pair_hom_DF.shape[0],
                                        aln_best_pair_hom_maxDist_DF.shape[0],
-                                       aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0] ] })
+                                       aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0] ] 
+                            "Proportion": [ hybrid_reads_counter / hybrid_reads_counter, 
+                                            aln_best_pair_DF.shape[0] / hybrid_reads_counter,
+                                            aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0],
+                                            aln_best_pair_hom_maxDist_DF.shape[0] / aln_best_pair_hom_DF.shape[0],
+                                            aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0] / aln_best_pair_hom_maxDist_DF.shape[0] ] })
+
 
 # Write to TSV
 summary_DF_filename = outdir + "/" + parser.readsPrefix + \
