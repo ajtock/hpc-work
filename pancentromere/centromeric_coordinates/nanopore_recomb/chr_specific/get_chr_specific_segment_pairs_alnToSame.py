@@ -179,7 +179,7 @@ def cat_pafs(indir, acc_name, suffix):
         print("Concatenated alignment file " + out_paf + " already exists!")
         return
     else:
-        cat_pafs_script = indir + "/find_cat_pafs.sh"
+        cat_pafs_script = indir + "/find_cat_pafs_alnTo_" + parser.alnTo + ".sh"
         with open(cat_pafs_script, "w") as cat_pafs_script_handle:
             cat_pafs_script_handle.write("#!/bin/bash\n\n" + \
                                          "find " + indir + "/ \\\n" + \
@@ -329,9 +329,9 @@ def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
     #acc2_aln_DF_list=acc2_aln_chr_nested_list[0]
     """
     Get the best pair of acc1 and acc2 read segment alignments, based on:
-    1. The alignment length (alen)
-    2. The alignment number of matching bases (nmatch)
-    3. The alignment strand
+    1. The alignment strand
+    2. The alignment length (alen)
+    3. The alignment number of matching bases (nmatch)
     """
     # Each of the 2 list elements in acc1_aln_DF_list and acc2_aln_DF_list is
     # a DataFrame of alignments done by mm_ont or mm_sr
@@ -488,6 +488,7 @@ aln_best_pair_hom_DF["event_midpoint"] = event_midpoint
 # to be used for retaining alignment pairs where the Col and Ler
 # read segments align to within a given distance of each other
 # (e.g., the given hybrid read length) in the same assembly
+hybrid_reads_counter = 0
 hybrid_read_lengths_DF_list = []
 for x in range(0, len(chrom)):
     reads_fa = "fasta/" + parser.readsPrefix + \
@@ -497,6 +498,7 @@ for x in range(0, len(chrom)):
         "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
         ".fa"
     reads_dict = SeqIO.index(reads_fa, "fasta")
+    hybrid_reads_counter += len(reads_dict)
     reads = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_DF["qname"])]
     #reads_iter = SeqIO.parse(reads_fa, "fasta")
     #reads2 = [x for x in reads_iter if x.id in list(aln_best_pair_hom_DF["qname"])]
@@ -534,7 +536,27 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF.loc[ ( al
                                                                               aln_best_pair_hom_maxDist_DF["acc2_qlen"] >= parser.alenTOqlen ) ] 
 
 
+# Make summary of counts obtained at each filtering stage
+summary_DF = pd.DataFrame({ "Filter": [ "hybrid_reads",
+                                        "hybrid_read_segment_pairs_aligned",
+                                        "hybrid_read_segment_pairs_aligned_to_same_chr",
+                                        "hybrid_read_segment_pairs_aligned_to_within_maxDist",
+                                        "hybrid_read_segment_pairs_aligned_chr_maxDist_alenTOqlen" ],
+                            "Count": [ hybrid_reads_counter, 
+                                       aln_best_pair_DF.shape[0],
+                                       aln_best_pair_hom_DF.shape[0],
+                                       aln_best_pair_hom_maxDist_DF.shape[0],
+                                       aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0] ] })
+
 # Write to TSV
+summary_DF_filename = outdir + "/" + parser.readsPrefix + \
+    "_" + parser.acc1 + "_" + parser.acc2 + \
+    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
+    "_" + parser.recombType + \
+    "_alnTo_" + parser.alnTo + "_" + \
+    re.sub(",", "_", parser.chrom) + "_count_summary.tsv"
+summary_DF.to_csv(summary_DF_filename, sep="\t", header=True, index=False)
+
 aln_best_pair_DF_filename = outdir + "/" + parser.readsPrefix + \
     "_" + parser.acc1 + "_" + parser.acc2 + \
     "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
