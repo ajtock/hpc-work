@@ -62,7 +62,7 @@ def create_parser():
     parser.add_argument("-aq", "--alenTOqlen", type=float, default="0.90",
                         help="The minimum ratio of the read segment alignment length to the read segment length. Default: 0.90")
     parser.add_argument("-nq", "--nmatchTOqlen", type=float, default="0.80",
-                        help="The minimum ratio of the read segment number of matching bases to the read segment length. Default: 0.80")
+                        help="The minimum ratio of the read segment alignment number of matching bases to the read segment length. Default: 0.80")
     parser.add_argument("-rt", "--recombType", type=str, default="co",
                         help="The type/pattern of the recombination event identified based on the sequence of accession-specific read segments. Default: co")
     parser.add_argument("-reg", "--region", type=str, default="centromere",
