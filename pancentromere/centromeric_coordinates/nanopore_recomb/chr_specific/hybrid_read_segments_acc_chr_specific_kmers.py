@@ -174,13 +174,13 @@ def union_lists(*lists):
 
 
 # Make a single list that contains all
-# the elements of each sublist of a list
-def flatten(lol):
+# the elements of each sublist of a nested list
+def flatten(nested_list):
     """
-    Use list comprehension to flatten a list of lists (lol) into a
+    Use list comprehension to flatten a nested list into a
     single list composed of all the elements in each sublist.
     """
-    return [item for sublist in lol for item in sublist]
+    return [item for sublist in nested_list for item in sublist]
 
 
 # Within a read, find the 0-based start location of all occurrences

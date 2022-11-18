@@ -18,6 +18,7 @@
 #  -mh 11 \
 #  -md 1e6 \
 #  -aq 0.90 \
+#  -nq 0.80 \
 #  -rt co \
 #  -reg centromere \
 #  -c 'Chr1'
@@ -60,6 +61,8 @@ def create_parser():
                         help="The maximum inter-assembly distance in bp between accession-specific hybrid read segment alignments. Default: 1e6")
     parser.add_argument("-aq", "--alenTOqlen", type=float, default="0.90",
                         help="The minimum ratio of the read segment alignment length to the read segment length. Default: 0.90")
+    parser.add_argument("-nq", "--nmatchTOqlen", type=float, default="0.80",
+                        help="The minimum ratio of the read segment number of matching bases to the read segment length. Default: 0.80")
     parser.add_argument("-rt", "--recombType", type=str, default="co",
                         help="The type/pattern of the recombination event identified based on the sequence of accession-specific read segments. Default: co")
     parser.add_argument("-reg", "--region", type=str, default="centromere",
@@ -129,6 +132,7 @@ acc1_CEN = acc1_CEN_new
 acc1_CENstart = acc1_CEN["start"]
 acc1_CENend = acc1_CEN["end"]
 acc1_chrs = [acc1_name + "_" + x for x in acc1_chrs]
+acc1_CENsize = list(acc1_CEN["end"] - acc1_CEN["start"] + 1)
 
 
 # acc2
@@ -156,6 +160,13 @@ acc2_CEN = acc2_CEN_new
 acc2_CENstart = acc2_CEN["start"]
 acc2_CENend = acc2_CEN["end"]
 acc2_chrs = [acc2_name + "_" + x for x in acc2_chrs]
+acc2_CENsize = list(acc2_CEN["end"] - acc2_CEN["start"] + 1)
+
+
+CENsize_nparray = np.array([acc1_CENsize,
+                            acc2_CENsize])
+min_CENsize_list = list(CENsize_nparray.min(axis=0))
+max_CENsize_list = list(CENsize_nparray.max(axis=0))
 
 
 # Concatenate all alignment files for the given chromosome,
@@ -357,18 +368,17 @@ for x in range(0, len(acc2_mm_list)):
     acc2_aln_chr_nested_list.append([acc2_wm_list[x], acc2_mm_list[x], acc2_sr_list[x]])
 
 
-# Get best pair of acc1 and acc2 read segment alignments, based on:
-# 1. The alignment strand
-# 2. The alignment length (alen)
-# 3. The alignment number of matching bases (nmatch)
+# Get best pair of acc1 and acc2 read segment alignments
 def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
     #acc1_aln_DF_list=acc1_aln_chr_nested_list[0]
     #acc2_aln_DF_list=acc2_aln_chr_nested_list[0]
     """
     Get the best pair of acc1 and acc2 read segment alignments, based on:
-    1. The alignment strand
+    1. The alignment number of matching bases (nmatch)
     2. The alignment length (alen)
-    3. The alignment number of matching bases (nmatch)
+    3. The alignment quality (mapq)
+    4. The alignment type (atype)
+    #. The alignment strand
     """
     # Each of the 2 list elements in acc1_aln_DF_list and acc2_aln_DF_list is
     # a DataFrame of alignments done by mm_ont or mm_sr
@@ -378,56 +388,63 @@ def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
     # For each read ID, get the best alignment from each of acc1_aln_DF_concat and
     # and acc2_aln_DF_concat
     # acc1
-    acc1_aln_DF_concat_sort = acc1_aln_DF_concat.sort_values(by=["qname", "alen", "nmatch"],
+    acc1_aln_DF_concat_sort = acc1_aln_DF_concat.sort_values(by=["qname", "nmatch", "alen", "mapq", "atype"],
                                                              axis=0,
-                                                             ascending=[True, False, False],
+                                                             ascending=[True, False, False, False, True],
                                                              kind="quicksort",
                                                              ignore_index=True)
     acc1_aln_DF_concat_sort_list = list(acc1_aln_DF_concat_sort.groupby("qname"))
     acc1_aln_DF_best = pd.DataFrame()
     for read_tuple in acc1_aln_DF_concat_sort_list:
-        read_tuple_aln_DF_best = read_tuple[1].iloc[[0]]
-        acc1_aln_DF_best = pd.concat(objs=[acc1_aln_DF_best, read_tuple_aln_DF_best],
-                                     axis=0,
-                                     ignore_index=True)
+        if read_tuple[1].loc[read_tuple[1]["aligner"] == "wm"].shape[0] < 10 and \
+           read_tuple[1].loc[read_tuple[1]["aligner"] == "mm"].shape[0] < 10 and \
+           read_tuple[1].loc[read_tuple[1]["aligner"] == "sr"].shape[0] < 10:
+            read_tuple_aln_DF_best = read_tuple[1].iloc[[0]]
+            acc1_aln_DF_best = pd.concat(objs=[acc1_aln_DF_best, read_tuple_aln_DF_best],
+                                         axis=0,
+                                         ignore_index=True)
     del acc1_aln_DF_concat, acc1_aln_DF_concat_sort, acc1_aln_DF_concat_sort_list, read_tuple_aln_DF_best
     gc.collect()
+    #
     # acc2
     acc2_aln_DF_best = pd.DataFrame()
     for read_id in list(acc1_aln_DF_best["qname"]):
         #print(read_id)
         acc1_aln_DF_read_id = acc1_aln_DF_best[acc1_aln_DF_best["qname"] == read_id] 
         acc2_aln_DF_read_id = acc2_aln_DF_concat[acc2_aln_DF_concat["qname"] == read_id] 
-        acc2_aln_DF_read_id_sort = acc2_aln_DF_read_id.sort_values(by=["alen", "nmatch"],
+        acc2_aln_DF_read_id_sort = acc2_aln_DF_read_id.sort_values(by=["nmatch", "alen", "mapq", "atype"],
                                                                    axis=0,
-                                                                   ascending=[False, False],
+                                                                   ascending=[False, False, False, True],
                                                                    kind="quicksort",
                                                                    ignore_index=True)
-        acc2_aln_DF_read_id_sort_strand = acc2_aln_DF_read_id_sort[acc2_aln_DF_read_id_sort["strand"] == acc1_aln_DF_read_id["strand"].iloc[0]]
-        if acc2_aln_DF_read_id_sort_strand.shape[0] > 0:
-            acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
-            ## If "alen" and "nmatch" are to be given priority over finding pairs where both alignments are to the same strand:
-            #if acc2_aln_DF_read_id_sort_strand.iloc[0]["alen"] == acc2_aln_DF_read_id_sort.iloc[0]["alen"] and \
-            #   acc2_aln_DF_read_id_sort_strand.iloc[0]["nmatch"] == acc2_aln_DF_read_id_sort.iloc[0]["nmatch"]:
-            #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
-            #else:
-            #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
-        else:
-            acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
-        acc2_aln_DF_best = pd.concat(objs=[acc2_aln_DF_best, acc2_aln_DF_read_id_sort_select],
-                                     axis=0,
-                                     ignore_index=True)
-    del acc2_aln_DF_concat, acc1_aln_DF_read_id, acc2_aln_DF_read_id, acc2_aln_DF_read_id_sort, acc2_aln_DF_read_id_sort_strand, acc2_aln_DF_read_id_sort_select
+        if acc2_aln_DF_read_id_sort.loc[acc2_aln_DF_read_id_sort["aligner"] == "wm"].shape[0] < 10 and \
+           acc2_aln_DF_read_id_sort.loc[acc2_aln_DF_read_id_sort["aligner"] == "mm"].shape[0] < 10 and \
+           acc2_aln_DF_read_id_sort.loc[acc2_aln_DF_read_id_sort["aligner"] == "sr"].shape[0] < 10:
+            acc2_aln_DF_read_id_sort_strand = acc2_aln_DF_read_id_sort[acc2_aln_DF_read_id_sort["strand"] == acc1_aln_DF_read_id["strand"].iloc[0]]
+            if acc2_aln_DF_read_id_sort_strand.shape[0] > 0:
+                #acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
+                # If "nmatch" and "alen" are to be given priority over finding pairs where both alignments are to the same strand:
+                if acc2_aln_DF_read_id_sort_strand.iloc[0]["nmatch"] == acc2_aln_DF_read_id_sort.iloc[0]["nmatch"] and \
+                   acc2_aln_DF_read_id_sort_strand.iloc[0]["alen"] == acc2_aln_DF_read_id_sort.iloc[0]["alen"]:
+                    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
+                else:
+                    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
+            else:
+                acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
+            acc2_aln_DF_best = pd.concat(objs=[acc2_aln_DF_best, acc2_aln_DF_read_id_sort_select],
+                                         axis=0,
+                                         ignore_index=True)
+    del acc2_aln_DF_concat, acc1_aln_DF_read_id, acc2_aln_DF_read_id, acc2_aln_DF_read_id_sort
     gc.collect()
     #
     acc1_aln_DF_best.columns = "acc1_" + acc1_aln_DF_best.columns 
     acc2_aln_DF_best.columns = "acc2_" + acc2_aln_DF_best.columns 
     #
-    # Stop if read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best
-    #list(acc1_aln_DF_best["acc1_qname"]) == list(acc2_aln_DF_best["acc2_qname"])
-    if not acc1_aln_DF_best["acc1_qname"].equals(acc2_aln_DF_best["acc2_qname"]):
-        print("Stopping because read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best")
-        return
+    ## Stop if read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best
+    ##list(acc1_aln_DF_best["acc1_qname"]) == list(acc2_aln_DF_best["acc2_qname"])
+    #if not acc1_aln_DF_best["acc1_qname"].equals(acc2_aln_DF_best["acc2_qname"]):
+    #    print("Stopping because read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best")
+    #    return
     #
     aln_best_pair_DF = pd.merge(left=acc1_aln_DF_best, right=acc2_aln_DF_best,
                                 how="inner", left_on="acc1_qname", right_on="acc2_qname")
@@ -469,7 +486,7 @@ str(aln_best_pair_hom_DF.shape[0]) + " '" + parser.recombType + "-type' hybrid r
 str( round( aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0], 4 ) * 100 ) + "% of '" + parser.recombType + "-type' hybrid read segment pairs align to the same chromosome"
 
 # Filter to retain hybrid read segments pairs where the per-accession read segments align to within
-# 2 * the given read length of each other in the same reference assembly
+# maxDist or max_CENsize_list[x] of each other in the two separate, respectively used reference assemblies
 aln_dist_acc1_tstart_acc2_tstart = list(abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1)
 aln_dist_acc1_tstart_acc2_tend = list(abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tend"]) + 1)
 aln_dist_acc1_tend_acc2_tstart = list(abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1)
@@ -492,23 +509,6 @@ gc.collect()
 #aln_dist_min = list(map(min, aln_dist_tuple_list))
 #aln_dist_max = list(map(max, aln_dist_tuple_list))
 
-aln_coords_nparray = np.array([list(aln_best_pair_hom_DF["acc1_tstart"]),
-                               list(aln_best_pair_hom_DF["acc1_tend"]),
-                               list(aln_best_pair_hom_DF["acc2_tstart"]),
-                               list(aln_best_pair_hom_DF["acc2_tend"])])
-#aln_coords_nparray.sort(axis=0)
-sidx = aln_coords_nparray.argsort(axis=0)
-aln_coords_nparray_sort = aln_coords_nparray[sidx, np.arange(sidx.shape[1])]
-
-# Define recombination interval as the inner boundaries of segment alignment coordinates
-event_start = list(aln_coords_nparray_sort[1])
-event_end = list(aln_coords_nparray_sort[2])
-event_start_end_nparray = np.array([event_start, event_end])
-event_midpoint = (event_start_end_nparray[0] + event_start_end_nparray[1]) / 2
-event_midpoint = list(event_midpoint.round().astype(int))
-del aln_coords_nparray, sidx, aln_coords_nparray_sort, event_start_end_nparray
-gc.collect()
-
 aln_best_pair_hom_DF_cp = aln_best_pair_hom_DF.copy()
 del aln_best_pair_hom_DF
 gc.collect()
@@ -516,15 +516,9 @@ aln_best_pair_hom_DF = aln_best_pair_hom_DF_cp
 #aln_best_pair_hom_DF.reset_index(drop=True, inplace=True)
 aln_best_pair_hom_DF["aln_dist_min"] = aln_dist_min
 aln_best_pair_hom_DF["aln_dist_max"] = aln_dist_max
-aln_best_pair_hom_DF["event_start"] = event_start
-aln_best_pair_hom_DF["event_end"] = event_end
-aln_best_pair_hom_DF["event_midpoint"] = event_midpoint
 
 
-# Get read lengths for hybrid read IDs in aln_best_pair_hom_DF$qname
-# to be used for retaining alignment pairs where the Col and Ler
-# read segments align to within a given distance of each other
-# (e.g., the given hybrid read length) in the same assembly
+# Get number of hybrid reads and read lengths for hybrid read IDs in aln_best_pair_hom_DF["qname"]
 hybrid_reads_counter = 0
 hybrid_read_lengths_DF_list = []
 for x in range(0, len(chrom)):
@@ -543,7 +537,7 @@ for x in range(0, len(chrom)):
     read_lens = [len(x) for x in reads]
     hybrid_read_lengths_DF = pd.DataFrame({ "read_id": read_ids,
                                             "read_len": read_lens })
-    hybrid_read_lengths_DF_list.append(hybrid_read_lengths_DF) 
+    hybrid_read_lengths_DF_list.append(hybrid_read_lengths_DF)
 
 del hybrid_read_lengths_DF
 gc.collect()
@@ -554,14 +548,24 @@ if len(hybrid_read_lengths_DF_list) > 1:
 else:
     hybrid_read_lengths_DF = hybrid_read_lengths_DF_list[0]
 
-
 aln_best_pair_hom_DF_read_lens = pd.merge(left=aln_best_pair_hom_DF, right=hybrid_read_lengths_DF,
                                           how="inner", left_on="qname", right_on="read_id")
 del aln_best_pair_hom_DF
 gc.collect()
 aln_best_pair_hom_DF = aln_best_pair_hom_DF_read_lens.drop(columns="read_id")
 
-aln_best_pair_hom_maxDist_DF = aln_best_pair_hom_DF.loc[aln_best_pair_hom_DF["aln_dist_min"] <= aln_best_pair_hom_DF["read_len"] * 2]
+
+# Using above calculation of "aln_dist_min",
+# filter to retain hybrid read segments pairs where the per-accession read segments align to within
+# maxDist or max_CENsize_list[x] of each other in the two separate, respectively used reference assemblies
+aln_best_pair_hom_maxDist_DF = pd.DataFrame()
+for x in range(0, len(chrom)):
+    print(chrom[x])
+    aln_best_pair_hom_maxDist_DF_chrom = aln_best_pair_hom_DF.loc[(aln_best_pair_hom_DF["acc1_tname"] == chrom[x]) & \
+                                                                  (aln_best_pair_hom_DF["aln_dist_min"] <= max_CENsize_list[x])]
+    if aln_best_pair_hom_maxDist_DF_chrom.shape[0] > 0:
+        aln_best_pair_hom_maxDist_DF = pd.concat(objs=[aln_best_pair_hom_maxDist_DF, aln_best_pair_hom_maxDist_DF_chrom],
+                                                 axis=0, ignore_index=True)
 
 
 # Filter to retain putative recombination events between homologous chromosomes where
@@ -570,7 +574,16 @@ aln_best_pair_hom_maxDist_DF = aln_best_pair_hom_DF.loc[aln_best_pair_hom_DF["al
 aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF.loc[ ( aln_best_pair_hom_maxDist_DF["acc1_alen"] / \
                                                                               aln_best_pair_hom_maxDist_DF["acc1_qlen"] >= parser.alenTOqlen ) & \
                                                                             ( aln_best_pair_hom_maxDist_DF["acc2_alen"] / \
-                                                                              aln_best_pair_hom_maxDist_DF["acc2_qlen"] >= parser.alenTOqlen ) ] 
+                                                                              aln_best_pair_hom_maxDist_DF["acc2_qlen"] >= parser.alenTOqlen ) ]
+
+
+# Filter to retain putative recombination events between homologous chromosomes where
+# the per-accession read segments align to within maxDist bp of each other in the same reference assembly, AND
+# where the per-accession alignment number of matching bases is >= parser.alenTOqlen of the segment length
+aln_best_pair_hom_maxDist_nmatchTOqlen_DF = aln_best_pair_hom_maxDist_DF.loc[ ( aln_best_pair_hom_maxDist_DF["acc1_nmatch"] / \
+                                                                                aln_best_pair_hom_maxDist_DF["acc1_qlen"] >= parser.nmatchTOqlen ) & \
+                                                                              ( aln_best_pair_hom_maxDist_DF["acc2_nmatch"] / \
+                                                                                aln_best_pair_hom_maxDist_DF["acc2_qlen"] >= parser.nmatchTOqlen ) ]
 
 
 # Make summary of counts obtained at each filtering stage
@@ -578,17 +591,20 @@ summary_DF = pd.DataFrame({ "Filter": [ "hybrid_reads",
                                         "hybrid_read_segment_pairs_aligned",
                                         "hybrid_read_segment_pairs_aligned_to_same_chr",
                                         "hybrid_read_segment_pairs_aligned_to_within_maxDist",
-                                        "hybrid_read_segment_pairs_aligned_chr_maxDist_alenTOqlen" ],
+                                        "hybrid_read_segment_pairs_aligned_chr_maxDist_alenTOqlen",
+                                        "hybrid_read_segment_pairs_aligned_chr_maxDist_nmatchTOqlen" ],
                             "Count": [ hybrid_reads_counter,
                                        aln_best_pair_DF.shape[0],
                                        aln_best_pair_hom_DF.shape[0],
                                        aln_best_pair_hom_maxDist_DF.shape[0],
-                                       aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0] ]
+                                       aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0],
+                                       aln_best_pair_hom_maxDist_nmatchTOqlen_DF.shape[0] ],
                             "Proportion": [ hybrid_reads_counter / hybrid_reads_counter,
                                             aln_best_pair_DF.shape[0] / hybrid_reads_counter,
                                             aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0],
                                             aln_best_pair_hom_maxDist_DF.shape[0] / aln_best_pair_hom_DF.shape[0],
-                                            aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0] / aln_best_pair_hom_maxDist_DF.shape[0] ] })
+                                            aln_best_pair_hom_maxDist_alenTOqlen_DF.shape[0] / aln_best_pair_hom_maxDist_DF.shape[0],
+                                            aln_best_pair_hom_maxDist_nmatchTOqlen_DF.shape[0] / aln_best_pair_hom_maxDist_DF.shape[0] ] })
 
 
 # Write to TSV
@@ -632,6 +648,14 @@ aln_best_pair_hom_maxDist_alenTOqlen_DF_filename = outdir + "/" + parser.readsPr
     re.sub(",", "_", parser.chrom) + ".tsv"
 aln_best_pair_hom_maxDist_alenTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_alenTOqlen_DF_filename, sep="\t", header=True, index=False)
 
+aln_best_pair_hom_maxDist_nmatchTOqlen_DF_filename = outdir + "/" + parser.readsPrefix + \
+    "_" + parser.acc1 + "_" + parser.acc2 + \
+    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
+    "_hom_maxDist_nTOq" + str(parser.nmatchTOqlen) + "_" + parser.recombType + \
+    "_alnTo_" + parser.acc1 + "_Chr_" + \
+    re.sub(",", "_", parser.chrom) + ".tsv"
+aln_best_pair_hom_maxDist_nmatchTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_nmatchTOqlen_DF_filename, sep="\t", header=True, index=False)
+
 
 # Write filtered hybrid reads to FASTA
 for x in range(0, len(chrom)):
@@ -648,6 +672,9 @@ for x in range(0, len(chrom)):
     # Get the reads where the segments align to within the given distance of each other, and
     # where the alen / qlen ratio >= parser.alenTOqlen
     reads_maxDist_alenTOqlen = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_maxDist_alenTOqlen_DF["qname"])]
+    # Get the reads where the segments align to within the given distance of each other, and
+    # where the nmatch / qlen ratio >= parser.nmatchTOqlen
+    reads_maxDist_nmatchTOqlen = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_maxDist_nmatchTOqlen_DF["qname"])]
     # Output FASTA path to maxDist-filtered hybrid reads for the given chromosome
     reads_maxDist_fa = outdir + "/" + parser.readsPrefix + \
         "_" + parser.acc1 + "_" + parser.acc2 + \
@@ -662,9 +689,18 @@ for x in range(0, len(chrom)):
         "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_" + parser.recombType + \
         "_alnTo_" + parser.acc1 + "_Chr_" + \
         chrom[x] + "_hybrid_reads.fa"
+    # Output FASTA path to maxDist_nmatchTOqlen-filtered hybrid reads for the given chromosome
+    reads_maxDist_nmatchTOqlen_fa = outdir + "/" + parser.readsPrefix + \
+        "_" + parser.acc1 + "_" + parser.acc2 + \
+        "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
+        "_hom_maxDist_nTOq" + str(parser.nmatchTOqlen) + "_" + parser.recombType + \
+        "_alnTo_" + parser.acc1 + "_Chr_" + \
+        chrom[x] + "_hybrid_reads.fa"
     # Write outputs
     with open(reads_maxDist_fa, "w") as reads_maxDist_fa_handle:
         SeqIO.write(reads_maxDist, reads_maxDist_fa_handle, "fasta")
     with open(reads_maxDist_alenTOqlen_fa, "w") as reads_maxDist_alenTOqlen_fa_handle:
         SeqIO.write(reads_maxDist_alenTOqlen, reads_maxDist_alenTOqlen_fa_handle, "fasta")
+    with open(reads_maxDist_nmatchTOqlen_fa, "w") as reads_maxDist_nmatchTOqlen_fa_handle:
+        SeqIO.write(reads_maxDist_nmatchTOqlen, reads_maxDist_nmatchTOqlen_fa_handle, "fasta")
 

@@ -483,7 +483,7 @@ aln_best_pair_hom_DF["event_end"] = event_end
 aln_best_pair_hom_DF["event_midpoint"] = event_midpoint
 
 
-# Get read lengths for hybrid read IDs in aln_best_pair_hom_DF$qname
+# Get read lengths for hybrid read IDs in aln_best_pair_hom_DF["qname"]
 # to be used for retaining alignment pairs where the Col and Ler
 # read segments align to within a given distance of each other
 # (e.g., the given hybrid read length) in the same assembly
@@ -522,6 +522,7 @@ aln_best_pair_hom_DF_read_lens = pd.merge(left=aln_best_pair_hom_DF, right=hybri
 del aln_best_pair_hom_DF
 gc.collect()
 aln_best_pair_hom_DF = aln_best_pair_hom_DF_read_lens.drop(columns="read_id")
+
 
 aln_best_pair_hom_maxDist_DF = aln_best_pair_hom_DF.loc[aln_best_pair_hom_DF["aln_dist_min"] <= aln_best_pair_hom_DF["read_len"] * 2]
 
