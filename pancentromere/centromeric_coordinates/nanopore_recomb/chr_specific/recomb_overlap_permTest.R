@@ -194,7 +194,9 @@ mask_recomb_overlap = findOverlaps(query=mask_GR,
                                    type = "any",
                                    select = "all",
                                    ignore.strand = TRUE)
-recomb_GR = recomb_GR[-subjectHits(mask_recomb_overlap)]
+if(length(mask_recomb_overlap) > 0) {
+    recomb_GR = recomb_GR[-subjectHits(mask_recomb_overlap)]
+}
 print("Candidate recombination events:")
 print(recomb_GR)
 
