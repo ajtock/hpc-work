@@ -120,10 +120,10 @@ if(recombType == "COs_and_NCOs") {
    recomb_GR = c(COs_GR, NCOs_GR) 
 } else if(recombType == "COs") {
    recomb_GR = COs_GR
-} else if(recombtype == "NCOs") {
+} else if(recombType == "NCOs") {
    recomb_GR = NCOs_GR
 } else {
-   stop("recombtype is not 'COs_and_NCOs', 'COs' or 'NCOs'")
+   stop("recombType is not 'COs_and_NCOs', 'COs' or 'NCOs'")
 }
 
 
