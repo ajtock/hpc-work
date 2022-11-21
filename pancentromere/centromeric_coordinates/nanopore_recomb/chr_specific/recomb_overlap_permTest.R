@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env Rscript
 
 # Author: Andy Tock (ajt200@cam.ac.uk)
 # Date: 17/11/2022
@@ -8,192 +8,359 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./get_chr_specific_segment_pairs_alnToSame.py \
-#  -r ColLerF1pollen_1000bp_minq90 \
-#  -a1 Col-0.ragtag_scaffolds \
-#  -a2 Ler-0_110x.ragtag_scaffolds \
-#  -k 24 \
-#  -op 0.9 \
-#  -mh 11 \
-#  -at Col-0.ragtag_scaffolds_Chr \
-#  -aq 0.90 \
-#  -reg not_centromere \
-#  -c 'Chr1,Chr2,Chr3,Chr4,Chr5'
-#  -p 10000
+# ./recomb_overlap_permTest.R ColLerF1pollen_1000bp_minq90 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds 24 0.9 11 Col-0.ragtag_scaffolds_Chr 0.90 not_centromere 'Chr1,Chr2,Chr3,Chr4,Chr5' 10000 co_and_nco
 # conda deactivate
 
+args = commandArgs(trailingOnly=T)
+readsPrefix = args[1]
+acc1 = args[2]
+acc2 = args[3]
+kmerSize = as.integer(args[4])
+overlapProp = as.numeric(args[5])
+minHits = as.integer(args[6])
+alnTo = args[7]
+alenTOqlen = args[8]
+region = args[9]
+chrom = unlist(strsplit(args[10], split=","))
+perms = as.integer(args[11])
+recombType = args[12] 
 
-# ==== Import libraries
-import os
-import argparse
-import re
-import gc
-import pandas as pd
-import numpy as np
-import pyranges as pr
-import subprocess
-import glob
+#readsPrefix = "ColLerF1pollen_1000bp_minq90"
+#acc1 = "Col-0.ragtag_scaffolds"
+#acc2 = "Ler-0_110x.ragtag_scaffolds"
+#kmerSize = as.integer(24)
+#overlapProp = 0.9
+#minHits = as.integer(11)
+#alnTo = "Col-0.ragtag_scaffolds_Chr"
+#alenTOqlen = 0.90
+#region = "not_centromere"
+#chrom = unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
+#                        split=","))
+#perms = as.integer(10000)
+#recombType = "co_and_nco"
 
-from pathlib import Path
-from numpy.random import default_rng
+# Set minimum possible P-value for permutation test result with
+# perms sets of random loci
+min_pval = 1 - ( (perms - 1) / perms)
 
 
-# ==== Capture user input as command-line arguments
-# https://stackoverflow.com/questions/18160078/how-do-you-write-tests-for-the-argparse-portion-of-a-python-module
-def create_parser():
-    parser = argparse.ArgumentParser(description="Fasta filename variables.")
-    #### Define command-line arguments
-    parser.add_argument("-r", "--readsPrefix", type=str, default="ColLerF1pollen_1000bp_minq90",
-                        help="The prefix of the FASTQ file name. Default: ColLerF1pollen_1000bp_minq90")
-    parser.add_argument("-a1", "--acc1", type=str, default="Col-0.ragtag_scaffolds",
-                        help="The prefix of the first accession's sequences. Default: Col-0.ragtag_scaffolds")
-    parser.add_argument("-a2", "--acc2", type=str, default="Ler-0_110x.ragtag_scaffolds",
-                        help="The prefix of the second accession's sequences. Default: Ler-0_110x.ragtag_scaffolds")
-    parser.add_argument("-k", "--kmerSize", type=int, default="24",
-                        help="The size of the k-mers to be found and counted in the FASTA file. Default: 24")
-    parser.add_argument("-op", "--overlapProp", type=float, default="0.9",
-                        help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
-    parser.add_argument("-mh", "--minHits", type=int, default="11",
-                        help="The minimum number of accession-specific k-mers found in a read. Default: 11")
-    parser.add_argument("-at", "--alnTo", type=str, default="Col-0.ragtag_scaffolds_Chr",
-                        help="The prefix of the assembly to be used for read segment alignment. Default: Col-0.ragtag_scaffolds_Chr")
-    parser.add_argument("-aq", "--alenTOqlen", type=float, default="0.90",
-                        help="The minimum ratio of the read segment alignment length to the read segment length. Default: 0.90")
-    parser.add_argument("-reg", "--region", type=str, default="not_centromere",
-                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: not_centromere")
-    parser.add_argument("-c", "--chrom", type=str, default="Chr1,Chr2,Chr3,Chr4,Chr5",
-                        help="The chromosome for which accession-specific, chromosome-specific read segments have been extracted and aligned. Default: Chr1,Chr2,Chr3,Chr4,Chr5")
-    parser.add_argument("-p", "--perms", type=int, default="10000",
-                        help="The number of permutations (sets of random loci) to do. Default: 10000")
-    return parser
+library(regioneR)
+library(rtracklayer)
+library(dplyr)
 
-parser = create_parser().parse_args()
-print(parser)
 
-chrom = parser.chrom.split(",")
+indir = paste0(region, "/segment_pairs/")
+outdir = paste0(indir, "perm_tests/")
+plotdir = paste0(outdir, "plots/")
+system(paste0("[ -d ", plotdir, " ] || mkdir -p ", plotdir))
 
-indir = parser.region + "/segment_pairs"
-outdir = parser.region + "/segment_pairs/permTests"
-
-if not os.path.exists(outdir):
-    os.makedirs(outdir)
 
 # Accession names
-acc1_name = parser.acc1.split(".")[0].split("_")[0]
-acc2_name = parser.acc2.split(".")[0].split("_")[0]
-alnTo_name = parser.alnTo.split(".")[0].split("_")[0]
+acc1_name = strsplit( strsplit(acc1, split="\\.")[[1]][1],
+                      split="_" )[[1]][1]
+acc2_name = strsplit( strsplit(acc2, split="\\.")[[1]][1],
+                      split="_" )[[1]][1]
+alnTo_name =  strsplit( strsplit(alnTo, split="\\.")[[1]][1],
+                        split="_" )[[1]][1] 
+acc1_name = acc1.split(".")[0].split("_")[0]
+acc2_name = acc2.split(".")[0].split("_")[0]
+alnTo_name = alnTo.split(".")[0].split("_")[0]
 
 
 # Filtered read segment alignment pairs TSV (candidate recombinant reads)
 # COs
-COs_DF_list = []
-for x in range(0, len(chrom)):
-    print(chrom[x])
-    COs_tsv = indir + "/co/" + parser.readsPrefix + \
-        "_" + parser.acc1 + "_" + parser.acc2 + \
-        "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
-        "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_co" + \
-        "_alnTo_" + parser.alnTo + "_" + \
-        chrom[x] + ".tsv"
+COs_DF_list = lapply(1:length(chrom), function(x) {
+    COs_tsv = paste0(indir, "co/", readsPrefix,
+                     "_", acc1, "_", acc2,
+                     "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                     "_hom_maxDist_aTOq", alenTOqlen, "_co",
+                     "_alnTo_", alnTo, "_",
+                     chrom[x], ".tsv")
     # File exists sanity check
-    Path(COs_tsv).resolve(strict=True)
-    COs_DF_x = pd.read_csv(COs_tsv, sep="\t")
-    COs_DF_x_filt = COs_DF_x.loc[COs_DF_x["acc1_tname"] == chrom[x]]
-    COs_DF_list.append(COs_DF_x_filt)
+    COs_DF_x = read.table(COs_tsv, header=T)
+    COs_DF_x_filt = COs_DF_x[which(COs_DF_x$acc1_tname == chrom[x]),]
+    COs_DF_x_filt
+})
+if(length(COs_DF_list) > 1) {
+    COs_DF = dplyr::bind_rows(COs_DF_list)
+} else {
+    COs_DF = COs_DF_list[[1]]
+}
 
-if len(COs_DF_list) > 1:
-    COs_DF = pd.concat(objs=COs_DF_list, axis=0, ignore_index=True)
-else:
-    COs_DF = COs_DF_list[0]
-
-COs_PR = pr.pyranges.PyRanges(chromosomes=COs_DF["acc1_tname"],
-                              starts=COs_DF["event_start"],
-                              ends=COs_DF["event_end"])
-
+COs_GR = GRanges(seqnames=COs_DF$acc1_tname,
+                 ranges=IRanges(start=COs_DF$event_start,
+                                end=COs_DF$event_end),
+                 strand="*")
 
 # NCOs
-NCOs_DF_list = []
-for x in range(0, len(chrom)):
-    print(chrom[x])
-    NCOs_tsv = indir + "/nco/" + parser.readsPrefix + \
-        "_" + parser.acc1 + "_" + parser.acc2 + \
-        "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
-        "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_nco" + \
-        "_alnTo_" + parser.alnTo + "_" + \
-        chrom[x] + ".tsv"
+NCOs_DF_list = lapply(1:length(chrom), function(x) {
+    NCOs_tsv = paste0(indir, "nco/", readsPrefix,
+                      "_", acc1, "_", acc2,
+                      "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                      "_hom_maxDist_aTOq", alenTOqlen, "_nco",
+                      "_alnTo_", alnTo, "_",
+                      chrom[x], ".tsv")
     # File exists sanity check
-    Path(NCOs_tsv).resolve(strict=True)
-    NCOs_DF_x = pd.read_csv(NCOs_tsv, sep="\t")
-    NCOs_DF_x_filt = NCOs_DF_x.loc[NCOs_DF_x["acc1_tname"] == chrom[x]]
-    NCOs_DF_list.append(NCOs_DF_x_filt)
+    NCOs_DF_x = read.table(NCOs_tsv, header=T)
+    NCOs_DF_x_filt = NCOs_DF_x[which(NCOs_DF_x$acc1_tname == chrom[x]),]
+    NCOs_DF_x_filt
+})
+if( length(NCOs_DF_list) > 1 ) {
+    NCOs_DF = dplyr::bind_rows(NCOs_DF_list)
+} else {
+    NCOs_DF = NCOs_DF_list[[1]]
+}
 
-if len(NCOs_DF_list) > 1:
-    NCOs_DF = pd.concat(objs=NCOs_DF_list, axis=0, ignore_index=True)
-else:
-    NCOs_DF = NCOs_DF_list[0]
+NCOs_GR = GRanges(seqnames=NCOs_DF$acc1_tname,
+                  ranges=IRanges(start=NCOs_DF$event_start,
+                                 end=NCOs_DF$event_end),
+                  strand="*")
 
-NCOs_PR = pr.pyranges.PyRanges(chromosomes=NCOs_DF["acc1_tname"],
-                               starts=NCOs_DF["event_start"],
-                               ends=NCOs_DF["event_end"])
+
+if(recombType == "co_and_nco") {
+   recomb_GR = c(COs_GR, NCOs_GR) 
+} else if(recombType == "co") {
+   recomb_GR = COs_GR
+} else if(recombtype == "nco") {
+   recomb_GR = NCOs_GR
+} else {
+   stop("recombtype is not 'co_and_nco', 'co' or 'nco'")
+}
 
 
 # Genomic definitions
 
 # CEN coordinates
-CEN = pd.read_csv("/rds/project/rds-O5Ty9yVfQKg/pancentromere/centromeric_coordinates/" + \
-                  "centromere_manual_EDTA4_fa.csv")
-CEN["fasta.name"].replace(to_replace="\.fa", value="", regex=True, inplace=True)
-
+CEN = read.csv(paste0("/rds/project/rds-O5Ty9yVfQKg/pancentromere/centromeric_coordinates/",
+                      "centromere_manual_EDTA4_fa.csv"),
+               header=T)
+CEN$fasta.name = gsub(".fa", "", CEN$fasta.name)
 
 # alnTo accession
-alnTo_fai = pd.read_csv("index/" + parser.alnTo + ".fa.fai",
-                       sep="\t", header=None)
-alnTo_fai = alnTo_fai.loc[alnTo_fai[0].isin(chrom)]
-#alnTo_chrs = alnTo_fai[0].to_string(index=False).split()
-alnTo_chrs = list(alnTo_fai[0])
-alnTo_chrLens = list(alnTo_fai[1])
+alnTo_fai = read.table(paste0("index/", alnTo, ".fa.fai"),
+                       header=F)
+alnTo_fai =  alnTo_fai[which(alnTo_fai$V1 %in% chrom),]
+alnTo_chrs = alnTo_fai$V1
+alnTo_chrLens = alnTo_fai$V2
 
-alnTo_CEN = CEN[CEN["fasta.name"] == re.sub("_Chr", "", parser.alnTo)]
-alnTo_CEN = alnTo_CEN.loc[:, alnTo_CEN.columns.isin(["chr", "start", "end"])]
-alnTo_CEN_new = pd.DataFrame()
-for i in range(0, len(alnTo_chrs)):
-    alnTo_CEN_chr = alnTo_CEN[alnTo_CEN["chr"] == alnTo_chrs[i]]
-    if alnTo_CEN_chr.shape[0] > 1:
-        alnTo_CEN_chr = pd.DataFrame({ "chr":   [ alnTo_CEN_chr["chr"].iloc[0] ],
-                                       "start": [ alnTo_CEN_chr["start"].iloc[0] ],
-                                       "end":   [ alnTo_CEN_chr["end"].iloc[-1] ] })
-    alnTo_CEN_new = pd.concat(objs=[alnTo_CEN_new, alnTo_CEN_chr],
-                              axis=0,
-                              ignore_index=True)
 
+alnTo_CEN = CEN[which(CEN$fasta.name == gsub("_Chr", "", alnTo)),]
+alnTo_CEN = alnTo_CEN[,which(colnames(alnTo_CEN) %in% c("chr", "start", "end"))]
+alnTo_CEN_new = data.frame()
+for(i in 1:length(alnTo_chrs)) {
+  alnTo_CEN_chr = alnTo_CEN[which(alnTo_CEN$chr == alnTo_chrs[i]),]
+  if(nrow(alnTo_CEN_chr) > 1) {
+    alnTo_CEN_chr = data.frame(chr=alnTo_CEN_chr$chr[1],
+                               start=alnTo_CEN_chr$start[1],
+                               end=alnTo_CEN_chr$end[nrow(alnTo_CEN_chr)])
+  }
+  alnTo_CEN_new = rbind(alnTo_CEN_new, alnTo_CEN_chr)
+}
 alnTo_CEN = alnTo_CEN_new
-alnTo_CENstart = alnTo_CEN["start"]
-alnTo_CENend = alnTo_CEN["end"]
-#alnTo_chrs = [alnTo_name + "_" + x for x in alnTo_chrs]
+alnTo_CEN = alnTo_CEN_new
 
-alnTo_CEN_PR = pr.pyranges.PyRanges(chromosomes=alnTo_CEN["chr"],
-                                    starts=alnTo_CEN["start"],
-                                    ends=alnTo_CEN["end"])
+alnTo_CEN_GR = GRanges(seqnames=alnTo_CEN$chr,
+                       ranges=IRanges(start=alnTo_CEN$start,
+                                      end=alnTo_CEN$end),
+                       strand="*")
 
-# Make a single list that contains all
-# the elements of each sublist of a nested list
-def flatten(nested_list):
-    """
-    Use list comprehension to flatten a nested list into a
-    single list composed of all the elements in each sublist.
-    """
-    return [item for sublist in nested_list for item in sublist]
+alnTo_nonCEN = data.frame(chr=rep(alnTo_chrs, 2),
+                          start=c( rep(1, length(alnTo_chrs)), (alnTo_CEN$end + 1) ),
+                          end=c( (alnTo_CEN$start - 1), alnTo_chrLens))
 
-alnTo_nonCEN = pd.DataFrame({ "chr": list(alnTo_CEN["chr"]) * 2,
-                              "start": flatten( [ [1] * 5, list(alnTo_CEN["end"] + 1) ] ),
-                              "end": flatten( [ list(alnTo_CEN["start"] - 1), alnTo_chrLens ] ) })
+alnTo_nonCEN_GR = GRanges(seqnames=alnTo_nonCEN$chr,
+                          ranges=IRanges(start=alnTo_nonCEN$start,
+                                         end=alnTo_nonCEN$end),
+                          strand="*")
 
-alnTo_nonCEN_PR = pr.pyranges.PyRanges(chromosomes=alnTo_nonCEN["chr"],
-                                       starts=alnTo_nonCEN["start"],
-                                       ends=alnTo_nonCEN["end"])
+# Define region to be analysed
+if(region == "not_centromere") {
+    region_GR = alnTo_nonCEN_GR
+    mask_GR = alnTo_CEN_GR
+} else if(region == "centromere") {
+    region_GR = alnTo_CEN_GR
+    mask_GR = alnTo_nonCEN_GR
+} else {
+    stop("region is not 'not_centromere' or 'centromere'")
+}
+
+genome_GR = GRanges(seqnames=alnTo_chrs,
+                    ranges=IRanges(start=rep(1, length(alnTo_chrs)),
+                                   end=alnTo_chrLens),
+                    strand="*")
 
 
-# Define parser.perms sets of random loci in parser.region
+## Subset to include only those not overlapping masked region (e.g., centromere)                                                          
+#mask_recomb_overlap = findOverlaps(query=mask_GR,
+#                                subject=recomb_GR,
+#                                type = "any",
+#                                select = "all",
+#                                ignore.strand = TRUE)
+#recomb_GR = recomb_GR[-subjectHits(mask_recomb_overlap)]
+print("Candidate recombination events:")
+print(recomb_GR)
+
+
+# Load genes
+genes = readGFF(paste0("/rds/project/rds-O5Ty9yVfQKg/pancentromere/annotation/genes/",
+                        alnTo, "/", alnTo, ".genes.gff3"))
+genes = genes[which(genes$seqid %in% alnTo_chrs),]
+genes = genes[which(genes$type == "mRNA"),]
+print(dim(genes))
+
+genes_GR = GRanges(seqnames=genes$seqid,
+                   ranges=IRanges(start=genes$start,
+                                  end=genes$end),
+                   strand=genes$strand)
+
+# Subset to include only those not overlapping masked region
+mask_genes_overlap <- findOverlaps(query = mask_GR,
+                                   subject = genes_GR,
+                                   type = "any",
+                                   select = "all",
+                                   ignore.strand = TRUE)
+genes_GR <- genes_GR[-subjectHits(mask_genes_overlap)]
+
+genes_GR = unique(genes_GR)
+
+# NOTE: Retain strand information until after obtaining promoters, etc.
+# Overlap analysis should be strand-unaware
+
+# Obtain 1000-bp gene promoters
+promoters_GR = promoters(genes_GR, upstream=1000, downstream=0)
+promoters_GR = unique(promoters_GR)
+strand(promoters_GR) = "*"
+print(promoters_GR)
+
+# Obtain regions immediately downstream of gene TSSs (gene 5' ends: TSS to TSS+499 bp)
+g5ends_GR = promoters(genes_GR, upstream=0, downstream=500)
+g5ends_GR = unique(g5ends_GR)
+strand(g5ends_GR) = "*"
+print(g5ends_GR)
+
+# Obtain regions relative to TTS using TTSplus()
+TTSplus = function(x, upstream=100, downstream=1000, ...) {
+    if(!isSingleNumber(upstream))
+        stop("'upstream' must be a single integer")
+    if(!is.integer(upstream))
+        upstream = as.numeric(upstream)
+    if(!isSingleNumber(downstream))
+        stop("'downstream' must be a single integer")
+    if(!is.integer(downstream))
+        downstream = as.numeric(downstream)
+    if(downstream < 0)
+        stop("'downstream' must be an integer >= 0")
+    if(any(strand(x) == "*"))
+        warning("'*' ranges were treated as '+'")
+    on_plus = which(strand(x) == "+" | strand(x) == "*")
+    on_plus_TTS = end(x)[on_plus]
+    start(x)[on_plus] = on_plus_TTS - upstream
+    end(x)[on_plus] = on_plus_TTS + downstream
+    on_minus = which(strand(x) == "-")
+    on_minus_TTS = start(x)[on_minus]
+    end(x)[on_minus] = on_minus_TTS + upstream
+    start(x)[on_minus] = on_minus_TTS - downstream
+    return(x)
+}
+
+# Obtain regions immediately upstream of gene TTSs (gene 3' ends: TTS to TTS-499 bp)
+g3ends_GR = TTSplus(genes_GR, upstream=499, downstream=0)
+g3ends_GR = unique(g3ends_GR)
+strand(g3ends_GR) = "*"
+print(g3ends_GR)
+
+# Obtain 1000-bp gene terminators
+terminators_GR = TTSplus(genes_GR, upstream=-1, downstream=1000)
+terminators_GR = unique(terminators_GR)
+strand(terminators_GR) = "*"
+print(terminators_GR)
+
+# Remove strand information from genes_GR
+strand(genes_GR) = "*"
+print(genes_GR)
+
+# Feature names
+features_names = c(
+                   "genes",
+                   "1kb_upstream_TSS",                  
+                   "500bp_5prime_ends",
+                   "500bp_3prime_ends",
+                   "1kb_downstream_TTS"
+                  )
+# GRanges list
+features_GR_list = c(
+                     "genes"=genes_GR,
+                     "1kb_upstream_TSS"=promoters_GR,
+                     "500bp_5prime_ends"=g5ends_GR,
+                     "500bp_3prime_ends"=g3ends_GR,
+                     "1kb_downstream_TTS"=terminators_GR
+                    )
+
+
+# Perform permutation tests with randomized regions generated on a per chromosome basis
+set.seed(47393573)
+pt_recomb_vs_features = lapply(1:length(features_GR_list), function(x) {
+    permTest(A=recomb_GR,
+             B=features_GR_list[[x]],
+             alternative="auto",
+             ntimes=perms,
+             randomize.function=randomizeRegions,
+             genome=genome_GR,
+             mask=mask_GR,
+             allow.overlaps=TRUE,
+             per.chromosome=TRUE,
+             evaluate.function=numOverlaps,
+             count.once=TRUE,
+             mc.set.seed=FALSE,
+             mc.cores=detectCores())
+})
+                                   
+for(i in 1:length(ptPeaksOtherPerChrom)) {
+  assign(paste0(otherNames[i]), ptPeaksOtherPerChrom[[i]])
+}
+save(ptPeaksOtherPerChrom,
+     file = paste0("permTest_", as.character(perms), "perms_",
+                   libNameChIP, "_peaks_vs_others_in_",
+                   genomeName, "genome_", region,
+                   ".RData"))
+
+pt_dist_DF = data.frame(
+
+
+
+
+
+# HORlengthsSum
+permTestAllList_HORlengthsSum <- permTestAllList(
+                                                 CENATHILA_CEN180_metrics_list = CENATHILA_CEN180_metrics_list,
+                                                 CENranLoc_CEN180_metrics_list = CENranLoc_CEN180_metrics_list,
+                                                 region_name = regionName,
+                                                 metric_name = "HORlengthsSum"
+                                                )
+permTestAllList_HORlengthsSum_permDistDF <- data.frame(
+                                                       Accession = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         rep(permTestAllList_HORlengthsSum[[y]]@accession,
+                                                             times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
+                                                       })),
+                                                       Family = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         rep(permTestAllList_HORlengthsSum[[y]]@fam,
+                                                             times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
+                                                       })),
+                                                       Metric = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         rep(permTestAllList_HORlengthsSum[[y]]@metric,
+                                                             times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
+                                                       })),
+                                                       Region = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         rep(permTestAllList_HORlengthsSum[[y]]@region,
+                                                             times = length(permTestAllList_HORlengthsSum[[y]]@permDist))
+                                                       })),
+                                                       Permuted = unlist(lapply(1:length(permTestAllList_HORlengthsSum), function(y) {
+                                                         permTestAllList_HORlengthsSum[[y]]@permDist
+                                                       }))
+                                                      )
+
+
+# Define perms sets of random loci in region
 # of the same number and width distribution as the candidate recombination events 
 def ranLoc_start_select(coordinates, n):
     rng = default_rng(238435)    
@@ -266,7 +433,7 @@ def cat_pafs(indir, acc_name, suffix):
     ##indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1]
     #indir=acc1_indir_list[1]
     #acc_name=acc1_name
-    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #suffix="_alnTo_" + alnTo + "_mm_ont.paf"
     """
     Concatenate all alignment files for the given chromosome,
     accession and aligner.
@@ -298,19 +465,19 @@ for x in range(0, len(acc1_indir_list)):
     print(acc1_indir_list[x])
     cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
              acc_name=acc1_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+             suffix="_alnTo_" + alnTo + "_mm_ont.paf")
     cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
              acc_name=acc1_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
+             suffix="_alnTo_" + alnTo + "_mm_sr.paf")
 
 for x in range(0, len(acc2_indir_list)):
     print(acc2_indir_list[x])
     cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
              acc_name=acc2_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf")
+             suffix="_alnTo_" + alnTo + "_mm_ont.paf")
     cat_pafs(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
              acc_name=acc2_name,
-             suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf")
+             suffix="_alnTo_" + alnTo + "_mm_sr.paf")
 
 
 # Load concatenated read segment alignment file as a DataFrame
@@ -318,7 +485,7 @@ def load_cat_paf(indir, acc_name, suffix, aligner):
     ##indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[1]
     #indir=acc1_indir_list[1]
     #acc_name=acc1_name
-    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #suffix="_alnTo_" + alnTo + "_mm_ont.paf"
     #aligner="mm"
     """
     Load concatenated read segment alignment file as a DataFrame.
@@ -340,7 +507,7 @@ def load_cat_paf(indir, acc_name, suffix, aligner):
 def load_pafs_slowly(indir, acc_name, suffix, aligner):
     #indir=acc1_indir_list[0]
     #acc_name=acc1_name
-    #suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf"
+    #suffix="_alnTo_" + alnTo + "_mm_ont.paf"
     #aligner="mm"
     find_cmd = ["find"] + \
                ["/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + indir + "/"] + \
@@ -373,7 +540,7 @@ acc1_mm_list = []
 for x in range(0, len(acc1_indir_list)):
     acc1_mm_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
                                acc_name=acc1_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                               suffix="_alnTo_" + alnTo + "_mm_ont.paf",
                                aligner="mm")
     acc1_mm_list.append(acc1_mm_Chr)
     del acc1_mm_Chr
@@ -383,7 +550,7 @@ acc2_mm_list = []
 for x in range(0, len(acc2_indir_list)):
     acc2_mm_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
                                acc_name=acc2_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_ont.paf",
+                               suffix="_alnTo_" + alnTo + "_mm_ont.paf",
                                aligner="mm")
     acc2_mm_list.append(acc2_mm_Chr)
     del acc2_mm_Chr
@@ -394,7 +561,7 @@ acc1_sr_list = []
 for x in range(0, len(acc1_indir_list)):
     acc1_sr_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc1_indir_list[x],
                                acc_name=acc1_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                               suffix="_alnTo_" + alnTo + "_mm_sr.paf",
                                aligner="sr")
     acc1_sr_list.append(acc1_sr_Chr)
     del acc1_sr_Chr
@@ -404,7 +571,7 @@ acc2_sr_list = []
 for x in range(0, len(acc2_indir_list)):
     acc2_sr_Chr = load_cat_paf(indir="/rds/project/rds-O5Ty9yVfQKg/Col_Ler_F1_pollen_data/nanopore_recomb/chr_specific/" + acc2_indir_list[x],
                                acc_name=acc2_name,
-                               suffix="_alnTo_" + parser.alnTo + "_mm_sr.paf",
+                               suffix="_alnTo_" + alnTo + "_mm_sr.paf",
                                aligner="sr")
     acc2_sr_list.append(acc2_sr_Chr)
     del acc2_sr_Chr
@@ -524,13 +691,13 @@ else:
 
 
 # Report total
-str(aln_best_pair_DF.shape[0]) + " validly aligning hybrid read segment pairs where unaligned segments are of '" + parser.recombType + " type', \n" + \
+str(aln_best_pair_DF.shape[0]) + " validly aligning hybrid read segment pairs where unaligned segments are of '" + recombType + " type', \n" + \
     "based on the sequence of accession-specific, chromosome-specific k-mers"
 
 # Filter to retain hybrid read segments pairs where each segment aligns to the same chromosome
 aln_best_pair_hom_DF = aln_best_pair_DF.loc[aln_best_pair_DF["acc1_tname"] == aln_best_pair_DF["acc2_tname"]]
-str(aln_best_pair_hom_DF.shape[0]) + " '" + parser.recombType + "-type' hybrid read segments align to the same chromosome"
-str( round( aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0], 4 ) * 100 ) + "% of '" + parser.recombType + "-type' hybrid read segment pairs align to the same chromosome"
+str(aln_best_pair_hom_DF.shape[0]) + " '" + recombType + "-type' hybrid read segments align to the same chromosome"
+str( round( aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0], 4 ) * 100 ) + "% of '" + recombType + "-type' hybrid read segment pairs align to the same chromosome"
 
 # Filter to retain hybrid read segments pairs where the per-accession read segments align to within
 # 2 * the given read length of each other in the same reference assembly
@@ -591,11 +758,11 @@ aln_best_pair_hom_DF["event_midpoint"] = event_midpoint
 # (e.g., the given hybrid read length) in the same assembly
 hybrid_read_lengths_DF_list = []
 for x in range(0, len(chrom)):
-    reads_fa = "fasta/" + parser.readsPrefix + \
-        "_match_" + parser.acc1 + "_" + parser.region + "_" + chrom[x] + \
-        "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
-        "_match_" + parser.acc2 + "_" + parser.region + "_" + chrom[x] + \
-        "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    reads_fa = "fasta/" + readsPrefix + \
+        "_match_" + acc1 + "_" + region + "_" + chrom[x] + \
+        "_specific_k" + str(kmerSize) + "_downsampled_op" + str(overlapProp) + "_hits" + str(minHits) + \
+        "_match_" + acc2 + "_" + region + "_" + chrom[x] + \
+        "_specific_k" + str(kmerSize) + "_downsampled_op" + str(overlapProp) + "_hits" + str(minHits) + \
         ".fa"
     reads_dict = SeqIO.index(reads_fa, "fasta")
     reads = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_DF["qname"])]
@@ -628,59 +795,59 @@ aln_best_pair_hom_maxDist_DF = aln_best_pair_hom_DF.loc[aln_best_pair_hom_DF["al
 
 # Filter to retain putative recombination events between homologous chromosomes where
 # the per-accession read segments align to within maxDist bp of each other in the same reference assembly, AND
-# where the per-accession alignment length is >= parser.alenTOqlen of the segment length
+# where the per-accession alignment length is >= alenTOqlen of the segment length
 aln_best_pair_hom_maxDist_alenTOqlen_DF = aln_best_pair_hom_maxDist_DF.loc[ ( aln_best_pair_hom_maxDist_DF["acc1_alen"] / \
-                                                                              aln_best_pair_hom_maxDist_DF["acc1_qlen"] >= parser.alenTOqlen ) & \
+                                                                              aln_best_pair_hom_maxDist_DF["acc1_qlen"] >= alenTOqlen ) & \
                                                                             ( aln_best_pair_hom_maxDist_DF["acc2_alen"] / \
-                                                                              aln_best_pair_hom_maxDist_DF["acc2_qlen"] >= parser.alenTOqlen ) ] 
+                                                                              aln_best_pair_hom_maxDist_DF["acc2_qlen"] >= alenTOqlen ) ] 
 
 
 # Write to TSV
-aln_best_pair_hom_maxDist_DF_filename = outdir + "/" + parser.readsPrefix + \
-    "_" + parser.acc1 + "_" + parser.acc2 + \
-    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
-    "_hom_maxDist_" + parser.recombType + \
-    "_alnTo_" + parser.alnTo + "_" + \
-    re.sub(",", "_", parser.chrom) + ".tsv"
+aln_best_pair_hom_maxDist_DF_filename = outdir + "/" + readsPrefix + \
+    "_" + acc1 + "_" + acc2 + \
+    "_k" + str(kmerSize) + "_op" + str(overlapProp) + "_h" + str(minHits) + \
+    "_hom_maxDist_" + recombType + \
+    "_alnTo_" + alnTo + "_" + \
+    re.sub(",", "_", chrom) + ".tsv"
 aln_best_pair_hom_maxDist_DF.to_csv(aln_best_pair_hom_maxDist_DF_filename, sep="\t", header=True, index=False)
 
-aln_best_pair_hom_maxDist_alenTOqlen_DF_filename = outdir + "/" + parser.readsPrefix + \
-    "_" + parser.acc1 + "_" + parser.acc2 + \
-    "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
-    "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_" + parser.recombType + \
-    "_alnTo_" + parser.alnTo + "_" + \
-    re.sub(",", "_", parser.chrom) + ".tsv"
+aln_best_pair_hom_maxDist_alenTOqlen_DF_filename = outdir + "/" + readsPrefix + \
+    "_" + acc1 + "_" + acc2 + \
+    "_k" + str(kmerSize) + "_op" + str(overlapProp) + "_h" + str(minHits) + \
+    "_hom_maxDist_aTOq" + str(alenTOqlen) + "_" + recombType + \
+    "_alnTo_" + alnTo + "_" + \
+    re.sub(",", "_", chrom) + ".tsv"
 aln_best_pair_hom_maxDist_alenTOqlen_DF.to_csv(aln_best_pair_hom_maxDist_alenTOqlen_DF_filename, sep="\t", header=True, index=False)
 
 
 # Write filtered hybrid reads to FASTA
 for x in range(0, len(chrom)):
     # Input FASTA path to all hybrid reads for the given chromosome
-    reads_fa = "fasta/" + parser.readsPrefix + \
-        "_match_" + parser.acc1 + "_" + parser.region + "_" + chrom[x] + \
-        "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
-        "_match_" + parser.acc2 + "_" + parser.region + "_" + chrom[x] + \
-        "_specific_k" + str(parser.kmerSize) + "_downsampled_op" + str(parser.overlapProp) + "_hits" + str(parser.minHits) + \
+    reads_fa = "fasta/" + readsPrefix + \
+        "_match_" + acc1 + "_" + region + "_" + chrom[x] + \
+        "_specific_k" + str(kmerSize) + "_downsampled_op" + str(overlapProp) + "_hits" + str(minHits) + \
+        "_match_" + acc2 + "_" + region + "_" + chrom[x] + \
+        "_specific_k" + str(kmerSize) + "_downsampled_op" + str(overlapProp) + "_hits" + str(minHits) + \
         ".fa"
     reads_dict = SeqIO.index(reads_fa, "fasta")
     # Get the reads where the segments align to within the given distance of each other
     reads_maxDist = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_maxDist_DF["qname"])]
     # Get the reads where the segments align to within the given distance of each other, and
-    # where the alen / qlen ratio >= parser.alenTOqlen
+    # where the alen / qlen ratio >= alenTOqlen
     reads_maxDist_alenTOqlen = [v for i, v in enumerate(reads_dict.values()) if v.id in list(aln_best_pair_hom_maxDist_alenTOqlen_DF["qname"])]
     # Output FASTA path to maxDist-filtered hybrid reads for the given chromosome
-    reads_maxDist_fa = outdir + "/" + parser.readsPrefix + \
-        "_" + parser.acc1 + "_" + parser.acc2 + \
-        "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
-        "_hom_maxDist_" + parser.recombType + \
-        "_alnTo_" + parser.alnTo + "_" + \
+    reads_maxDist_fa = outdir + "/" + readsPrefix + \
+        "_" + acc1 + "_" + acc2 + \
+        "_k" + str(kmerSize) + "_op" + str(overlapProp) + "_h" + str(minHits) + \
+        "_hom_maxDist_" + recombType + \
+        "_alnTo_" + alnTo + "_" + \
         chrom[x] + "_hybrid_reads.fa"
     # Output FASTA path to maxDist_alenTOqlen-filtered hybrid reads for the given chromosome
-    reads_maxDist_alenTOqlen_fa = outdir + "/" + parser.readsPrefix + \
-        "_" + parser.acc1 + "_" + parser.acc2 + \
-        "_k" + str(parser.kmerSize) + "_op" + str(parser.overlapProp) + "_h" + str(parser.minHits) + \
-        "_hom_maxDist_aTOq" + str(parser.alenTOqlen) + "_" + parser.recombType + \
-        "_alnTo_" + parser.alnTo + "_" + \
+    reads_maxDist_alenTOqlen_fa = outdir + "/" + readsPrefix + \
+        "_" + acc1 + "_" + acc2 + \
+        "_k" + str(kmerSize) + "_op" + str(overlapProp) + "_h" + str(minHits) + \
+        "_hom_maxDist_aTOq" + str(alenTOqlen) + "_" + recombType + \
+        "_alnTo_" + alnTo + "_" + \
         chrom[x] + "_hybrid_reads.fa"
     # Write outputs
     with open(reads_maxDist_fa, "w") as reads_maxDist_fa_handle:
