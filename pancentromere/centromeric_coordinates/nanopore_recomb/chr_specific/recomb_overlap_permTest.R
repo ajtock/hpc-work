@@ -8,7 +8,7 @@
 
 # Usage:
 # conda activate python_3.9.6
-# ./recomb_overlap_permTest.R ColLerF1pollen_1000bp_minq90 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds 24 0.9 11 Col-0.ragtag_scaffolds_Chr 0.90 not_centromere 'Chr1,Chr2,Chr3,Chr4,Chr5' 10000 COs_and_NCOs
+# ./recomb_overlap_permTest.R ColLerF1pollen_1000bp_minq90 Col-0.ragtag_scaffolds Ler-0_110x.ragtag_scaffolds 24 0.9 11 Col-0.ragtag_scaffolds_Chr 0.9 not_centromere 'Chr1,Chr2,Chr3,Chr4,Chr5' 10000 COs_and_NCOs
 # conda deactivate
 
 args = commandArgs(trailingOnly=T)
@@ -32,7 +32,7 @@ recombType = args[12]
 #overlapProp = 0.9
 #minHits = as.integer(11)
 #alnTo = "Col-0.ragtag_scaffolds_Chr"
-#alenTOqlen = 0.90
+#alenTOqlen = 0.9
 #region = "not_centromere"
 #chrom = unlist(strsplit("Chr1,Chr2,Chr3,Chr4,Chr5",
 #                        split=","))
