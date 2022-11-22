@@ -50,6 +50,7 @@ dependencies:
   - bioconductor-rtracklayer=1.52.0
   - bioconductor-complexheatmap
   - bioconductor-segmentseq
+  - bioconductor-regioner
   - bedtools=2.30.0
   - bbmap=38.98
   - winnowmap=2.03
