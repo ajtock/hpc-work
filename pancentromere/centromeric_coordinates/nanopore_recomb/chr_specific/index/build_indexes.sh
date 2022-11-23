@@ -4,7 +4,7 @@
 # in a reference genome using the meryl v1.3 k-mer counting tool,
 # to enable whole-genome alignment of reads using winnowmap v2.03.
 # Then build an index for the genome using winnowmap v2.03,
-# and separately minimap2 v2.24 and bowtie v1.3.1
+# and separately minimap2 v2.24, bowtie v1.3.1 and bowtie2 v2.4.5
 
 # Usage:
 # (./build_indexes.sh Col-0.ragtag_scaffolds_Chr 15 32) &> Col-0.ragtag_scaffolds_Chr_indexes.log
@@ -21,6 +21,7 @@ echo $(which meryl)
 echo $(which winnowmap)
 echo $(which minimap2)
 echo $(which bowtie-build)
+echo $(which bowtie2-build)
 
 /home/ajt200/miniconda3/envs/python_3.9.6/bin/meryl count \
   k=${K} \
@@ -58,6 +59,12 @@ echo $(which bowtie-build)
 
 # bowtie index
 /home/ajt200/miniconda3/envs/python_3.9.6/bin/bowtie-build \
+  --threads ${THREADS} \
+  ${GENOME}.fa \
+  ${GENOME}
+
+# bowtie2 index
+/home/ajt200/miniconda3/envs/python_3.9.6/bin/bowtie2-build \
   --threads ${THREADS} \
   ${GENOME}.fa \
   ${GENOME}
