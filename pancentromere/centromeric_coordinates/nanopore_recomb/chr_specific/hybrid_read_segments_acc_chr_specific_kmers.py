@@ -614,7 +614,6 @@ def align_read_segment_bt2(segment_fasta, genome):
               [outsam]
     with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
         aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
-        aln.wait()
         subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
         subprocess.run(paf_cmd, stdout=outpaf_handle)
     subprocess.run(["rm", outsam])
