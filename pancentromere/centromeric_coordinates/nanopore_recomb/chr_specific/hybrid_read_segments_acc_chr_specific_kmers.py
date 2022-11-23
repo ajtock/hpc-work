@@ -462,7 +462,13 @@ def write_fasta_from_SeqRecord(read, segment, outfile):
         SeqIO.write(record_segment, output_handle, "fasta")
 
 
-# Align accession-specific read segments to genome
+# Align accession-specific read segments to genome using winnowmap map-ont
+# NOTE: comment from lh3 (minimap2 developer):
+# When -a (SAM output) or -c (include CIGAR in PAF output) is used,
+# "minimap2 will do base-level alignment, which is much slower but gives
+# you more accurate alignment most of time." See:
+# https://github.com/lh3/minimap2/issues/186
+# https://github.com/lh3/minimap2/issues/158
 def align_read_segment_wm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using winnowmap map-ont.
@@ -473,27 +479,36 @@ def align_read_segment_wm_ont(segment_fasta, genome):
               ["-t", "1"] + \
               ["-p", "1.0"] + \
               ["-N", str(maxAlns)] + \
+              ["-a"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
+    sam_cmd = ["samtools", "view"] + \
+              ["-h"] + \
+              ["-F", "2308"] + \
+              ["-q", "0"] + \
+              ["-o", outsam]
+    paf_cmd = ["paftools.js", "sam2paf"] + \
+              [outsam]
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.sam", segment_fasta)
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.paf", segment_fasta)
-    #outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.err", segment_fasta)
-    with open(outpaf, "w") as outfile_handle: #, open(outerr, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle) #, stderr=outerr_handle) 
+    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
+        aln.wait()
+        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+        subprocess.run(paf_cmd, stdout=outpaf_handle)
+    subprocess.run(["rm", outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
-        subprocess.run(["rm", outpaf]) #, outerr])
-#    # Delete file(s) if unmapped
-#    sam_view_cmd = ["samtools"] + \
-#                   ["view", outsam]
-#    sam_record = subprocess.Popen(sam_view_cmd, stdout=subprocess.PIPE)
-#    sam_flag = int( subprocess.check_output(["cut", "-f2"], stdin=sam_record.stdout) )
-#    sam_rm_cmd = ["rm"] + \
-#                 [outsam, outerr]
-#    if sam_flag == 4:
-#        subprocess.run(sam_rm_cmd)
+        subprocess.run(["rm", outpaf])
 
 
-# Align accession-specific read segments to genome
+# Align accession-specific read segments to genome using mimimap2 map-ont
+# NOTE: comment from lh3 (minimap2 developer):
+# When -a (SAM output) or -c (include CIGAR in PAF output) is used,
+# "minimap2 will do base-level alignment, which is much slower but gives
+# you more accurate alignment most of time." See:
+# https://github.com/lh3/minimap2/issues/186
+# https://github.com/lh3/minimap2/issues/158
 def align_read_segment_mm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 map-ont.
@@ -503,18 +518,36 @@ def align_read_segment_mm_ont(segment_fasta, genome):
               ["-t", "1"] + \
               ["-p", "1.0"] + \
               ["-N", str(maxAlns)] + \
+              ["-a"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
+    sam_cmd = ["samtools", "view"] + \
+              ["-h"] + \
+              ["-F", "2308"] + \
+              ["-q", "0"] + \
+              ["-o", outsam]
+    paf_cmd = ["paftools.js", "sam2paf"] + \
+              [outsam]
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.sam", segment_fasta)
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.paf", segment_fasta)
-    #outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.err", segment_fasta)
-    with open(outpaf, "w") as outfile_handle: #, open(outerr, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle) #, stderr=outerr_handle)
+    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
+        aln.wait()
+        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+        subprocess.run(paf_cmd, stdout=outpaf_handle)
+    subprocess.run(["rm", outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
-        subprocess.run(["rm", outpaf]) #, outerr])
+        subprocess.run(["rm", outpaf])
 
 
-# Align accession-specific read segments to genome
+# Align accession-specific read segments to genome using minimap2 sr
+# NOTE: comment from lh3 (minimap2 developer):
+# When -a (SAM output) or -c (include CIGAR in PAF output) is used,
+# "minimap2 will do base-level alignment, which is much slower but gives
+# you more accurate alignment most of time." See:
+# https://github.com/lh3/minimap2/issues/186
+# https://github.com/lh3/minimap2/issues/158
 def align_read_segment_mm_sr(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 sr.
@@ -524,15 +557,27 @@ def align_read_segment_mm_sr(segment_fasta, genome):
               ["-t", "1"] + \
               ["-p", "1.0"] + \
               ["-N", str(maxAlns)] + \
+              ["-a"] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
+    sam_cmd = ["samtools", "view"] + \
+              ["-h"] + \
+              ["-F", "2308"] + \
+              ["-q", "0"] + \
+              ["-o", outsam]
+    paf_cmd = ["paftools.js", "sam2paf"] + \
+              [outsam]
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.sam", segment_fasta)
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.paf", segment_fasta)
-    #outerr = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.err", segment_fasta)
-    with open(outpaf, "w") as outfile_handle: #, open(outerr, "w") as outerr_handle:
-        subprocess.run(aln_cmd, stdout=outfile_handle) #, stderr=outerr_handle)
+    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
+        aln.wait()
+        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+        subprocess.run(paf_cmd, stdout=outpaf_handle)
+    subprocess.run(["rm", outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
-        subprocess.run(["rm", outpaf]) #, outerr])
+        subprocess.run(["rm", outpaf])
 
 
 # Align accession-specific read segments to genome
@@ -550,7 +595,7 @@ def align_read_segment_bt2(segment_fasta, genome):
     sam_cmd = ["samtools", "view"] + \
               ["-h"] + \
               ["-F", "2308"] + \
-              ["-q", "2"] + \
+              ["-q", "0"] + \
               ["-o", outsam]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
@@ -558,14 +603,14 @@ def align_read_segment_bt2(segment_fasta, genome):
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.paf", segment_fasta)
     with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
         aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
+        aln.wait()
         subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
         subprocess.run(paf_cmd, stdout=outpaf_handle)
-        aln.wait()
     subprocess.run(["rm", outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
-        subprocess.run(["rm", outpaf]) #, outerr])
-    
+        subprocess.run(["rm", outpaf])
+
 
 # Delete accession-specific segment alignment file if the equivalent
 # file for the other accession doesn't exist (indicating an unmapped segment)
