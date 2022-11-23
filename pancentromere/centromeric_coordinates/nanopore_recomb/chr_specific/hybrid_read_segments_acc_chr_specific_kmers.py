@@ -72,6 +72,14 @@ region = re.sub(".+_scaffolds_", "", parser.acc1)
 region = re.sub("_Chr.+", "", region)
 chrom = re.sub(".+_scaffolds_" + region + "_", "", parser.acc1)
 
+
+# Set maximum number of alignments
+if region == "not_centromere":
+    maxAlns = 10
+elif region == "centromere":
+    maxAlns = 200
+
+
 outdir = region + "/" + chrom
 kmer_loc_outdir = outdir + "/kmer_loc_tsv"
 
@@ -464,7 +472,7 @@ def align_read_segment_wm_ont(segment_fasta, genome):
               ["-x", "map-ont"] + \
               ["-t", "1"] + \
               ["-p", "1.0"] + \
-              ["-N", "200"] + \
+              ["-N", str(maxAlns)] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.paf", segment_fasta)
@@ -494,7 +502,7 @@ def align_read_segment_mm_ont(segment_fasta, genome):
               ["-x", "map-ont"] + \
               ["-t", "1"] + \
               ["-p", "1.0"] + \
-              ["-N", "200"] + \
+              ["-N", str(maxAlns)] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.paf", segment_fasta)
@@ -515,7 +523,7 @@ def align_read_segment_mm_sr(segment_fasta, genome):
               ["-x", "sr"] + \
               ["-t", "1"] + \
               ["-p", "1.0"] + \
-              ["-N", "200"] + \
+              ["-N", str(maxAlns)] + \
               ["index/" + genome + ".fa"] + \
               [segment_fasta]
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.paf", segment_fasta)
@@ -528,21 +536,36 @@ def align_read_segment_mm_sr(segment_fasta, genome):
 
 
 # Align accession-specific read segments to genome
-def align_read_segment_bowtie2(segment_fasta, genome):
+def align_read_segment_bt2(segment_fasta, genome):
     """
     Align read in FASTA format to genome using bowtie2.
     """
     aln_cmd = ["bowtie2"] + \
-              ["--very-sensitive --no-mixed --nodiscordant"] + \
+              ["--very-sensitive"] + \
               ["--threads", "1"] + \
-              ["-k", "200"] + \
-              ["-x", "index/" + genome] + \
               ["-f"] + \
+              ["-k", str(maxAlns)] + \
+              ["-x", "index/" + genome] + \
               ["-U", segment_fasta]
-        "(bowtie2 --very-sensitive --no-mixed --no-discordant"
-        " --threads {threads} -k {params.alignments} --maxins 1000"
-        " -x {reference} -1 {input.fastq1} -2 {input.fastq2} "
-        "| samtools view -bh -@ {threads} -f 3 -F 2316 -q {params.MAPQmaxi} -o {output} - ) 2> {log}"
+    sam_cmd = ["samtools", "view"] + \
+              ["-h"] + \
+              ["-F", "2308"] + \
+              ["-q", "2"] + \
+              ["-o", outsam]
+    paf_cmd = ["paftools.js", "sam2paf"] + \
+              [outsam]
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.sam", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.paf", segment_fasta)
+    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
+        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+        subprocess.run(paf_cmd, stdout=outpaf_handle)
+        aln.wait()
+    subprocess.run(["rm", outsam])
+    # Delete file(s) if unmapped
+    if os.stat(outpaf).st_size == 0:
+        subprocess.run(["rm", outpaf]) #, outerr])
+    
 
 # Delete accession-specific segment alignment file if the equivalent
 # file for the other accession doesn't exist (indicating an unmapped segment)
@@ -750,6 +773,10 @@ align_read_segment_mm_sr(segment_fasta=acc1_outfile,
                          genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
 align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                          genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+align_read_segment_bt2(segment_fasta=acc1_outfile,
+                       genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+align_read_segment_bt2(segment_fasta=acc2_outfile,
+                       genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
 
 # Delete accession-specific segment alignment file if the equivalent
 # file for the other accession doesn't exist (indicating an unmapped segment)
