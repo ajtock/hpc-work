@@ -292,21 +292,21 @@ pt_DF = data.frame(
 write.table(pt_dist_DF,
             file=paste0(outdir, region, "_GBS_COs",
                         "_alnTo_", alnTo, "_",
-                        paste0(alnTo_chrs, collapse="_"), "_genes_perm_test_distribution.tsv"),
+                        paste0(chrs, collapse="_"), "_genes_perm_test_distribution.tsv"),
             quote=F, sep="\t", row.names=F, col.names=T)
 write.table(pt_DF,
             file = paste0(outdir, region, "_GBS_COs",
                           "_alnTo_", alnTo, "_",
-                          paste0(alnTo_chrs, collapse="_"), "_genes_perm_test_summary.tsv"),
+                          paste0(chrs, collapse="_"), "_genes_perm_test_summary.tsv"),
             quote=F, sep="\t", row.names=F, col.names=T)
 
 pt_dist_DF = read.table(paste0(outdir, region, "_GBS_COs",
                                "_alnTo_", alnTo, "_",
-                               paste0(alnTo_chrs, collapse="_"), "_genes_perm_test_distribution.tsv"),
+                               paste0(chrs, collapse="_"), "_genes_perm_test_distribution.tsv"),
                         sep="\t", header=T)
 pt_DF = read.table(paste0(outdir, region, "_GBS_COs",
                           "_alnTo_", alnTo, "_",
-                          paste0(alnTo_chrs, collapse="_"), "_genes_perm_test_summary.tsv"),
+                          paste0(chrs, collapse="_"), "_genes_perm_test_summary.tsv"),
                    sep="\t", header=T)
 
             
@@ -334,8 +334,8 @@ makeTransparent = function(thisColour, alpha = 230)
 
 
 vp_all = ggplot(data = pt_dist_DF,
-                 mapping = aes(x = Feature,
-                               y = Permuted)) +
+                mapping = aes(x = Feature,
+                              y = Permuted)) +
   xlab("Feature category") +
   ylab(bquote(.(region_plot) ~ "COs vs random overlaps with features")) +
   geom_violin(trim = F,
@@ -381,10 +381,10 @@ vp_all = ggplot(data = pt_dist_DF,
                  .(prettyNum(perms,
                              big.mark = ",",
                              trim = T)) ~
-                 "sets of randomly positioned non-centromeric loci"))
+                 "sets of randomly positioned loci"))
 
 ggsave(paste0(plotdir, region, "_GBS_COs",
               "_alnTo_", alnTo, "_",
-              paste0(alnTo_chrs, collapse="_"), "_genes_perm_test_violin.pdf"),
+              paste0(chrs, collapse="_"), "_genes_perm_test_violin.pdf"),
        plot = vp_all,
        width = 12, height = 8, limitsize = F)
