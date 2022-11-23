@@ -79,6 +79,9 @@ if region == "not_centromere":
 elif region == "centromere":
     maxAlns = 200
 
+# Set minimum MAPQ
+minMAPQ = 0
+
 
 outdir = region + "/" + chrom
 kmer_loc_outdir = outdir + "/kmer_loc_tsv"
@@ -469,10 +472,14 @@ def write_fasta_from_SeqRecord(read, segment, outfile):
 # you more accurate alignment most of time." See:
 # https://github.com/lh3/minimap2/issues/186
 # https://github.com/lh3/minimap2/issues/158
+# NOTE: "samtools view -F 2308" excludes unmapped reads,
+# as well as secondary and supplementary alignments
 def align_read_segment_wm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using winnowmap map-ont.
     """
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.sam", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.paf", segment_fasta)
     aln_cmd = ["winnowmap"] + \
               ["-W", "index/" + genome + "_repetitive_k15.txt"] + \
               ["-x", "map-ont"] + \
@@ -485,12 +492,10 @@ def align_read_segment_wm_ont(segment_fasta, genome):
     sam_cmd = ["samtools", "view"] + \
               ["-h"] + \
               ["-F", "2308"] + \
-              ["-q", "0"] + \
+              ["-q", str(minMAPQ)] + \
               ["-o", outsam]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.sam", segment_fasta)
-    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.paf", segment_fasta)
     with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
         aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
         aln.wait()
@@ -509,10 +514,14 @@ def align_read_segment_wm_ont(segment_fasta, genome):
 # you more accurate alignment most of time." See:
 # https://github.com/lh3/minimap2/issues/186
 # https://github.com/lh3/minimap2/issues/158
+# NOTE: "samtools view -F 2308" excludes unmapped reads,
+# as well as secondary and supplementary alignments
 def align_read_segment_mm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 map-ont.
     """
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.sam", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.paf", segment_fasta)
     aln_cmd = ["minimap2"] + \
               ["-x", "map-ont"] + \
               ["-t", "1"] + \
@@ -524,12 +533,10 @@ def align_read_segment_mm_ont(segment_fasta, genome):
     sam_cmd = ["samtools", "view"] + \
               ["-h"] + \
               ["-F", "2308"] + \
-              ["-q", "0"] + \
+              ["-q", str(minMAPQ)] + \
               ["-o", outsam]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.sam", segment_fasta)
-    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.paf", segment_fasta)
     with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
         aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
         aln.wait()
@@ -548,10 +555,14 @@ def align_read_segment_mm_ont(segment_fasta, genome):
 # you more accurate alignment most of time." See:
 # https://github.com/lh3/minimap2/issues/186
 # https://github.com/lh3/minimap2/issues/158
+# NOTE: "samtools view -F 2308" excludes unmapped reads,
+# as well as secondary and supplementary alignments
 def align_read_segment_mm_sr(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 sr.
     """
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.sam", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.paf", segment_fasta)
     aln_cmd = ["minimap2"] + \
               ["-x", "sr"] + \
               ["-t", "1"] + \
@@ -563,12 +574,10 @@ def align_read_segment_mm_sr(segment_fasta, genome):
     sam_cmd = ["samtools", "view"] + \
               ["-h"] + \
               ["-F", "2308"] + \
-              ["-q", "0"] + \
+              ["-q", str(minMAPQ)] + \
               ["-o", outsam]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.sam", segment_fasta)
-    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.paf", segment_fasta)
     with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
         aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
         aln.wait()
@@ -581,10 +590,14 @@ def align_read_segment_mm_sr(segment_fasta, genome):
 
 
 # Align accession-specific read segments to genome
+# NOTE: "samtools view -F 2308" excludes unmapped reads,
+# as well as secondary and supplementary alignments
 def align_read_segment_bt2(segment_fasta, genome):
     """
     Align read in FASTA format to genome using bowtie2.
     """
+    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.sam", segment_fasta)
+    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.paf", segment_fasta)
     aln_cmd = ["bowtie2"] + \
               ["--very-sensitive"] + \
               ["--threads", "1"] + \
@@ -595,12 +608,10 @@ def align_read_segment_bt2(segment_fasta, genome):
     sam_cmd = ["samtools", "view"] + \
               ["-h"] + \
               ["-F", "2308"] + \
-              ["-q", "0"] + \
+              ["-q", str(minMAPQ)] + \
               ["-o", outsam]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.sam", segment_fasta)
-    outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.paf", segment_fasta)
     with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
         aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
         aln.wait()
@@ -655,229 +666,229 @@ def delete_read_segment(segment_fasta):
 
 
 def main():
-"""
-Execute functions on a given read to extract and map
-the longest accession-specific read segment.
-"""
-
-# Get the within-read start locations of accession-specific k-mer matches
-#acc1_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
-#acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
-acc1_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
-acc2_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
-
-
-## Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
-## overlap any of those in acc2_kmer_loc_df, and vice versa
-## NOTE: requires two reciprocal function calls
-#acc1_kmer_loc_df = remove_overlaps(DF1=acc1_kmer_loc_df_tmp,
-#                                   DF2=acc2_kmer_loc_df_tmp)
-#acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
-#                                   DF2=acc1_kmer_loc_df_tmp)
-#del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
-
-
-# Stop main execution if acc1_kmer_loc_df or acc2_kmer_loc_df have < parser.minHits
-if len(acc1_kmer_loc_df) < parser.minHits or len(acc2_kmer_loc_df) < parser.minHits or not "acc1_kmer_loc_df" in locals() or not "acc1_kmer_loc_df" in locals():
-    print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
-          "acc1_kmer_loc_df or acc2_kmer_loc_df has < " + str(parser.minHits) + " accession-specific k-mers")
-    return
-
-
-# Concatenate and sort by k-mer match start location in read
-acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
-                            axis=0,
-                            ignore_index=True)
-acc_kmer_loc_df_sort_tmp = acc_kmer_loc_df.sort_values(by="hit_start",
-                                                       axis=0,
-                                                       ascending=True,
-                                                       kind="quicksort",
-                                                       ignore_index=True)
-## Write within-read k-mer locations TSV file (NOTE: moved this to end as this is a snakemake target output,
-## to ensure creation of other outputs of this script that aren't specified in Snakefile)
-#kmer_loc_outfile = kmer_loc_outdir + "/" + \
-#    read.id + "__hr" + str(parser.hybReadNo) + \
-#    "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
-#acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
-
-
-# For a given read, get accession-specific read segments
-# get_read_segments_pass1() will exclude segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive
-# accession-specific k-mers, and the resulting list elements (retained segments)
-# should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
-# separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
-
-# The first function call will exclude segments with < parser.minHits consecutive
-# accession-specific k-mers, and the resulting list elements (retained segments)
-# should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
-# separately (using concat_DF_list() on output), to be provided as the input to the second call
-acc_read_segments_list_pass1 = get_read_segments_pass1(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
-#del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
-del acc_kmer_loc_df
-
-
-# Concatenate acc_read_segments_list_tmp into a single DataFrame,
-# sorted by k-mer hit_start location in read
-acc_kmer_loc_df_sort = concat_DF_list(DF_list=acc_read_segments_list_pass1)
-del acc_read_segments_list_pass1
-
-
-# For a given read, get accession-specific read segments
-# get_read_segments_pass2() will be applied to the concatenated DataFrame consisting
-# of filtered segments, in order to extract each segment DataFrame as a list element
-# for segment length calculations. This second call will combine accession-specific
-# segments into one extended segment where, following the get_read_segments_pass1() function call,
-# there are no intervening short segments representing the other accession
-# (excluded segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive accession-specific k-mers).
-# get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
-# accession-specific k-mers.
-acc_read_segments_list = get_read_segments_pass2(kmer_loc_df_sort=acc_kmer_loc_df_sort)
-
-
-# Stop main execution if acc_read_segments_list has < 2 elements
-# (accession-specific segments)
-if len(acc_read_segments_list) < 2:
-    print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
-          "acc_read_segments_list has < 2 elements (accession-specific segments)")
-    return
-
-
-# Get per-accession read segments lists
-acc1_read_segments_list = []
-acc2_read_segments_list = []
-for i in range(len(acc_read_segments_list)):
-    if acc_read_segments_list[i]["acc"][0] == acc1_name and len(acc_read_segments_list[i]) >= parser.minHits:
-        acc1_read_segments_list.append(acc_read_segments_list[i])
-    elif acc_read_segments_list[i]["acc"][0] == acc2_name and len(acc_read_segments_list[i]) >= parser.minHits:
-        acc2_read_segments_list.append(acc_read_segments_list[i])
-
-
-# Stop main execution if acc1_read_segments_list or acc2_read_segments_list
-# is empty (without accession-specific segments)
-if not acc1_read_segments_list or not acc2_read_segments_list:
-    print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
-          "acc1_read_segments_list or acc2_read_segments_list is empty (without accession-specific segments)")
-    return
-
-
-# Determine whether hybrid read represents a putative crossover or noncrossover
-if len(acc1_read_segments_list) > 1 or len(acc2_read_segments_list) > 1:
-    acc1_outdir = acc1_outdir_nco
-    acc2_outdir = acc2_outdir_nco
-elif len(acc1_read_segments_list) == 1 and len(acc2_read_segments_list) == 1:
-    acc1_outdir = acc1_outdir_co
-    acc2_outdir = acc2_outdir_co
-
-
-# Stop main execution if acc1_outdir or acc2_outdir is not defined
-if not "acc1_outdir" in locals() or not "acc2_outdir" in locals():
-    print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
-          "acc1_outdir or acc2_outdir is not defined")
-    return
-
-
-# Get the longest accession-specific read segment for each accession 
-acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
-acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
-
-
-# Stop main execution if acc1_longest_read_segment or acc2_longest_read_segment
-# is not defined
-if not "acc1_longest_read_segment" in locals() or not "acc2_longest_read_segment" in locals():
-    print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
-          "acc1_longest_read_segment or acc2_longest_read_segment is not defined")
-    return
-
-
-# Define output FASTA file names for writing read segments 
-acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fa"
-acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fa"
-
-
-# Write accession-specific read segment to FASTA
-# to supply to alignment software as input read
-write_fasta_from_SeqRecord(read=read,
-                           segment=acc1_longest_read_segment,
-                           outfile=acc1_outfile)
-write_fasta_from_SeqRecord(read=read,
-                           segment=acc2_longest_read_segment,
-                           outfile=acc2_outfile)
-
-
-# Align accession-specific read segments to genome
-if region == "centromere":
-align_read_segment_wm_ont(segment_fasta=acc1_outfile,
-                          genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-align_read_segment_wm_ont(segment_fasta=acc2_outfile,
-                          genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                          genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                          genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                         genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                         genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-align_read_segment_bt2(segment_fasta=acc1_outfile,
-                       genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-align_read_segment_bt2(segment_fasta=acc2_outfile,
-                       genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-
-# Delete accession-specific segment alignment file if the equivalent
-# file for the other accession doesn't exist (indicating an unmapped segment)
-acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
-acc2_alignment_to_acc2_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr_"
-delete_alignment(alignment_prefix1=acc1_alignment_to_acc1_prefix,
-                 alignment_prefix2=acc2_alignment_to_acc2_prefix)
-delete_alignment(alignment_prefix1=acc2_alignment_to_acc2_prefix,
-                 alignment_prefix2=acc1_alignment_to_acc1_prefix)
-
-# Write within-read k-mer locations TSV file
-kmer_loc_outfile = kmer_loc_outdir + "/" + \
-    read.id + "__hr" + str(parser.hybReadNo) + \
-    "_kmer_loc.tsv"
-acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
-del acc_kmer_loc_df_sort_tmp
-# Delete within-read k-mer locations TSV file if correspodning accession-specific
-# read segment alignment files don't exist
-delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_acc1_prefix,
-                    alignment_prefix2=acc2_alignment_to_acc2_prefix,
-                    kmer_loc_outfile=kmer_loc_outfile)
-else: 
-    align_read_segment_mm_ont(segment_fasta=acc1_outfile,
-                              genome=parser.alnTo)
-    align_read_segment_mm_ont(segment_fasta=acc2_outfile,
-                              genome=parser.alnTo)
-    align_read_segment_mm_sr(segment_fasta=acc1_outfile,
-                             genome=parser.alnTo)
-    align_read_segment_mm_sr(segment_fasta=acc2_outfile,
-                             genome=parser.alnTo)
+    """
+    Execute functions on a given read to extract and map
+    the longest accession-specific read segment.
+    """
     
-    # Delete accession-specific segment alignment file if the equivalent
-    # file for the other accession doesn't exist (indicating an unmapped segment)
-    acc1_alignment_to_alnTo_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + parser.alnTo + "_"
-    acc2_alignment_to_alnTo_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + parser.alnTo + "_"
-    delete_alignment(alignment_prefix1=acc1_alignment_to_alnTo_prefix,
-                     alignment_prefix2=acc2_alignment_to_alnTo_prefix)
-    delete_alignment(alignment_prefix1=acc2_alignment_to_alnTo_prefix,
-                     alignment_prefix2=acc1_alignment_to_alnTo_prefix)
+    # Get the within-read start locations of accession-specific k-mer matches
+    #acc1_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
+    #acc2_kmer_loc_df_tmp = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
+    acc1_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc1_fa, read_seq=str(read.seq)) 
+    acc2_kmer_loc_df = get_kmer_loc(kmers_fa_noheaders=acc2_fa, read_seq=str(read.seq)) 
     
-    # Write within-read k-mer locations TSV file
-    kmer_loc_outfile = kmer_loc_outdir + "/" + \
-        read.id + "__hr" + str(parser.hybReadNo) + \
-        "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
-    acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
-    del acc_kmer_loc_df_sort_tmp
-    # Delete within-read k-mer locations TSV file if correspodning accession-specific
-    # read segment alignment files don't exist
-    delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_alnTo_prefix,
-                        alignment_prefix2=acc2_alignment_to_alnTo_prefix,
-                        kmer_loc_outfile=kmer_loc_outfile)
-
-
-## Delete read segment FASTA to reduce number of output files for each read
-#delete_read_segment(segment_fasta=acc1_outfile)
-#delete_read_segment(segment_fasta=acc2_outfile)
+    
+    ## Remove rows in acc1_kmer_loc_df whose k-mer match coordinate ranges
+    ## overlap any of those in acc2_kmer_loc_df, and vice versa
+    ## NOTE: requires two reciprocal function calls
+    #acc1_kmer_loc_df = remove_overlaps(DF1=acc1_kmer_loc_df_tmp,
+    #                                   DF2=acc2_kmer_loc_df_tmp)
+    #acc2_kmer_loc_df = remove_overlaps(DF1=acc2_kmer_loc_df_tmp,
+    #                                   DF2=acc1_kmer_loc_df_tmp)
+    #del acc1_kmer_loc_df_tmp, acc2_kmer_loc_df_tmp
+    
+    
+    # Stop main execution if acc1_kmer_loc_df or acc2_kmer_loc_df have < parser.minHits
+    if len(acc1_kmer_loc_df) < parser.minHits or len(acc2_kmer_loc_df) < parser.minHits or not "acc1_kmer_loc_df" in locals() or not "acc1_kmer_loc_df" in locals():
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc1_kmer_loc_df or acc2_kmer_loc_df has < " + str(parser.minHits) + " accession-specific k-mers")
+        return
+    
+    
+    # Concatenate and sort by k-mer match start location in read
+    acc_kmer_loc_df = pd.concat(objs=[acc1_kmer_loc_df, acc2_kmer_loc_df],
+                                axis=0,
+                                ignore_index=True)
+    acc_kmer_loc_df_sort_tmp = acc_kmer_loc_df.sort_values(by="hit_start",
+                                                           axis=0,
+                                                           ascending=True,
+                                                           kind="quicksort",
+                                                           ignore_index=True)
+    ## Write within-read k-mer locations TSV file (NOTE: moved this to end as this is a snakemake target output,
+    ## to ensure creation of other outputs of this script that aren't specified in Snakefile)
+    #kmer_loc_outfile = kmer_loc_outdir + "/" + \
+    #    read.id + "__hr" + str(parser.hybReadNo) + \
+    #    "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
+    #acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+    
+    
+    # For a given read, get accession-specific read segments
+    # get_read_segments_pass1() will exclude segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive
+    # accession-specific k-mers, and the resulting list elements (retained segments)
+    # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
+    # separately (using concat_DF_list() on output), to be provided as the input to get_read_segments_pass2().
+    
+    # The first function call will exclude segments with < parser.minHits consecutive
+    # accession-specific k-mers, and the resulting list elements (retained segments)
+    # should be concatenated into a pandas DataFrame (sorted by k-mer hit_start location)
+    # separately (using concat_DF_list() on output), to be provided as the input to the second call
+    acc_read_segments_list_pass1 = get_read_segments_pass1(kmer_loc_df_sort=acc_kmer_loc_df_sort_tmp)
+    #del acc_kmer_loc_df_sort_tmp, acc_kmer_loc_df
+    del acc_kmer_loc_df
+    
+    
+    # Concatenate acc_read_segments_list_tmp into a single DataFrame,
+    # sorted by k-mer hit_start location in read
+    acc_kmer_loc_df_sort = concat_DF_list(DF_list=acc_read_segments_list_pass1)
+    del acc_read_segments_list_pass1
+    
+    
+    # For a given read, get accession-specific read segments
+    # get_read_segments_pass2() will be applied to the concatenated DataFrame consisting
+    # of filtered segments, in order to extract each segment DataFrame as a list element
+    # for segment length calculations. This second call will combine accession-specific
+    # segments into one extended segment where, following the get_read_segments_pass1() function call,
+    # there are no intervening short segments representing the other accession
+    # (excluded segments with <= (((parser.kmerSize - math.ceil(parser.kmerSize * parser.overlapProp)) * 2) + 1) consecutive accession-specific k-mers).
+    # get_read_segments_pass2() will exclude segments with < parser.minHits consecutive
+    # accession-specific k-mers.
+    acc_read_segments_list = get_read_segments_pass2(kmer_loc_df_sort=acc_kmer_loc_df_sort)
+    
+    
+    # Stop main execution if acc_read_segments_list has < 2 elements
+    # (accession-specific segments)
+    if len(acc_read_segments_list) < 2:
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc_read_segments_list has < 2 elements (accession-specific segments)")
+        return
+    
+    
+    # Get per-accession read segments lists
+    acc1_read_segments_list = []
+    acc2_read_segments_list = []
+    for i in range(len(acc_read_segments_list)):
+        if acc_read_segments_list[i]["acc"][0] == acc1_name and len(acc_read_segments_list[i]) >= parser.minHits:
+            acc1_read_segments_list.append(acc_read_segments_list[i])
+        elif acc_read_segments_list[i]["acc"][0] == acc2_name and len(acc_read_segments_list[i]) >= parser.minHits:
+            acc2_read_segments_list.append(acc_read_segments_list[i])
+    
+    
+    # Stop main execution if acc1_read_segments_list or acc2_read_segments_list
+    # is empty (without accession-specific segments)
+    if not acc1_read_segments_list or not acc2_read_segments_list:
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc1_read_segments_list or acc2_read_segments_list is empty (without accession-specific segments)")
+        return
+    
+    
+    # Determine whether hybrid read represents a putative crossover or noncrossover
+    if len(acc1_read_segments_list) > 1 or len(acc2_read_segments_list) > 1:
+        acc1_outdir = acc1_outdir_nco
+        acc2_outdir = acc2_outdir_nco
+    elif len(acc1_read_segments_list) == 1 and len(acc2_read_segments_list) == 1:
+        acc1_outdir = acc1_outdir_co
+        acc2_outdir = acc2_outdir_co
+    
+    
+    # Stop main execution if acc1_outdir or acc2_outdir is not defined
+    if not "acc1_outdir" in locals() or not "acc2_outdir" in locals():
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc1_outdir or acc2_outdir is not defined")
+        return
+    
+    
+    # Get the longest accession-specific read segment for each accession 
+    acc1_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc1_read_segments_list)
+    acc2_longest_read_segment = get_longest_read_segment(accspec_read_segments_list=acc2_read_segments_list)
+    
+    
+    # Stop main execution if acc1_longest_read_segment or acc2_longest_read_segment
+    # is not defined
+    if not "acc1_longest_read_segment" in locals() or not "acc2_longest_read_segment" in locals():
+        print("Stopping for read " + str(parser.hybReadNo) + ": " + read.id + " because\n" +
+              "acc1_longest_read_segment or acc2_longest_read_segment is not defined")
+        return
+    
+    
+    # Define output FASTA file names for writing read segments 
+    acc1_outfile = acc1_outdir + "/" + read.id + "__" + acc1_longest_read_segment["acc"][0] + ".fa"
+    acc2_outfile = acc2_outdir + "/" + read.id + "__" + acc2_longest_read_segment["acc"][0] + ".fa"
+    
+    
+    # Write accession-specific read segment to FASTA
+    # to supply to alignment software as input read
+    write_fasta_from_SeqRecord(read=read,
+                               segment=acc1_longest_read_segment,
+                               outfile=acc1_outfile)
+    write_fasta_from_SeqRecord(read=read,
+                               segment=acc2_longest_read_segment,
+                               outfile=acc2_outfile)
+    
+    
+    # Align accession-specific read segments to genome
+    if region == "centromere":
+        align_read_segment_wm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_wm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc1_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_ont(segment_fasta=acc2_outfile,
+                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc1_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_mm_sr(segment_fasta=acc2_outfile,
+                                 genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        align_read_segment_bt2(segment_fasta=acc1_outfile,
+                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        align_read_segment_bt2(segment_fasta=acc2_outfile,
+                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        
+        # Delete accession-specific segment alignment file if the equivalent
+        # file for the other accession doesn't exist (indicating an unmapped segment)
+        acc1_alignment_to_acc1_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr_"
+        acc2_alignment_to_acc2_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr_"
+        delete_alignment(alignment_prefix1=acc1_alignment_to_acc1_prefix,
+                         alignment_prefix2=acc2_alignment_to_acc2_prefix)
+        delete_alignment(alignment_prefix1=acc2_alignment_to_acc2_prefix,
+                         alignment_prefix2=acc1_alignment_to_acc1_prefix)
+        
+        # Write within-read k-mer locations TSV file
+        kmer_loc_outfile = kmer_loc_outdir + "/" + \
+            read.id + "__hr" + str(parser.hybReadNo) + \
+            "_kmer_loc.tsv"
+        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+        del acc_kmer_loc_df_sort_tmp
+        # Delete within-read k-mer locations TSV file if correspodning accession-specific
+        # read segment alignment files don't exist
+        delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_acc1_prefix,
+                            alignment_prefix2=acc2_alignment_to_acc2_prefix,
+                            kmer_loc_outfile=kmer_loc_outfile)
+    else: 
+        align_read_segment_mm_ont(segment_fasta=acc1_outfile,
+                                  genome=parser.alnTo)
+        align_read_segment_mm_ont(segment_fasta=acc2_outfile,
+                                  genome=parser.alnTo)
+        align_read_segment_mm_sr(segment_fasta=acc1_outfile,
+                                 genome=parser.alnTo)
+        align_read_segment_mm_sr(segment_fasta=acc2_outfile,
+                                 genome=parser.alnTo)
+        
+        # Delete accession-specific segment alignment file if the equivalent
+        # file for the other accession doesn't exist (indicating an unmapped segment)
+        acc1_alignment_to_alnTo_prefix = acc1_outdir + "/" + read.id + "__" + acc1_name + "_alnTo_" + parser.alnTo + "_"
+        acc2_alignment_to_alnTo_prefix = acc2_outdir + "/" + read.id + "__" + acc2_name + "_alnTo_" + parser.alnTo + "_"
+        delete_alignment(alignment_prefix1=acc1_alignment_to_alnTo_prefix,
+                         alignment_prefix2=acc2_alignment_to_alnTo_prefix)
+        delete_alignment(alignment_prefix1=acc2_alignment_to_alnTo_prefix,
+                         alignment_prefix2=acc1_alignment_to_alnTo_prefix)
+        
+        # Write within-read k-mer locations TSV file
+        kmer_loc_outfile = kmer_loc_outdir + "/" + \
+            read.id + "__hr" + str(parser.hybReadNo) + \
+            "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
+        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+        del acc_kmer_loc_df_sort_tmp
+        # Delete within-read k-mer locations TSV file if correspodning accession-specific
+        # read segment alignment files don't exist
+        delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_alnTo_prefix,
+                            alignment_prefix2=acc2_alignment_to_alnTo_prefix,
+                            kmer_loc_outfile=kmer_loc_outfile)
+    
+    
+    ## Delete read segment FASTA to reduce number of output files for each read
+    #delete_read_segment(segment_fasta=acc1_outfile)
+    #delete_read_segment(segment_fasta=acc2_outfile)
 
 
 
