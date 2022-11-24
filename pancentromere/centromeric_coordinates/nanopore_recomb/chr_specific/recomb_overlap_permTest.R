@@ -104,7 +104,7 @@ write.table(COs_DF,
                         "_k", kmerSize, "_op", overlapProp, "_h", minHits,
                         "_hom_maxDist_aTOq", alenTOqlen, "_co",
                         "_alnTo_", alnTo, "_",
-                        "destacked.tsv"),
+                        paste0(chrom, collapse="_"), "_destacked.tsv"),
             quote=F, sep="\t", row.names=F, col.names=T)
 
 COs_GR = GRanges(seqnames=COs_DF$acc1_tname,
@@ -150,7 +150,7 @@ write.table(NCOs_DF,
                         "_k", kmerSize, "_op", overlapProp, "_h", minHits,
                         "_hom_maxDist_aTOq", alenTOqlen, "_nco",
                         "_alnTo_", alnTo, "_",
-                        "destacked.tsv"),
+                        paste0(chrom, collapse="_"), "_destacked.tsv"),
             quote=F, sep="\t", row.names=F, col.names=T)
 
 NCOs_GR = GRanges(seqnames=NCOs_DF$acc1_tname,
