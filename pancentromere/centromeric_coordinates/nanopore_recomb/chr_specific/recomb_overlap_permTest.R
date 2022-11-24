@@ -78,7 +78,19 @@ COs_DF_list = lapply(1:length(chrom), function(x) {
     # File exists sanity check
     COs_DF_x = read.table(COs_tsv, header=T)
     COs_DF_x_filt = COs_DF_x[which(COs_DF_x$acc1_tname == chrom[x]),]
-    COs_DF_x_filt
+    # Destack
+    COs_DF_x_filt_destack = data.frame()
+    for(y in 1:nrow(COs_DF_x_filt)) {
+        COs_DF_x_filt_y = COs_DF_x_filt[y,]
+        COs_DF_x_filt_y_start_dups = COs_DF_x_filt[ which( (COs_DF_x_filt$event_start == COs_DF_x_filt_y$event_start &
+                                                            COs_DF_x_filt$acc1_tname == COs_DF_x_filt_y$acc1_tname) |
+                                                           (COs_DF_x_filt$event_end == COs_DF_x_filt_y$event_end &
+                                                            COs_DF_x_filt$acc1_tname == COs_DF_x_filt_y$acc1_tname) ), ]
+        if(nrow(COs_DF_x_filt_y_start_dups) == 1) {
+            COs_DF_x_filt_destack = rbind(COs_DF_x_filt_destack, COs_DF_x_filt_y)
+        }
+    }
+    COs_DF_x_filt_destack
 })
 if(length(COs_DF_list) > 1) {
     COs_DF = dplyr::bind_rows(COs_DF_list)
@@ -86,10 +98,20 @@ if(length(COs_DF_list) > 1) {
     COs_DF = COs_DF_list[[1]]
 }
 
+write.table(COs_DF,
+            file=paste0(indir, "co/", readsPrefix,
+                        "_", acc1, "_", acc2,
+                        "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                        "_hom_maxDist_aTOq", alenTOqlen, "_co",
+                        "_alnTo_", alnTo, "_",
+                        "destacked.tsv"),
+            quote=F, sep="\t", row.names=F, col.names=T)
+
 COs_GR = GRanges(seqnames=COs_DF$acc1_tname,
                  ranges=IRanges(start=COs_DF$event_start,
                                 end=COs_DF$event_end),
                  strand="*")
+
 
 # NCOs
 NCOs_DF_list = lapply(1:length(chrom), function(x) {
@@ -102,13 +124,34 @@ NCOs_DF_list = lapply(1:length(chrom), function(x) {
     # File exists sanity check
     NCOs_DF_x = read.table(NCOs_tsv, header=T)
     NCOs_DF_x_filt = NCOs_DF_x[which(NCOs_DF_x$acc1_tname == chrom[x]),]
-    NCOs_DF_x_filt
+    # Destack
+    NCOs_DF_x_filt_destack = data.frame()
+    for(y in 1:nrow(NCOs_DF_x_filt)) {
+        NCOs_DF_x_filt_y = NCOs_DF_x_filt[y,]
+        NCOs_DF_x_filt_y_start_dups = NCOs_DF_x_filt[ which( (NCOs_DF_x_filt$event_start == NCOs_DF_x_filt_y$event_start &
+                                                              NCOs_DF_x_filt$acc1_tname == NCOs_DF_x_filt_y$acc1_tname) |
+                                                             (NCOs_DF_x_filt$event_end == NCOs_DF_x_filt_y$event_end &
+                                                              NCOs_DF_x_filt$acc1_tname == NCOs_DF_x_filt_y$acc1_tname) ), ]
+        if(nrow(NCOs_DF_x_filt_y_start_dups) == 1) {
+            NCOs_DF_x_filt_destack = rbind(NCOs_DF_x_filt_destack, NCOs_DF_x_filt_y)
+        }
+    }
+    NCOs_DF_x_filt_destack
 })
-if( length(NCOs_DF_list) > 1 ) {
+if(length(NCOs_DF_list) > 1) {
     NCOs_DF = dplyr::bind_rows(NCOs_DF_list)
 } else {
     NCOs_DF = NCOs_DF_list[[1]]
 }
+
+write.table(NCOs_DF,
+            file=paste0(indir, "nco/", readsPrefix,
+                        "_", acc1, "_", acc2,
+                        "_k", kmerSize, "_op", overlapProp, "_h", minHits,
+                        "_hom_maxDist_aTOq", alenTOqlen, "_nco",
+                        "_alnTo_", alnTo, "_",
+                        "destacked.tsv"),
+            quote=F, sep="\t", row.names=F, col.names=T)
 
 NCOs_GR = GRanges(seqnames=NCOs_DF$acc1_tname,
                   ranges=IRanges(start=NCOs_DF$event_start,
@@ -141,7 +184,6 @@ alnTo_fai = read.table(paste0("index/", alnTo, ".fa.fai"),
 alnTo_fai =  alnTo_fai[which(alnTo_fai$V1 %in% chrom),]
 alnTo_chrs = alnTo_fai$V1
 alnTo_chrLens = alnTo_fai$V2
-
 
 alnTo_CEN = CEN[which(CEN$fasta.name == gsub("_Chr", "", alnTo)),]
 alnTo_CEN = alnTo_CEN[,which(colnames(alnTo_CEN) %in% c("chr", "start", "end"))]
