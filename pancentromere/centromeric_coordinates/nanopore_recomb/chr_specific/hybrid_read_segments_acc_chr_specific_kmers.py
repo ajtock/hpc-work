@@ -86,6 +86,10 @@ minMAPQ = 0
 outdir = region + "/" + chrom
 kmer_loc_outdir = outdir + "/kmer_loc_tsv"
 
+# NOTE: As this script is run on each hybrid read and in parallel,
+# uncommenting these os.makedirs() conditionals causes errors due to simultaneity,
+# so opted to create these directories as part of the previous step
+# (i.e., hybrid read extraction using hybrid_reads_acc_chr_specific_kmers_bbduk.sh)
 #if not os.path.exists(outdir):
 #    os.makedirs(outdir)
 
@@ -153,9 +157,9 @@ reads_dict = SeqIO.index(input_fa, "fasta")
 # Commented-out approach to indexed read extraction from dictionary takes longer, although simpler
 #read = list(reads_dict.values())[parser.hybReadNo]
 read = next(v for i, v in enumerate(reads_dict.values()) if i == parser.hybReadNo)
-#read_test = [v for i, v in enumerate(reads_dict.values()) if i == parser.hybReadNo or i == 10749]
 del reads_dict
 print("Hybrid read number: " + str(parser.hybReadNo))
+print("Hybrid read ID: " + read.id)
 
 
 ## Parse acc1-specific k-mers as FastaIterator
@@ -474,6 +478,12 @@ def write_fasta_from_SeqRecord(read, segment, outfile):
 # https://github.com/lh3/minimap2/issues/158
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
+# NOTE: alignment of some exceptional reads will not complete in 12 hours,
+# so task will be cancelled by slurm due to 12-hour time limit.
+# Considered removing aln.wait(), but this would mean that in some cases
+# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
+# process has finished, with the risk that not all reportable alignments
+# would be included in the output SAM and PAF files
 def align_read_segment_wm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using winnowmap map-ont.
@@ -516,6 +526,12 @@ def align_read_segment_wm_ont(segment_fasta, genome):
 # https://github.com/lh3/minimap2/issues/158
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
+# NOTE: alignment of some exceptional reads will not complete in 12 hours,
+# so task will be cancelled by slurm due to 12-hour time limit.
+# Considered removing aln.wait(), but this would mean that in some cases
+# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
+# process has finished, with the risk that not all reportable alignments
+# would be included in the output SAM and PAF files
 def align_read_segment_mm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 map-ont.
@@ -557,6 +573,12 @@ def align_read_segment_mm_ont(segment_fasta, genome):
 # https://github.com/lh3/minimap2/issues/158
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
+# NOTE: alignment of some exceptional reads will not complete in 12 hours,
+# so task will be cancelled by slurm due to 12-hour time limit.
+# Considered removing aln.wait(), but this would mean that in some cases
+# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
+# process has finished, with the risk that not all reportable alignments
+# would be included in the output SAM and PAF files
 def align_read_segment_mm_sr(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 sr.
@@ -589,9 +611,15 @@ def align_read_segment_mm_sr(segment_fasta, genome):
         subprocess.run(["rm", outpaf])
 
 
-# Align accession-specific read segments to genome
+# Align accession-specific read segments to genome using bowtie2
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
+# NOTE: alignment of some exceptional reads will not complete in 12 hours,
+# so task will be cancelled by slurm due to 12-hour time limit.
+# Considered removing aln.wait(), but this would mean that in some cases
+# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
+# process has finished, with the risk that not all reportable alignments
+# would be included in the output SAM and PAF files
 def align_read_segment_bt2(segment_fasta, genome):
     """
     Align read in FASTA format to genome using bowtie2.
@@ -614,6 +642,7 @@ def align_read_segment_bt2(segment_fasta, genome):
               [outsam]
     with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
         aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
+        aln.wait()
         subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
         subprocess.run(paf_cmd, stdout=outpaf_handle)
     subprocess.run(["rm", outsam])
