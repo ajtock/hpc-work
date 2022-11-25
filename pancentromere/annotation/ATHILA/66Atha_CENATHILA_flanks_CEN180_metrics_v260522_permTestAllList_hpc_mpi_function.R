@@ -1,4 +1,4 @@
-#!#!/usr/bin/env Rscript
+#!/usr/bin/env Rscript
 
 # Set class for permutation test results object
 setClass("permTest",
@@ -50,7 +50,7 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                         na.rm = T)
 
       CENranLoc <- foreach(x = iter(1:perms),
-#                           .options.mpi = mpiopts,
+                           .options.mpi = mpiopts,
                            .combine = "c",
                            .multicombine = T,
                            .maxcombine = perms+1e1,
@@ -78,7 +78,7 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                         na.rm = T)
 
       CENranLoc <- foreach(x = iter(1:perms),
-#                           .options.mpi = mpiopts,
+                           .options.mpi = mpiopts,
                            .combine = "c",
                            .multicombine = T,
                            .maxcombine = perms+1e1,
@@ -155,7 +155,7 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                       na.rm = T)
 
     CENranLoc <- foreach(x = iter(1:perms),
-#                         .options.mpi = mpiopts,
+                         .options.mpi = mpiopts,
                          .combine = "c",
                          .multicombine = T,
                          .maxcombine = perms+1e1,
@@ -181,7 +181,7 @@ permTestAllList <- function(CENATHILA_CEN180_metrics_list, CENranLoc_CEN180_metr
                       na.rm = T)
 
     CENranLoc <- foreach(x = iter(1:perms),
-#                         .options.mpi = mpiopts,
+                         .options.mpi = mpiopts,
                          .combine = "c",
                          .multicombine = T,
                          .maxcombine = perms+1e1,

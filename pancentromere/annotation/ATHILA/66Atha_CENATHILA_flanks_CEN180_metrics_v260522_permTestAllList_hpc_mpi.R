@@ -322,7 +322,7 @@ defineCENranLoc <- function(acc_idx, chrs_list, chrLens_list, CEN_GR_list, CENAT
 set.seed(76492749)
 CENranLoc_GR_acc_list <- foreach(acc_idx = 1:length(acc), .inorder = T) %do% {
   acc_perms_GR_list <- foreach(seed = iter(1:perms),
-#                               .options.mpi = mpiopts,
+                               .options.mpi = mpiopts,
                                .multicombine = T,
                                .maxcombine = perms+1e1,
                                .inorder = F) %dorng% {
@@ -439,7 +439,7 @@ CENATHILA_CEN180_metrics_list <- foreach(acc_idx = 1:length(acc), .inorder = T) 
 # CENranLoc
 CENranLoc_CEN180_metrics_list <- foreach(acc_idx = 1:length(acc), .inorder = T) %do% {
   foreach(x = iter(1:perms),
-#          .options.mpi = mpiopts,
+          .options.mpi = mpiopts,
           .multicombine = T,
           .maxcombine = perms+1e1,
           .inorder = F) %dopar% {

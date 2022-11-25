@@ -1,4 +1,4 @@
-#!#!/usr/bin/env Rscript
+#!/usr/bin/env Rscript
 
 # Set class for permutation test results object
 setClass("permTest",
