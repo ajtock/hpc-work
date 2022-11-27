@@ -614,12 +614,11 @@ def align_read_segment_mm_sr(segment_fasta, genome):
 # Align accession-specific read segments to genome using bowtie2
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
-# NOTE: alignment of some exceptional reads will not complete in 12 hours,
-# so task will be cancelled by slurm due to 12-hour time limit.
-# Considered removing aln.wait(), but this would mean that in some cases
-# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
-# process has finished, with the risk that not all reportable alignments
-# would be included in the output SAM and PAF files
+# NOTE: bowtie2 should not be run on long read segments (e.g., >= 1 kb) as
+# it will not finish finding alignments (and will not output any)
+# within the slurm job 12-hour time limit.
+# Conditionally running bowtie2 based on a maximum read segment length 
+# therefore avoids wasting CPU hours for many read segments 
 def align_read_segment_bt2(segment_fasta, genome):
     """
     Align read in FASTA format to genome using bowtie2.
@@ -845,6 +844,14 @@ def main():
     
     # Align accession-specific read segments to genome
     if region == "centromere":
+        # Write within-read k-mer locations TSV file
+        kmer_loc_outfile = kmer_loc_outdir + "/" + \
+            read.id + "__hr" + str(parser.hybReadNo) + \
+            "_kmer_loc.tsv"
+        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+        del acc_kmer_loc_df_sort_tmp
+        
+        # Align
         align_read_segment_wm_ont(segment_fasta=acc1_outfile,
                                   genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
         align_read_segment_wm_ont(segment_fasta=acc2_outfile,
@@ -857,10 +864,12 @@ def main():
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
         align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-        align_read_segment_bt2(segment_fasta=acc1_outfile,
-                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-        align_read_segment_bt2(segment_fasta=acc2_outfile,
-                               genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
+        if acc1_longest_read_segment["hit_end"].iloc[-1] - acc1_longest_read_segment["hit_start"][0] < 1000:
+            align_read_segment_bt2(segment_fasta=acc1_outfile,
+                                   genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
+        if acc2_longest_read_segment["hit_end"].iloc[-1] - acc2_longest_read_segment["hit_start"][0] < 1000:
+            align_read_segment_bt2(segment_fasta=acc2_outfile,
+                                   genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
         
         # Delete accession-specific segment alignment file if the equivalent
         # file for the other accession doesn't exist (indicating an unmapped segment)
@@ -871,18 +880,20 @@ def main():
         delete_alignment(alignment_prefix1=acc2_alignment_to_acc2_prefix,
                          alignment_prefix2=acc1_alignment_to_acc1_prefix)
         
-        # Write within-read k-mer locations TSV file
-        kmer_loc_outfile = kmer_loc_outdir + "/" + \
-            read.id + "__hr" + str(parser.hybReadNo) + \
-            "_kmer_loc.tsv"
-        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
-        del acc_kmer_loc_df_sort_tmp
         # Delete within-read k-mer locations TSV file if correspodning accession-specific
         # read segment alignment files don't exist
         delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_acc1_prefix,
                             alignment_prefix2=acc2_alignment_to_acc2_prefix,
                             kmer_loc_outfile=kmer_loc_outfile)
     else: 
+        # Write within-read k-mer locations TSV file
+        kmer_loc_outfile = kmer_loc_outdir + "/" + \
+            read.id + "__hr" + str(parser.hybReadNo) + \
+            "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
+        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
+        del acc_kmer_loc_df_sort_tmp
+        
+        # Align
         align_read_segment_mm_ont(segment_fasta=acc1_outfile,
                                   genome=parser.alnTo)
         align_read_segment_mm_ont(segment_fasta=acc2_outfile,
@@ -901,12 +912,6 @@ def main():
         delete_alignment(alignment_prefix1=acc2_alignment_to_alnTo_prefix,
                          alignment_prefix2=acc1_alignment_to_alnTo_prefix)
         
-        # Write within-read k-mer locations TSV file
-        kmer_loc_outfile = kmer_loc_outdir + "/" + \
-            read.id + "__hr" + str(parser.hybReadNo) + \
-            "_alnTo_" + parser.alnTo + "_kmer_loc.tsv"
-        acc_kmer_loc_df_sort_tmp.to_csv(kmer_loc_outfile, sep="\t", header=True, index=False)
-        del acc_kmer_loc_df_sort_tmp
         # Delete within-read k-mer locations TSV file if correspodning accession-specific
         # read segment alignment files don't exist
         delete_kmer_loc_tsv(alignment_prefix1=acc1_alignment_to_alnTo_prefix,
