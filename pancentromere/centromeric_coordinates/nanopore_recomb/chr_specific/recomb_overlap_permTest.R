@@ -112,6 +112,7 @@ COs_GR = GRanges(seqnames=COs_DF$acc1_tname,
                                 end=COs_DF$event_end),
                  strand="*")
 
+COs_cor = cor.test(x = sapply(COs_DF_list, function(x) nrow(x)), y = alnTo_chrLens, method = "spearman")
 
 # NCOs
 NCOs_DF_list = lapply(1:length(chrom), function(x) {
@@ -158,6 +159,9 @@ NCOs_GR = GRanges(seqnames=NCOs_DF$acc1_tname,
                                  end=NCOs_DF$event_end),
                   strand="*")
 
+NCOs_cor = cor.test(x = sapply(NCOs_DF_list, function(x) nrow(x)), y = alnTo_chrLens, method = "spearman")
+COs_NCOs_cor = cor.test(x = c(sapply(COs_DF_list, function(x) nrow(x)) + sapply(NCOs_DF_list, function(x) nrow(x))),
+                        y = alnTo_chrLens, method = "spearman")
 
 if(recombType == "COs_and_NCOs") {
    recomb_GR = c(COs_GR, NCOs_GR) 

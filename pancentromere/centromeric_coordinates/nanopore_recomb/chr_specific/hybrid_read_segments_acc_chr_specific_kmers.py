@@ -82,6 +82,9 @@ elif region == "centromere":
 # Set minimum MAPQ
 minMAPQ = 0
 
+# Set maxmimum read segment length (bp) allowed for alignment using bowtie2
+bt2maxLen = 5000
+
 
 outdir = region + "/" + chrom
 kmer_loc_outdir = outdir + "/kmer_loc_tsv"
@@ -478,16 +481,11 @@ def write_fasta_from_SeqRecord(read, segment, outfile):
 # https://github.com/lh3/minimap2/issues/158
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
-# NOTE: alignment of some exceptional reads will not complete in 12 hours,
-# so task will be cancelled by slurm due to 12-hour time limit.
-# Considered removing aln.wait(), but this would mean that in some cases
-# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
-# process has finished, with the risk that not all reportable alignments
-# would be included in the output SAM and PAF files
 def align_read_segment_wm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using winnowmap map-ont.
     """
+    outaln = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont_aln.sam", segment_fasta)
     outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.sam", segment_fasta)
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_wm_ont.paf", segment_fasta)
     aln_cmd = ["winnowmap"] + \
@@ -503,15 +501,15 @@ def align_read_segment_wm_ont(segment_fasta, genome):
               ["-h"] + \
               ["-F", "2308"] + \
               ["-q", str(minMAPQ)] + \
-              ["-o", outsam]
+              ["-o", outsam] + \
+              [outaln]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
-        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
-        aln.wait()
-        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+    with open(outaln, "w") as outaln_handle, open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        subprocess.run(aln_cmd, stdout=outaln_handle) 
+        subprocess.run(sam_cmd, stdin=outaln_handle, stdout=outsam_handle)
         subprocess.run(paf_cmd, stdout=outpaf_handle)
-    subprocess.run(["rm", outsam])
+    subprocess.run(["rm", outaln, outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
         subprocess.run(["rm", outpaf])
@@ -526,16 +524,11 @@ def align_read_segment_wm_ont(segment_fasta, genome):
 # https://github.com/lh3/minimap2/issues/158
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
-# NOTE: alignment of some exceptional reads will not complete in 12 hours,
-# so task will be cancelled by slurm due to 12-hour time limit.
-# Considered removing aln.wait(), but this would mean that in some cases
-# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
-# process has finished, with the risk that not all reportable alignments
-# would be included in the output SAM and PAF files
 def align_read_segment_mm_ont(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 map-ont.
     """
+    outaln = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont_aln.sam", segment_fasta)
     outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.sam", segment_fasta)
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_ont.paf", segment_fasta)
     aln_cmd = ["minimap2"] + \
@@ -550,15 +543,15 @@ def align_read_segment_mm_ont(segment_fasta, genome):
               ["-h"] + \
               ["-F", "2308"] + \
               ["-q", str(minMAPQ)] + \
-              ["-o", outsam]
+              ["-o", outsam] + \
+              [outaln]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
-        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
-        aln.wait()
-        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+    with open(outaln, "w") as outaln_handle, open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        subprocess.run(aln_cmd, stdout=outaln_handle)
+        subprocess.run(sam_cmd, stdin=outaln_handle, stdout=outsam_handle)
         subprocess.run(paf_cmd, stdout=outpaf_handle)
-    subprocess.run(["rm", outsam])
+    subprocess.run(["rm", outaln, outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
         subprocess.run(["rm", outpaf])
@@ -573,16 +566,11 @@ def align_read_segment_mm_ont(segment_fasta, genome):
 # https://github.com/lh3/minimap2/issues/158
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
-# NOTE: alignment of some exceptional reads will not complete in 12 hours,
-# so task will be cancelled by slurm due to 12-hour time limit.
-# Considered removing aln.wait(), but this would mean that in some cases
-# subsequent sam_cmd and paf_cmd processes would begin before the aln_cmd
-# process has finished, with the risk that not all reportable alignments
-# would be included in the output SAM and PAF files
 def align_read_segment_mm_sr(segment_fasta, genome):
     """
     Align read in FASTA format to genome using minimap2 sr.
     """
+    outaln = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr_aln.sam", segment_fasta)
     outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.sam", segment_fasta)
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_mm_sr.paf", segment_fasta)
     aln_cmd = ["minimap2"] + \
@@ -597,15 +585,15 @@ def align_read_segment_mm_sr(segment_fasta, genome):
               ["-h"] + \
               ["-F", "2308"] + \
               ["-q", str(minMAPQ)] + \
-              ["-o", outsam]
+              ["-o", outsam] + \
+              [outaln]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
-        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
-        aln.wait()
-        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+    with open(outaln, "w") as outaln_handle, open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        subprocess.run(aln_cmd, stdout=outaln_handle)
+        subprocess.run(sam_cmd, stdin=outaln_handle, stdout=outsam_handle)
         subprocess.run(paf_cmd, stdout=outpaf_handle)
-    subprocess.run(["rm", outsam])
+    subprocess.run(["rm", outaln, outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
         subprocess.run(["rm", outpaf])
@@ -614,15 +602,16 @@ def align_read_segment_mm_sr(segment_fasta, genome):
 # Align accession-specific read segments to genome using bowtie2
 # NOTE: "samtools view -F 2308" excludes unmapped reads,
 # as well as secondary and supplementary alignments
-# NOTE: bowtie2 should not be run on long read segments (e.g., >= 1 kb) as
+# NOTE: bowtie2 should not be run on long read segments (e.g., > bt2maxLen) as
 # it will not finish finding alignments (and will not output any)
 # within the slurm job 12-hour time limit.
-# Conditionally running bowtie2 based on a maximum read segment length 
-# therefore avoids wasting CPU hours for many read segments 
+# Conditionally running bowtie2 based on a maximum read segment length
+# therefore avoids wasting CPU hours for many read segments
 def align_read_segment_bt2(segment_fasta, genome):
     """
     Align read in FASTA format to genome using bowtie2.
     """
+    outaln = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2_aln.sam", segment_fasta)
     outsam = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.sam", segment_fasta)
     outpaf = re.sub(r"\.fa", "_alnTo_" + genome + "_bt2.paf", segment_fasta)
     aln_cmd = ["bowtie2"] + \
@@ -636,15 +625,15 @@ def align_read_segment_bt2(segment_fasta, genome):
               ["-h"] + \
               ["-F", "2308"] + \
               ["-q", str(minMAPQ)] + \
-              ["-o", outsam]
+              ["-o", outsam] + \
+              [outaln]
     paf_cmd = ["paftools.js", "sam2paf"] + \
               [outsam]
-    with open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
-        aln = subprocess.Popen(aln_cmd, stdout=subprocess.PIPE)
-        aln.wait()
-        subprocess.run(sam_cmd, stdin=aln.stdout, stdout=outsam_handle)
+    with open(outaln, "w") as outaln_handle, open(outsam, "w") as outsam_handle, open(outpaf, "w") as outpaf_handle:
+        subprocess.run(aln_cmd, stdout=outaln_handle)
+        subprocess.run(sam_cmd, stdin=outaln_handle, stdout=outsam_handle)
         subprocess.run(paf_cmd, stdout=outpaf_handle)
-    subprocess.run(["rm", outsam])
+    subprocess.run(["rm", outaln, outsam])
     # Delete file(s) if unmapped
     if os.stat(outpaf).st_size == 0:
         subprocess.run(["rm", outpaf])
@@ -864,10 +853,10 @@ def main():
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
         align_read_segment_mm_sr(segment_fasta=acc2_outfile,
                                  genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
-        if acc1_longest_read_segment["hit_end"].iloc[-1] - acc1_longest_read_segment["hit_start"][0] < 1000:
+        if acc1_longest_read_segment["hit_end"].iloc[-1] - acc1_longest_read_segment["hit_start"][0] <= bt2maxLen:
             align_read_segment_bt2(segment_fasta=acc1_outfile,
                                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc1) + "_Chr")
-        if acc2_longest_read_segment["hit_end"].iloc[-1] - acc2_longest_read_segment["hit_start"][0] < 1000:
+        if acc2_longest_read_segment["hit_end"].iloc[-1] - acc2_longest_read_segment["hit_start"][0] <= bt2maxLen:
             align_read_segment_bt2(segment_fasta=acc2_outfile,
                                    genome=re.sub(r"(_scaffolds)_.+", r"\1", parser.acc2) + "_Chr")
         
