@@ -18,7 +18,7 @@
 #  -mh 11 \
 #  -md 1e6 \
 #  -aq 0.90 \
-#  -nq 0.80 \
+#  -nq 0.90 \
 #  -rt co \
 #  -reg centromere \
 #  -c 'Chr1'
@@ -57,12 +57,12 @@ def create_parser():
                         help="The minimum proportion of an aligned k-mer's length that must overlap a genomic window for the aligned k-mer to be kept during downsampling of accession-specific k-mers. Default: 0.9")
     parser.add_argument("-mh", "--minHits", type=int, default="11",
                         help="The minimum number of accession-specific k-mers found in a read. Default: 11")
-    parser.add_argument("-mq", "--minMAPQ", type=int, default="2",
+    parser.add_argument("-mmq", "--minMAPQ", type=int, default="2",
                         help="The minimum alignment MAPQ score allowed across all aligners. Default: 2")
     parser.add_argument("-aq", "--alenTOqlen", type=float, default="0.90",
                         help="The minimum ratio of the read segment alignment length to the read segment length. Default: 0.90")
-    parser.add_argument("-nq", "--nmatchTOqlen", type=float, default="0.80",
-                        help="The minimum ratio of the read segment alignment number of matching bases to the read segment length. Default: 0.80")
+    parser.add_argument("-nq", "--nmatchTOqlen", type=float, default="0.90",
+                        help="The minimum ratio of the read segment alignment number of matching bases to the read segment length. Default: 0.90")
     parser.add_argument("-rt", "--recombType", type=str, default="co",
                         help="The type/pattern of the recombination event identified based on the sequence of accession-specific read segments. Default: co")
     parser.add_argument("-reg", "--region", type=str, default="centromere",
