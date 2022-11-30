@@ -57,6 +57,8 @@ def create_parser():
                         help="The minimum number of accession-specific k-mers found in a read. Default: 11")
     parser.add_argument("-at", "--alnTo", type=str, default="Col-0.ragtag_scaffolds_Chr",
                         help="The prefix of the assembly to be used for read segment alignment. Default: Col-0.ragtag_scaffolds_Chr")
+    parser.add_argument("-mmq", "--minMAPQ", type=int, default="2",
+                        help="The minimum alignment MAPQ score allowed across all aligners. Default: 2")
     parser.add_argument("-aq", "--alenTOqlen", type=float, default="0.90",
                         help="The minimum ratio of the read segment alignment length to the read segment length. Default: 0.90")
     parser.add_argument("-rt", "--recombType", type=str, default="co",
@@ -228,7 +230,7 @@ def load_cat_paf(indir, acc_name, suffix, aligner):
                          sep="\t", header=None, usecols=list(range(0, 13)))
     aln_DF["aligner"] = aligner
     aln_DF.columns = ["qname", "qlen", "qstart0", "qend0",
-                      "strand", "tname", "tlen", "tstart", "tend",
+                      "strand", "tname", "tlen", "tstart0", "tend",
                       "nmatch", "alen", "mapq", "atype", "aligner"]
     #
     return aln_DF
@@ -260,7 +262,7 @@ def load_pafs_slowly(indir, acc_name, suffix, aligner):
         #aln_DF = aln_DF.iloc[:, :13]
         aln_DF["aligner"] = aligner
         aln_DF.columns = ["qname", "qlen", "qstart0", "qend0",
-                          "strand", "tname", "tlen", "tstart", "tend",
+                          "strand", "tname", "tlen", "tstart0", "tend",
                           "nmatch", "alen", "mapq", "atype", "aligner"]
         #
         return aln_DF
@@ -336,13 +338,17 @@ def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
     # a DataFrame of alignments done by mm_ont or mm_sr
     acc1_aln_DF_concat = pd.concat(objs=acc1_aln_DF_list, axis=0, ignore_index=True)
     acc2_aln_DF_concat = pd.concat(objs=acc2_aln_DF_list, axis=0, ignore_index=True)
+    #
+    # Keep alignments with MAPQ >= parser.minMAPQ
+    acc1_aln_DF_concat = acc1_aln_DF_concat.loc[acc1_aln_DF_concat["mapq"] >= parser.minMAPQ]
+    acc2_aln_DF_concat = acc2_aln_DF_concat.loc[acc2_aln_DF_concat["mapq"] >= parser.minMAPQ]
     # 
     # For each read ID, get the best alignment from each of acc1_aln_DF_concat and
     # and acc2_aln_DF_concat
     # acc1
-    acc1_aln_DF_concat_sort = acc1_aln_DF_concat.sort_values(by=["qname", "alen", "nmatch"],
+    acc1_aln_DF_concat_sort = acc1_aln_DF_concat.sort_values(by=["qname", "alen", "nmatch", "alen", "mapq", "atype"],
                                                              axis=0,
-                                                             ascending=[True, False, False],
+                                                             ascending=[True, False, False, False, True],
                                                              kind="quicksort",
                                                              ignore_index=True)
     acc1_aln_DF_concat_sort_list = list(acc1_aln_DF_concat_sort.groupby("qname"))
@@ -360,43 +366,45 @@ def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
         #print(read_id)
         acc1_aln_DF_read_id = acc1_aln_DF_best[acc1_aln_DF_best["qname"] == read_id] 
         acc2_aln_DF_read_id = acc2_aln_DF_concat[acc2_aln_DF_concat["qname"] == read_id] 
-        acc2_aln_DF_read_id_sort = acc2_aln_DF_read_id.sort_values(by=["alen", "nmatch"],
-                                                                   axis=0,
-                                                                   ascending=[False, False],
-                                                                   kind="quicksort",
-                                                                   ignore_index=True)
-        acc2_aln_DF_read_id_sort_strand = acc2_aln_DF_read_id_sort[acc2_aln_DF_read_id_sort["strand"] == acc1_aln_DF_read_id["strand"].iloc[0]]
-        if acc2_aln_DF_read_id_sort_strand.shape[0] > 0:
-            acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
-            ## If "alen" and "nmatch" are to be given priority over finding pairs where both alignments are to the same strand:
-            #if acc2_aln_DF_read_id_sort_strand.iloc[0]["alen"] == acc2_aln_DF_read_id_sort.iloc[0]["alen"] and \
-            #   acc2_aln_DF_read_id_sort_strand.iloc[0]["nmatch"] == acc2_aln_DF_read_id_sort.iloc[0]["nmatch"]:
-            #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
-            #else:
-            #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
-        else:
-            acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
-        acc2_aln_DF_best = pd.concat(objs=[acc2_aln_DF_best, acc2_aln_DF_read_id_sort_select],
-                                     axis=0,
-                                     ignore_index=True)
-    del acc2_aln_DF_concat, acc1_aln_DF_read_id, acc2_aln_DF_read_id, acc2_aln_DF_read_id_sort, acc2_aln_DF_read_id_sort_strand, acc2_aln_DF_read_id_sort_select
+        if len(acc2_aln_DF_read_id) > 0:
+            acc2_aln_DF_read_id_sort = acc2_aln_DF_read_id.sort_values(by=["alen", "nmatch", "mapq", "atype"],
+                                                                       axis=0,
+                                                                       ascending=[False, False, False, True],
+                                                                       kind="quicksort",
+                                                                       ignore_index=True)
+            acc2_aln_DF_read_id_sort_strand = acc2_aln_DF_read_id_sort[acc2_aln_DF_read_id_sort["strand"] == acc1_aln_DF_read_id["strand"].iloc[0]]
+            if acc2_aln_DF_read_id_sort_strand.shape[0] > 0:
+                acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
+                ## If "alen" and "nmatch" are to be given priority over finding pairs where both alignments are to the same strand:
+                #if acc2_aln_DF_read_id_sort_strand.iloc[0]["alen"] == acc2_aln_DF_read_id_sort.iloc[0]["alen"] and \
+                #   acc2_aln_DF_read_id_sort_strand.iloc[0]["nmatch"] == acc2_aln_DF_read_id_sort.iloc[0]["nmatch"]:
+                #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort_strand.iloc[[0]]
+                #else:
+                #    acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
+            else:
+                acc2_aln_DF_read_id_sort_select = acc2_aln_DF_read_id_sort.iloc[[0]]
+            acc2_aln_DF_best = pd.concat(objs=[acc2_aln_DF_best, acc2_aln_DF_read_id_sort_select],
+                                         axis=0,
+                                         ignore_index=True)
+            del acc2_aln_DF_read_id_sort, acc2_aln_DF_read_id_sort_strand, acc2_aln_DF_read_id_sort_select
+    del acc2_aln_DF_concat, acc1_aln_DF_read_id, acc2_aln_DF_read_id
     gc.collect()
     #
     acc1_aln_DF_best.columns = "acc1_" + acc1_aln_DF_best.columns 
     acc2_aln_DF_best.columns = "acc2_" + acc2_aln_DF_best.columns 
     #
-    # Stop if read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best
-    #list(acc1_aln_DF_best["acc1_qname"]) == list(acc2_aln_DF_best["acc2_qname"])
-    if not acc1_aln_DF_best["acc1_qname"].equals(acc2_aln_DF_best["acc2_qname"]):
-        print("Stopping because read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best")
-        return
+    ## Stop if read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best
+    ##list(acc1_aln_DF_best["acc1_qname"]) == list(acc2_aln_DF_best["acc2_qname"])
+    #if not acc1_aln_DF_best["acc1_qname"].equals(acc2_aln_DF_best["acc2_qname"]):
+    #    print("Stopping because read ID order differs between acc1_aln_DF_best and acc2_aln_DF_best")
+    #    return
     #
     aln_best_pair_DF = pd.merge(left=acc1_aln_DF_best, right=acc2_aln_DF_best,
                                 how="inner", left_on="acc1_qname", right_on="acc2_qname")
     aln_best_pair_DF = aln_best_pair_DF.rename(columns = {"acc1_qname":"qname"})
     aln_best_pair_DF = aln_best_pair_DF.drop(columns="acc2_qname")
     #
-    aln_best_pair_DF_sort = aln_best_pair_DF.sort_values(by=["acc1_tname", "acc1_tstart", "acc1_tend"],
+    aln_best_pair_DF_sort = aln_best_pair_DF.sort_values(by=["acc1_tname", "acc1_tstart0", "acc1_tend"],
                                                          axis=0,
                                                          ascending=[True, True, True],
                                                          kind="quicksort",
@@ -432,14 +440,14 @@ str( round( aln_best_pair_hom_DF.shape[0] / aln_best_pair_DF.shape[0], 4 ) * 100
 
 # Filter to retain hybrid read segments pairs where the per-accession read segments align to within
 # 2 * the given read length of each other in the same reference assembly
-aln_dist_acc1_tstart_acc2_tstart = list(abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1)
-aln_dist_acc1_tstart_acc2_tend = list(abs(aln_best_pair_hom_DF["acc1_tstart"] - aln_best_pair_hom_DF["acc2_tend"]) + 1)
-aln_dist_acc1_tend_acc2_tstart = list(abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tstart"]) + 1)
+aln_dist_acc1_tstart0_acc2_tstart0 = list(abs(aln_best_pair_hom_DF["acc1_tstart0"] - aln_best_pair_hom_DF["acc2_tstart0"]) + 1)
+aln_dist_acc1_tstart0_acc2_tend = list(abs(aln_best_pair_hom_DF["acc1_tstart0"] - aln_best_pair_hom_DF["acc2_tend"]))
+aln_dist_acc1_tend_acc2_tstart0 = list(abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tstart0"]))
 aln_dist_acc1_tend_acc2_tend = list(abs(aln_best_pair_hom_DF["acc1_tend"] - aln_best_pair_hom_DF["acc2_tend"]) + 1)
 
-aln_dist_nparray = np.array([aln_dist_acc1_tstart_acc2_tstart,
-                             aln_dist_acc1_tstart_acc2_tend,
-                             aln_dist_acc1_tend_acc2_tstart,
+aln_dist_nparray = np.array([aln_dist_acc1_tstart0_acc2_tstart0,
+                             aln_dist_acc1_tstart0_acc2_tend,
+                             aln_dist_acc1_tend_acc2_tstart0,
                              aln_dist_acc1_tend_acc2_tend])
 aln_dist_min = list(aln_dist_nparray.min(axis=0))
 aln_dist_max = list(aln_dist_nparray.max(axis=0))
@@ -447,16 +455,16 @@ del aln_dist_nparray
 gc.collect()
 
 ## Skin and overcook a cat
-#aln_dist_tuple_list = list(zip(aln_dist_acc1_tstart_acc2_tstart,
-#                               aln_dist_acc1_tstart_acc2_tend,
-#                               aln_dist_acc1_tend_acc2_tstart,
+#aln_dist_tuple_list = list(zip(aln_dist_acc1_tstart0_acc2_tstart0,
+#                               aln_dist_acc1_tstart0_acc2_tend,
+#                               aln_dist_acc1_tend_acc2_tstart0,
 #                               aln_dist_acc1_tend_acc2_tend))
 #aln_dist_min = list(map(min, aln_dist_tuple_list))
 #aln_dist_max = list(map(max, aln_dist_tuple_list))
 
-aln_coords_nparray = np.array([list(aln_best_pair_hom_DF["acc1_tstart"]),
+aln_coords_nparray = np.array([list(aln_best_pair_hom_DF["acc1_tstart0"]),
                                list(aln_best_pair_hom_DF["acc1_tend"]),
-                               list(aln_best_pair_hom_DF["acc2_tstart"]),
+                               list(aln_best_pair_hom_DF["acc2_tstart0"]),
                                list(aln_best_pair_hom_DF["acc2_tend"])])
 #aln_coords_nparray.sort(axis=0)
 sidx = aln_coords_nparray.argsort(axis=0)

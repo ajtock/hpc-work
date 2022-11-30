@@ -466,7 +466,8 @@ def aln_best_pair(acc1_aln_DF_list, acc2_aln_DF_list):
             acc2_aln_DF_best = pd.concat(objs=[acc2_aln_DF_best, acc2_aln_DF_read_id_sort_select],
                                          axis=0,
                                          ignore_index=True)
-    del acc2_aln_DF_concat, acc1_aln_DF_read_id, acc2_aln_DF_read_id, acc2_aln_DF_read_id_sort
+            del acc2_aln_DF_read_id_sort, acc2_aln_DF_read_id_sort_strand, acc2_aln_DF_read_id_sort_select
+    del acc2_aln_DF_concat, acc1_aln_DF_read_id, acc2_aln_DF_read_id
     gc.collect()
     #
     acc1_aln_DF_best.columns = "acc1_" + acc1_aln_DF_best.columns 
